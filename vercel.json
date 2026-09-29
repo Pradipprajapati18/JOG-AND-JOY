@@ -1,5 +1,4 @@
 {
-  "name": "jogandjoy",
   "rewrites": [
     {
       "source": "/(.*)",
