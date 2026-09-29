@@ -221,3 +221,4 @@ This project is configured for seamless deployment on **Vercel** (as indicated b
 - **Global Pagination**: Enforced 16-item limits with smooth auto-scroll to the top of the grid.
 - **Inline Expandable Filtering**: Seamless inline UI panes for category and age-group sorting.
 - **Dedicated Cart Page**: Upgraded from a drawer to a full page with tabular item layouts and dynamic summaries.
+- **Vercel Config**: Updated deployment routing to standard Vite SPA architecture.
