@@ -361,7 +361,7 @@ const CardNav = ({
               className="action-btn hidden-mobile group"
               title="Profile"
             >
-              <img src="/profile_icon.png" alt="Profile" className="w-5 h-5 object-contain transition-all duration-200 group-hover:scale-110 group-hover:brightness-110" />
+              <img src="/profile_icon.webp" alt="Profile" className="w-5 h-5 object-contain transition-all duration-200 group-hover:scale-110 group-hover:brightness-110" />
             </button>
 
             <Link

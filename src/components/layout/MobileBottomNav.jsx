@@ -65,7 +65,7 @@ export default function MobileBottomNav({ onOpenProfile }) {
             >
               {item.id === 'profile' ? (
                 <img 
-                  src="/profile_icon.png" 
+                  src="/profile_icon.webp" 
                   alt="Profile" 
                   className={`w-6 h-6 rounded-full object-cover transition-all duration-300 ${
                     isActive ? 'drop-shadow-[0_0_12px_rgba(239,74,69,0.8)] border border-[#EF4A45]' : 'border border-transparent hover:border-[#D1D1D6]'
