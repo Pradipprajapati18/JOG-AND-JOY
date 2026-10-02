@@ -8,13 +8,29 @@ import DomeGallery from '../components/ui/DomeGallery';
 import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
 
 const newArrivalImages = [
-  { src: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=600&auto=format&fit=crop", alt: "Active Play Orange Set" },
-  { src: "https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?q=80&w=600&auto=format&fit=crop", alt: "Cozy Cotton Summer Polo" },
-  { src: "https://images.unsplash.com/photo-1519457431-44ccd64a579b?q=80&w=600&auto=format&fit=crop", alt: "Mint Soft Tees" },
-  { src: "https://images.unsplash.com/photo-1514090458221-65bb69cf63e6?q=80&w=600&auto=format&fit=crop", alt: "Featured Spotlight" },
-  { src: "https://images.unsplash.com/photo-1543852786-1cf6624b9987?q=80&w=600&auto=format&fit=crop", alt: "Sky Comfort" },
-  { src: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?q=80&w=600&auto=format&fit=crop", alt: "Sweet Lilac" },
-  { src: "https://images.unsplash.com/photo-1471286174890-9c112ffca5b4?q=80&w=600&auto=format&fit=crop", alt: "Loungewear" }
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50.webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (1).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (2).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (3).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (4).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (5).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51.webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (1).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (2).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (3).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (4).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (5).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (6).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (7).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (8).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (9).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (10).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (11).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (12).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (13).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (14).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (15).webp", alt: "Gallery Image" },
+  { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (16).webp", alt: "Gallery Image" }
 ];
 
 export default function NewArrivalsPage() {

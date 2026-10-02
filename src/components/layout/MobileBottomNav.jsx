@@ -63,14 +63,24 @@ export default function MobileBottomNav({ onOpenProfile }) {
               onClick={() => handleNavClick(index, item)}
               className="relative w-full h-full flex items-center justify-center z-10 transition-transform active:scale-90"
             >
-              <Icon 
-                className={`w-6 h-6 transition-all duration-300 ${
-                  isActive 
-                    ? 'text-[#EF4A45] drop-shadow-[0_0_12px_rgba(239,74,69,0.8)]' 
-                    : 'text-[#8E8E93] hover:text-[#D1D1D6]'
-                }`}
-                strokeWidth={isActive ? 2.5 : 2}
-              />
+              {item.id === 'profile' ? (
+                <img 
+                  src="/profile_icon.webp" 
+                  alt="Profile" 
+                  className={`w-6 h-6 rounded-full object-cover transition-all duration-300 ${
+                    isActive ? 'drop-shadow-[0_0_12px_rgba(239,74,69,0.8)] border border-[#EF4A45]' : 'border border-transparent hover:border-[#D1D1D6]'
+                  }`} 
+                />
+              ) : (
+                <Icon 
+                  className={`w-6 h-6 transition-all duration-300 ${
+                    isActive 
+                      ? 'text-[#EF4A45] drop-shadow-[0_0_12px_rgba(239,74,69,0.8)]' 
+                      : 'text-[#8E8E93] hover:text-[#D1D1D6]'
+                  }`}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+              )}
             </button>
           );
         })}

@@ -324,9 +324,11 @@ export default function UserProfileModal({ isOpen, onClose }) {
                       </button>
 
                       <div className="flex gap-2">
-                        <button onClick={() => handleDownloadInvoice(order)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm" title="Download Invoice">
-                          <FileText className="w-4 h-4" />
-                        </button>
+                        {['DELIVERED', 'SHIPPED'].includes(order.status) && (
+                          <button onClick={() => handleDownloadInvoice(order)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm" title="Download Invoice">
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        )}
                         {order.status === 'DELIVERED' && !order.returnRequest && (
                           <button onClick={() => handleRequestReturn(order.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-red-200 text-[#EF4A45] hover:text-red-700 hover:bg-red-50 transition-colors shadow-sm" title="Request Return/Exchange">
                             <RotateCcw className="w-4 h-4" />
