@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useOrdersList } from '../queries/useOrders';
 import { useSettingsContext } from '../context/SettingsContext';
@@ -6,29 +6,35 @@ import { useSettingsContext } from '../context/SettingsContext';
 export default function Invoice() {
   const { orderId } = useParams();
   const { data: ordersData, isLoading } = useOrdersList({ pageSize: 1000 });
-  const { formatCurrency, formatDate } = useSettingsContext();
+  const { settings } = useSettingsContext();
 
-  const [order, setOrder] = useState(null);
+  const order = ordersData?.data?.find(
+    (o) => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId)
+  );
 
-  useEffect(() => {
-    if (ordersData?.data && orderId) {
-      const target = ordersData.data.find(o => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId));
-      if (target) setOrder(target);
-    }
-  }, [ordersData, orderId]);
-
-  if (isLoading) return <div className="p-10 text-center font-bold">Generating Invoice...</div>;
+  if (isLoading) return <div className="p-10 text-center font-bold">Generating Packing Slip...</div>;
   if (!order) return <Navigate to="/" />;
 
   const subtotal = order.items?.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0) || 0;
-  const tax = order.tax || 0;
-  const total = order.total || 0;
+  
+  // Use shipping charge from settings so it dynamically updates for all invoices
+  const shippingCharge = settings?.baseShippingRate || 0;
+  
+  // Notice we don't apply taxes here as the new packing slip doesn't specify it, but you could add it back easily.
+  const total = subtotal + shippingCharge;
+
+  // Format date helper for DD/MM/YYYY
+  const formatSimpleDate = (isoString) => {
+    if (!isoString) return '';
+    const d = new Date(isoString);
+    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex justify-center font-sans">
-      <div className="w-full max-w-3xl bg-white shadow-2xl p-8 md:p-12">
+      <div className="w-full max-w-4xl bg-white shadow-2xl p-8 md:p-12 relative text-black">
         {/* Header Action (Hidden when printing) */}
-        <div className="flex justify-end mb-8 print:hidden">
+        <div className="absolute top-4 right-4 flex justify-end print:hidden">
           <button
             onClick={() => window.print()}
             className="px-6 py-2 bg-slate-900 text-white font-bold text-sm rounded-lg hover:bg-slate-800 transition-colors shadow-md"
@@ -38,63 +44,71 @@ export default function Invoice() {
         </div>
 
         {/* Invoice Header */}
-        <div className="flex justify-between items-start border-b border-slate-200 pb-8 mb-8">
-          <div>
-            <div className="text-3xl font-black text-slate-900 tracking-tighter mb-1">
-              JOG<span className="text-[#AEE6FF]">&</span>JOY
-            </div>
-            <p className="text-sm font-semibold text-slate-500">Love is in the wear</p>
-          </div>
-          <div className="text-right">
-            <h1 className="text-3xl font-black text-slate-200 uppercase tracking-widest mb-2">Invoice</h1>
-            <p className="text-sm font-bold text-slate-800">Order #{order.orderNumber || order.id.substring(0, 8).toUpperCase()}</p>
-            <p className="text-xs font-semibold text-slate-500">{formatDate(order.createdAt)}</p>
+        <div className="mb-12">
+          <h1 className="text-3xl font-black mb-1">JOG & JOY</h1>
+          <p className="text-xl text-gray-700">Packing Slip</p>
+          
+          <div className="mt-8 text-lg">
+            <p>49, Kamal House, Pankaj Society, Paldi,</p>
+            <p>Ahmedabad - 380007, Gujarat, India.</p>
+            <p className="mt-6">+91 94299 05118</p>
           </div>
         </div>
 
         {/* Customer & Shipping Details */}
-        <div className="grid grid-cols-2 gap-8 mb-10">
+        <div className="grid grid-cols-2 gap-8 mb-8 items-end">
           <div>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Billed To</h3>
-            <p className="text-sm font-bold text-slate-800 mb-1">{order.shippingAddress?.name || 'Customer'}</p>
-            <p className="text-sm font-semibold text-slate-600 mb-1">{order.shippingAddress?.email}</p>
-            <p className="text-sm font-semibold text-slate-600 mb-1">{order.shippingAddress?.phone}</p>
+            <h3 className="text-xl font-bold mb-2">Ship To:</h3>
+            <p className="text-lg">{order.shippingAddress?.name || 'Customer'}</p>
+            <p className="text-lg">{order.shippingAddress?.city}</p>
+            <p className="text-lg">{order.shippingAddress?.city}, {order.shippingAddress?.state || 'Gujarat'} {order.shippingAddress?.postalCode}</p>
           </div>
-          <div>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Shipping Address</h3>
-            <p className="text-sm font-semibold text-slate-600 leading-relaxed">
-              {order.shippingAddress?.line1}<br />
-              {order.shippingAddress?.city}, {order.shippingAddress?.state} {order.shippingAddress?.postalCode}<br />
-              {order.shippingAddress?.country || 'India'}
-            </p>
+          
+          <div className="text-xl flex flex-col gap-1 justify-end pl-12">
+            <div className="flex gap-2">
+              <span className="font-bold w-32">Order id:</span>
+              <span>#{order.orderNumber || order.id.substring(0, 8).toUpperCase()}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-bold w-32">Order date:</span>
+              <span>{formatSimpleDate(order.createdAt)}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-bold w-32">user:</span>
+              <span>{order.user?.name || order.shippingAddress?.name || ''}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-bold w-32">ship date:</span>
+              <span></span>
+            </div>
           </div>
         </div>
 
         {/* Items Table */}
-        <div className="mb-10">
-          <table className="w-full text-left border-collapse">
+        <div className="mb-4">
+          <table className="w-full text-center border-collapse border-2 border-black">
             <thead>
-              <tr className="border-b-2 border-slate-900">
-                <th className="py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Item Description</th>
-                <th className="py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Qty</th>
-                <th className="py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Price</th>
-                <th className="py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
+              <tr className="bg-[#1A1A1A] text-white">
+                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[20%]">Item</th>
+                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[35%]">Description</th>
+                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[15%]">Price</th>
+                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[15%]">Quantity</th>
+                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[15%]">Ext. Price</th>
               </tr>
             </thead>
             <tbody>
               {order.items?.map((item, index) => (
-                <tr key={index} className="border-b border-slate-100">
-                  <td className="py-4 pr-4">
-                    <p className="text-sm font-bold text-slate-800">{item.titleSnapshot || item.name || 'Product'}</p>
-                    {(item.size || item.color) && (
-                      <p className="text-xs font-semibold text-slate-500 mt-1">
-                        {item.size ? `Size: ${item.size}` : ''} {item.color ? `| Color: ${item.color}` : ''}
-                      </p>
-                    )}
+                <tr key={index}>
+                  <td className="py-3 px-2 border-2 border-black text-sm">
+                    {item.titleSnapshot || item.name || 'Product'}
                   </td>
-                  <td className="py-4 px-2 text-center text-sm font-bold text-slate-800">{item.quantity || 1}</td>
-                  <td className="py-4 px-2 text-right text-sm font-bold text-slate-800">{formatCurrency(item.price || 0)}</td>
-                  <td className="py-4 text-right text-sm font-bold text-slate-800">{formatCurrency((item.price || 0) * (item.quantity || 1))}</td>
+                  <td className="py-3 px-2 border-2 border-black text-sm whitespace-pre-line text-center">
+                    {item.color && <div>colour: {item.color}</div>}
+                    {item.size && <div>size: {item.size}</div>}
+                  </td>
+                  <td className="py-3 px-2 border-2 border-black text-sm">{item.price || 0} rs</td>
+                  <td className="py-3 px-2 border-2 border-black text-sm">{item.quantity || 1}</td>
+                  <td className="py-3 px-2 border-2 border-black text-sm">{(item.price || 0) * (item.quantity || 1)}</td>
                 </tr>
               ))}
             </tbody>
@@ -102,30 +116,24 @@ export default function Invoice() {
         </div>
 
         {/* Totals */}
-        <div className="flex justify-end border-t-2 border-slate-900 pt-6">
-          <div className="w-64 space-y-3">
-            <div className="flex justify-between text-sm font-bold text-slate-600">
-              <span>Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
+        <div className="flex justify-end mb-16">
+          <div className="w-64 pr-2">
+            <div className="flex justify-between items-center mb-1">
+              <span className="font-bold text-2xl pr-4">Sub total:</span>
+              <span className="font-bold text-xl">{subtotal}</span>
             </div>
-            {tax > 0 && (
-              <div className="flex justify-between text-sm font-bold text-slate-600">
-                <span>Tax (18% GST)</span>
-                <span>{formatCurrency(tax)}</span>
-              </div>
-            )}
-            <div className="flex justify-between text-lg font-black text-slate-900 pt-3 border-t border-slate-200">
-              <span>Total</span>
-              <span>{formatCurrency(total)}</span>
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-bold text-2xl pr-4">shipping:</span>
+              <span className="font-bold text-xl">{shippingCharge}</span>
+            </div>
+            <div className="border-t-4 border-black my-2"></div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="font-bold text-2xl pr-4">Total:</span>
+              <span className="font-bold text-xl">{total}</span>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-16 pt-8 border-t border-slate-100 text-center space-y-1">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Thank you for your business!</p>
-          <p className="text-[10px] font-semibold text-slate-400">If you have any questions about this invoice, please contact support@jogandjoy.in</p>
-        </div>
       </div>
 
       {/* Global Print Styles (Only applied on this page when printing) */}
@@ -133,9 +141,10 @@ export default function Invoice() {
         __html: `
         @media print {
           body * { visibility: hidden; }
+          .min-h-screen { background-color: white !important; }
           .min-h-screen > div, .min-h-screen > div * { visibility: visible; }
-          .min-h-screen > div { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; padding: 0; }
-          @page { margin: 0; size: auto; }
+          .min-h-screen > div { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; padding: 0; margin: 0; }
+          @page { margin: 0.5cm; size: auto; }
         }
       `}} />
     </div>

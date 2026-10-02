@@ -175,7 +175,7 @@ export default function AdminSettings() {
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Base Standard Rate (₹)</label>
-                        <input type="number" value={formData.baseShippingRate ?? 99} onChange={e => setFormData({...formData, baseShippingRate: Number(e.target.value)})} className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-zinc-50 focus:ring-1 focus:ring-blue-600 outline-none" />
+                        <input type="number" value={formData.baseShippingRate ?? 0} onChange={e => setFormData({...formData, baseShippingRate: Number(e.target.value)})} className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-zinc-50 focus:ring-1 focus:ring-blue-600 outline-none" />
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Free Shipping Threshold (₹)</label>

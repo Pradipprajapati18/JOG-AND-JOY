@@ -203,6 +203,7 @@ export default function Checkout() {
       shippingCost: formData.shippingMethod === 'express' ? shippingFee + expressShippingRate : shippingFee,
       tax: 0,
       total: formData.shippingMethod === 'express' ? cartGrandTotal + expressShippingRate : cartGrandTotal,
+      shippingMethod: formData.shippingMethod,
       items: cart.map(item => ({
         id: item.id,
         productId: item.id,
@@ -210,7 +211,8 @@ export default function Checkout() {
         unitPrice: item.price,
         quantity: item.quantity,
         size: item.size,
-        color: item.color
+        color: item.color,
+        image: item.image
       })),
       shippingAddress: {
         name: formData.fullName,
