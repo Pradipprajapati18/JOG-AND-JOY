@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Search, Plus, Edit2, Trash2, Folder, AlertTriangle, X } from 'lucide-react';
 import { useCategoriesList, useCreateCategory, useUpdateCategory, useDeleteCategory } from '../../queries/useCategories';
 import { useProductsList } from '../../queries/useProducts';
+import { useSizesList, useCreateSize, useUpdateSize, useDeleteSize } from '../../queries/useSizes';
+
 
 export default function AdminCategories() {
   const { data: categoriesResponse, isLoading } = useCategoriesList();
@@ -17,6 +19,49 @@ export default function AdminCategories() {
   const [editCat, setEditCat] = useState(null);
   const [form, setForm] = useState({ label: '', icon: '', status: 'Active' });
   const [search, setSearch] = useState('');
+
+  // Sizes state and hooks
+  const { data: sizesResponse, isLoading: isLoadingSizes } = useSizesList();
+  const sizes = sizesResponse?.data || [];
+  
+  const createSizeMut = useCreateSize();
+  const updateSizeMut = useUpdateSize();
+  const deleteSizeMut = useDeleteSize();
+
+  const [showSizeModal, setShowSizeModal] = useState(false);
+  const [editSize, setEditSize] = useState(null);
+  const [sizeForm, setSizeForm] = useState({ label: '', status: 'Active' });
+  const [searchSize, setSearchSize] = useState('');
+
+  const openAddSize = () => {
+    setEditSize(null);
+    setSizeForm({ label: '', status: 'Active' });
+    setShowSizeModal(true);
+  };
+
+  const openEditSize = (s) => {
+    setEditSize(s);
+    setSizeForm({ label: s.label, status: s.status || 'Active' });
+    setShowSizeModal(true);
+  };
+
+  const handleSaveSize = () => {
+    if (editSize) {
+      updateSizeMut.mutate({ id: editSize.id, patch: sizeForm });
+    } else {
+      createSizeMut.mutate({ ...sizeForm, order: sizes.length + 1 });
+    }
+    setShowSizeModal(false);
+  };
+
+  const handleDeleteSize = (id) => {
+    if (window.confirm('Delete this size?')) {
+      deleteSizeMut.mutate(id);
+    }
+  };
+
+  const filteredSizes = sizes.filter(s => s.label.toLowerCase().includes(searchSize.toLowerCase()));
+
 
   const openAdd = () => {
     setEditCat(null);
@@ -186,6 +231,87 @@ export default function AdminCategories() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDelete(cat.id)} className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Category">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      
+      {/* SIZES SECTION */}
+      <div className="mt-12 flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+        <div>
+          <h2 className="text-3xl font-extrabold text-text-dark">Sizes</h2>
+          <p className="text-sm text-text-muted mt-1">Manage global product sizes</p>
+        </div>
+        <button 
+          onClick={openAddSize}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-[#003366] rounded-lg font-bold text-sm hover:bg-slate-50 shadow-sm transition-colors"
+        >
+          <Plus className="w-4 h-4" /> Add Size
+        </button>
+      </div>
+
+      <div className="bg-white border border-slate-100 rounded-xl shadow-sm transition-all overflow-hidden mb-12">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-zinc-50/50">
+          <div className="relative flex-1 sm:w-72 max-w-sm">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input 
+              type="text" 
+              placeholder="Search sizes..." 
+              value={searchSize}
+              onChange={(e) => setSearchSize(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-600 text-sm transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          {isLoadingSizes ? (
+            <div className="flex items-center justify-center h-48 text-zinc-400 font-semibold">Loading sizes...</div>
+          ) : (
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500">
+                <tr>
+                  <th className="px-6 py-3 font-medium">Size</th>
+                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredSizes.length === 0 ? (
+                  <tr>
+                    <td colSpan="3" className="p-16 text-center text-zinc-400">
+                      <div className="flex flex-col items-center justify-center">
+                        <Folder className="w-12 h-12 opacity-30 mb-4" />
+                        <h3 className="text-base font-bold text-text-dark">No sizes found</h3>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSizes.map(size => (
+                    <tr key={size.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-6 py-4 font-bold text-text-dark text-sm">{size.label}</td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
+                          size.status === 'Active' ? 'bg-green-500/15 text-green-700' : 'bg-zinc-200 text-zinc-600'
+                        }`}>
+                          {size.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openEditSize(size)} className="p-2 text-zinc-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit Size">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDeleteSize(size.id)} className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete Size">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
