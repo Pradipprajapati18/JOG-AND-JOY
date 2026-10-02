@@ -358,10 +358,10 @@ const CardNav = ({
                 onOpenProfile?.();
                 if (isExpanded) closeMenu();
               }}
-              className="action-btn hidden-mobile"
+              className="action-btn hidden-mobile group"
               title="Profile"
             >
-              <User className="w-5 h-5 text-slate-700" />
+              <img src="/profile_icon.png" alt="Profile" className="w-5 h-5 object-contain transition-all duration-200 group-hover:scale-110 group-hover:brightness-110" />
             </button>
 
             <Link
