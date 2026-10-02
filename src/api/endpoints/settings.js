@@ -9,10 +9,13 @@ export const settingsApi = {
   },
   update: async (patch) => {
     const list = await mockApi.list(TABLE);
+    
     if (list.data.length > 0) {
-      return mockApi.update(TABLE, list.data[0].id, patch);
+      const res = await mockApi.update(TABLE, list.data[0].id, patch);
+      return res;
     } else {
-      return mockApi.create(TABLE, patch);
+      const res = await mockApi.create(TABLE, patch);
+      return res;
     }
   },
 };
