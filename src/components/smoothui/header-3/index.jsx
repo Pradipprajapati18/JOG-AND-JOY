@@ -130,7 +130,7 @@ export function HeroShowcase({
                 className="h-full w-full rounded-md object-cover"
                 draggable={false}
                 height={1842}
-                src={getImageKitUrl("/images/hero-example_xertaz.png", {
+                src={getImageKitUrl("/images/hero-example_xertaz.webp", {
                   width: 1200,
                   quality: 85,
                   format: "auto",

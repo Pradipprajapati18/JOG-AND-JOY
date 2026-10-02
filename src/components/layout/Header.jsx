@@ -83,7 +83,7 @@ export default function Header() {
             <Link to="/" className="flex items-center gap-3 group">
               <div className="relative overflow-hidden rounded-xl bg-[#ccff00] p-1.5 transition-transform group-hover:scale-105">
                 <img 
-                  src={getImageUrl('logo.png')} 
+                  src={getImageUrl('logo.webp')} 
                   alt="Jog & Joy Logo" 
                   className="h-7 w-auto object-contain"
                   onError={(e) => {

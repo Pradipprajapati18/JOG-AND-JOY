@@ -2,12 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import './ShopByDepartment.css';
 import newArrivalsMobile from '../../assets/new-arrivals-mobile.jpg';
-import newArrivalsDesktop from '../../assets/new-arrivals-desktop-custom.png';
+import newArrivalsDesktop from '../../assets/new-arrivals-desktop-custom.webp';
 import allProductsCustom from '../../assets/all-products-custom.jpg';
-import allProductsDesktop from '../../assets/all-products-desktop.png';
-import kidsWearMobile from '../../assets/kids-wear-mobile.png';
+import allProductsDesktop from '../../assets/all-products-desktop.webp';
+import kidsWearMobile from '../../assets/kids-wear-mobile.webp';
 import kidsWearTab from '../../assets/kids-wear-tab.jpg';
-import kidsWearDesktop from '../../assets/kids-wear-desktop.png';
+import kidsWearDesktop from '../../assets/kids-wear-desktop.webp';
 
 const departments = [
   {

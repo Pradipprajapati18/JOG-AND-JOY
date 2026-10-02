@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Star, ShieldCheck, HeartHandshake } from 'lucide-react';
-import whyChooseUsDesktop from '../../assets/why-choose-us-desktop.png';
-import whyChooseUsMobile from '../../assets/why-choose-us-mobile.png';
+import whyChooseUsDesktop from '../../assets/why-choose-us-desktop.webp';
+import whyChooseUsMobile from '../../assets/why-choose-us-mobile.webp';
 import { getImageUrl } from '../../utils/getImageUrl';
 
 export default function WhyChooseUs() {
@@ -30,7 +30,7 @@ export default function WhyChooseUs() {
           <Sparkles className="w-6 h-6 fill-amber-300" />
         </motion.div>
         <motion.img
-          src={getImageUrl('official_logo.png')}
+          src={getImageUrl('official_logo.webp')}
           alt="JOG & JOY®"
           className="h-12 sm:h-16 md:h-20 object-contain relative z-10 filter drop-shadow-md"
           animate={{ y: [0, -6, 0], scale: [1, 1.04, 1], rotate: [0, 1.5, -1.5, 0] }}

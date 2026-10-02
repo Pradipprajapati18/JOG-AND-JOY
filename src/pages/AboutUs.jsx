@@ -20,15 +20,15 @@ const teamMembers = [
 
 const CustomClothingSticker = ({ type, style }) => {
   const map = {
-    "sticker_0_0": getImageUrl('cutouts/cutout_1.png'),
-    "sticker_0_1": getImageUrl('cutouts/cutout_2.png'),
-    "sticker_0_2": getImageUrl('cutouts/cutout_3.png'),
-    "sticker_1_0": getImageUrl('cutouts/cutout_4.png'),
-    "sticker_1_1": getImageUrl('cutouts/cutout_5.png'),
-    "sticker_1_2": getImageUrl('cutouts/cutout_6.png'),
-    "sticker_2_0": getImageUrl('cutouts/cutout_7.png'),
-    "sticker_2_1": getImageUrl('cutouts/cutout_8.png'),
-    "sticker_2_2": getImageUrl('cutouts/cutout_9.png'),
+    "sticker_0_0": getImageUrl('cutouts/cutout_1.webp'),
+    "sticker_0_1": getImageUrl('cutouts/cutout_2.webp'),
+    "sticker_0_2": getImageUrl('cutouts/cutout_3.webp'),
+    "sticker_1_0": getImageUrl('cutouts/cutout_4.webp'),
+    "sticker_1_1": getImageUrl('cutouts/cutout_5.webp'),
+    "sticker_1_2": getImageUrl('cutouts/cutout_6.webp'),
+    "sticker_2_0": getImageUrl('cutouts/cutout_7.webp'),
+    "sticker_2_1": getImageUrl('cutouts/cutout_8.webp'),
+    "sticker_2_2": getImageUrl('cutouts/cutout_9.webp'),
   };
 
   return (

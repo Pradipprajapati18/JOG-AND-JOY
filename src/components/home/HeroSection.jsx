@@ -2,13 +2,13 @@
 
 import React from 'react';
 import ImageTrail from './ImageTrail';
-import heroBgDesktop from "../../assets/hero-bg-desktop.png";
-import heroBgMobile from "../../assets/hero-bg-mobile.png";
-import tshirt from "../../assets/cutout-tshirt.png";
-import shorts from "../../assets/cutout-shorts.png";
-import sun from "../../assets/cutout-sun.png";
-import cloud from "../../assets/cutout-cloud.png";
-import star from "../../assets/cutout-star.png";
+import heroBgDesktop from "../../assets/hero-bg-desktop.webp";
+import heroBgMobile from "../../assets/hero-bg-mobile.webp";
+import tshirt from "../../assets/cutout-tshirt.webp";
+import shorts from "../../assets/cutout-shorts.webp";
+import sun from "../../assets/cutout-sun.webp";
+import cloud from "../../assets/cutout-cloud.webp";
+import star from "../../assets/cutout-star.webp";
 
 const cutouts = [
   { src: sun, className: "top-[6%] left-[4%] w-16 sm:w-20 md:w-36 z-2", rotDeg: -10, fromX: "-80px", fromY: "-60px", delay: "0s", label: "Smiling sun" },
