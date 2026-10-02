@@ -178,7 +178,7 @@ export default function OrderTracking() {
                 {/* Footer Actions */}
                 <div className="mt-1 pt-3 border-t border-amber-200/50 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex gap-2 w-full sm:w-auto ml-auto">
-                    {['DELIVERED', 'SHIPPED'].includes(order.status) && (
+                    {order.status === 'DELIVERED' && (
                       <button onClick={() => window.open(`/invoice/${order.id}`, '_blank')} className="flex items-center justify-center px-4 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm text-xs font-bold gap-2">
                         <FileText className="w-4 h-4" /> Invoice
                       </button>

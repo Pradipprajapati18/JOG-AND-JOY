@@ -62,7 +62,7 @@ export default function CustomerOrderDetails() {
               <ExternalLink className="w-4 h-4" /> Track Shipment
             </a>
           )}
-          {['DELIVERED', 'SHIPPED'].includes(order.status) && (
+          {order.status === 'DELIVERED' && (
             <Link to={`/invoice/${order.id}`} className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg font-bold text-sm hover:border-[#EF4A45] hover:text-[#EF4A45] transition-colors">
               <Download className="w-4 h-4" /> Invoice
             </Link>

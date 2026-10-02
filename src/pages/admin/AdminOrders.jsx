@@ -152,65 +152,7 @@ export default function AdminOrders() {
 
   const handlePrintPackingSlip = () => {
     if (!selectedOrder) return;
-    
-    const printWindow = window.open('', '_blank');
-    const html = `
-      <html>
-        <head>
-          <title>Packing Slip - ${selectedOrder.orderNumber || selectedOrder.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 40px; }
-            .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <h1 style="margin:0;">JOG & JOY</h1>
-              <p style="margin:5px 0; color:#666;">Packing Slip</p>
-            </div>
-            <div style="text-align: right;">
-              <h2 style="margin:0;">Order #${selectedOrder.orderNumber || selectedOrder.id}</h2>
-              <p style="margin:5px 0;">Date: ${new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
-            </div>
-          </div>
-          
-          <div style="margin-bottom: 30px;">
-            <h3>Ship To:</h3>
-            <p style="margin:2px 0;"><strong>${selectedOrder.shippingAddress?.name || 'Customer'}</strong></p>
-            <p style="margin:2px 0;">${selectedOrder.shippingAddress?.line1 || ''}</p>
-            <p style="margin:2px 0;">${selectedOrder.shippingAddress?.city || ''}, ${selectedOrder.shippingAddress?.state || ''} ${selectedOrder.shippingAddress?.postalCode || ''}</p>
-          </div>
-
-          <table>
-            <thead>
-              <tr style="background:#f9fafb;">
-                <th>Item</th>
-                <th>SKU</th>
-                <th>Qty</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${(selectedOrder.items || []).map(item => `
-                <tr>
-                  <td>
-                    <strong>${item.title || 'Product'}</strong><br/>
-                    <small style="color:#666;">Variant: ${item.colorName || 'Standard'} | Size: ${item.size || 'Standard'}</small>
-                  </td>
-                  <td>${item.sku || '-'}</td>
-                  <td>${item.quantity || 1}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <script>window.print();</script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
+    window.open(`/invoice/${selectedOrder.id}?type=packing_slip`, '_blank');
   };
 
   const executeRefund = () => {

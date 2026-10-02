@@ -12,7 +12,7 @@ export default function MobileBottomNav({ onOpenProfile }) {
     { id: 'wishlist', icon: Heart, path: '/products' },
     { id: 'add', icon: Plus, path: '/checkout' }, // Using Plus icon for middle button
     { id: 'profile', icon: User, action: onOpenProfile },
-    { id: 'notifications', icon: Bell, action: () => alert("Notifications coming soon!") }
+    { id: 'notifications', icon: Bell, path: '/account/orders' }
   ];
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -22,6 +22,7 @@ export default function MobileBottomNav({ onOpenProfile }) {
     if (currentPath === '/') setActiveIndex(0);
     else if (currentPath === '/products') setActiveIndex(1);
     else if (currentPath === '/checkout') setActiveIndex(2);
+    else if (currentPath.startsWith('/account/orders')) setActiveIndex(4);
   }, [location.pathname]);
 
   const handleNavClick = (index, item) => {

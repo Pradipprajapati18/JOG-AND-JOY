@@ -5,6 +5,8 @@ import { useSettingsContext } from '../context/SettingsContext';
 
 export default function Invoice() {
   const { orderId } = useParams();
+  const searchParams = new URLSearchParams(window.location.search);
+  const isPackingSlip = searchParams.get('type') === 'packing_slip';
   const { data: ordersData, isLoading } = useOrdersList({ pageSize: 1000 });
   const { settings } = useSettingsContext();
 
@@ -12,7 +14,7 @@ export default function Invoice() {
     (o) => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId)
   );
 
-  if (isLoading) return <div className="p-10 text-center font-bold">Generating Packing Slip...</div>;
+  if (isLoading) return <div className="p-10 text-center font-bold">Generating {isPackingSlip ? 'Packing Slip' : 'Invoice'}...</div>;
   if (!order) return <Navigate to="/" />;
 
   const subtotal = order.items?.reduce((acc, item) => acc + ((item.price || 0) * (item.quantity || 1)), 0) || 0;
@@ -46,7 +48,7 @@ export default function Invoice() {
         {/* Invoice Header */}
         <div className="mb-12">
           <h1 className="text-3xl font-black mb-1">JOG & JOY</h1>
-          <p className="text-xl text-gray-700">Packing Slip</p>
+          <p className="text-xl text-gray-700">{isPackingSlip ? 'Packing Slip' : 'Invoice'}</p>
           
           <div className="mt-8 text-lg">
             <p>49, Kamal House, Pankaj Society, Paldi,</p>
@@ -86,29 +88,29 @@ export default function Invoice() {
 
         {/* Items Table */}
         <div className="mb-4">
-          <table className="w-full text-center border-collapse border-2 border-black">
+          <table className="w-full text-center border-collapse border-[3px] border-black">
             <thead>
               <tr className="bg-[#1A1A1A] text-white">
-                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[20%]">Item</th>
-                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[35%]">Description</th>
-                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[15%]">Price</th>
-                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[15%]">Quantity</th>
-                <th className="py-2 px-2 border-2 border-black font-bold text-sm w-[15%]">Ext. Price</th>
+                <th className="py-2 px-2 border border-slate-700 font-bold text-sm w-[20%]">Item</th>
+                <th className="py-2 px-2 border border-slate-700 font-bold text-sm w-[35%]">Description</th>
+                <th className="py-2 px-2 border border-slate-700 font-bold text-sm w-[15%]">Price</th>
+                <th className="py-2 px-2 border border-slate-700 font-bold text-sm w-[15%]">Quantity</th>
+                <th className="py-2 px-2 border border-slate-700 font-bold text-sm w-[15%]">Ext. Price</th>
               </tr>
             </thead>
             <tbody>
               {order.items?.map((item, index) => (
                 <tr key={index}>
-                  <td className="py-3 px-2 border-2 border-black text-sm">
+                  <td className="py-3 px-2 border-[3px] border-black text-sm font-medium">
                     {item.titleSnapshot || item.name || 'Product'}
                   </td>
-                  <td className="py-3 px-2 border-2 border-black text-sm whitespace-pre-line text-center">
+                  <td className="py-3 px-2 border-[3px] border-black text-sm whitespace-pre-line text-center">
                     {item.color && <div>colour: {item.color}</div>}
                     {item.size && <div>size: {item.size}</div>}
                   </td>
-                  <td className="py-3 px-2 border-2 border-black text-sm">{item.price || 0} rs</td>
-                  <td className="py-3 px-2 border-2 border-black text-sm">{item.quantity || 1}</td>
-                  <td className="py-3 px-2 border-2 border-black text-sm">{(item.price || 0) * (item.quantity || 1)}</td>
+                  <td className="py-3 px-2 border-[3px] border-black text-sm">{item.price || 0} rs</td>
+                  <td className="py-3 px-2 border-[3px] border-black text-sm">{item.quantity || 1}</td>
+                  <td className="py-3 px-2 border-[3px] border-black text-sm">{(item.price || 0) * (item.quantity || 1)}</td>
                 </tr>
               ))}
             </tbody>
@@ -117,19 +119,19 @@ export default function Invoice() {
 
         {/* Totals */}
         <div className="flex justify-end mb-16">
-          <div className="w-64 pr-2">
-            <div className="flex justify-between items-center mb-1">
-              <span className="font-bold text-2xl pr-4">Sub total:</span>
-              <span className="font-bold text-xl">{subtotal}</span>
+          <div className="w-80">
+            <div className="flex justify-end items-center gap-4 mb-1 pr-6">
+              <span className="font-bold text-2xl">Sub total:</span>
+              <span className="font-bold text-2xl w-24 text-right">{subtotal}</span>
             </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-bold text-2xl pr-4">shipping:</span>
-              <span className="font-bold text-xl">{shippingCharge}</span>
+            <div className="flex justify-end items-center gap-4 mb-2 pr-6">
+              <span className="font-bold text-2xl">shipping:</span>
+              <span className="font-bold text-2xl w-24 text-right">{shippingCharge}</span>
             </div>
-            <div className="border-t-4 border-black my-2"></div>
-            <div className="flex justify-between items-center mt-2">
-              <span className="font-bold text-2xl pr-4">Total:</span>
-              <span className="font-bold text-xl">{total}</span>
+            <div className="border-t-[4px] border-black my-2"></div>
+            <div className="flex justify-end items-center gap-4 mt-2 pr-6">
+              <span className="font-bold text-2xl">Total:</span>
+              <span className="font-bold text-2xl w-24 text-right">{total}</span>
             </div>
           </div>
         </div>

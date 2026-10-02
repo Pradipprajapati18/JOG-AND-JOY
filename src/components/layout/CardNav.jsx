@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef, useState, useCallback, useEffect } from 'react';
 import { gsap } from 'gsap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Bell } from 'lucide-react';
 import { Search, Heart, User, ShoppingBag, Home } from '../ui/CustomIcons';
 import BrandLogo from '../ui/BrandLogo';
 import { useCart } from '../../context/CartContext';
@@ -363,6 +363,18 @@ const CardNav = ({
             >
               <img src="/profile_icon.webp" alt="Profile" className="w-5 h-5 object-contain transition-all duration-200 group-hover:scale-110 group-hover:brightness-110" />
             </button>
+
+            <Link
+              to="/account/orders"
+              className="action-btn hidden-mobile"
+              title="Notifications / Orders"
+              onClick={() => {
+                if (isExpanded) closeMenu();
+              }}
+            >
+              <Bell className="w-5 h-5 text-slate-700" />
+            </Link>
+
 
             <Link
               to="/wishlist"
