@@ -418,9 +418,14 @@ export default function AdminOrders() {
               <div className="space-y-4">
                 {o.items?.map((item, i) => (
                   <div key={i} className="flex gap-4 p-4 bg-zinc-50 border border-slate-200 rounded-xl items-center">
-                    <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex shrink-0 items-center justify-center text-xs font-bold text-zinc-300">IMG</div>
+                    {item.image ? (
+                      <img src={item.image} alt={item.titleSnapshot} className="w-12 h-12 rounded-lg border border-slate-200 object-cover shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex shrink-0 items-center justify-center text-xs font-bold text-zinc-300">IMG</div>
+                    )}
                     <div className="flex-1">
                       <p className="font-bold text-text-dark">{item.titleSnapshot}</p>
+                      <p className="text-xs text-text-muted mt-0.5">Size: {item.size || 'N/A'} | Color: {item.color || 'N/A'}</p>
                       <p className="text-xs text-text-muted font-mono mt-0.5">{formatCurrency(item.unitPrice)}</p>
                     </div>
                     <div className="text-right">
@@ -438,6 +443,7 @@ export default function AdminOrders() {
                 <CreditCard className="w-5 h-5 text-blue-600" /> Payment
               </h2>
               <div className="space-y-2 text-sm">
+                <div className="flex justify-between text-text-muted"><p>Method</p><p className="uppercase font-bold">{o.paymentMethod || 'Online'}</p></div>
                 <div className="flex justify-between text-text-muted"><p>Subtotal</p><p>{formatCurrency(o.subtotal)}</p></div>
                 {o.discountAmount > 0 && <div className="flex justify-between text-text-muted"><p>Discount ({o.promotionCodeApplied})</p><p>-{formatCurrency(o.discountAmount)}</p></div>}
                 <div className="flex justify-between text-text-muted"><p>Shipping</p><p>{formatCurrency(o.shippingCost)}</p></div>
@@ -476,10 +482,14 @@ export default function AdminOrders() {
               
               <hr className="border-slate-200 my-4" />
               <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Contact</h3>
-              <p className="text-sm text-text-dark font-medium cursor-pointer hover:underline">customer@example.com</p>
+              <p className="text-sm text-text-dark font-medium cursor-pointer hover:underline">{o.shippingAddress?.email || 'No Email Provided'}</p>
+              <p className="text-sm text-text-dark font-medium mt-1">{o.shippingAddress?.phone || 'No Phone Number'}</p>
               
               <hr className="border-slate-200 my-4" />
-              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Shipping Address</h3>
+              <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 flex justify-between items-center">
+                <span>Shipping Address</span>
+                {o.shippingMethod && <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">{o.shippingMethod}</span>}
+              </h3>
               <p className="text-sm text-text-muted leading-relaxed">
                 {o.shippingAddress?.line1 || o.shippingAddress?.address || 'No Address Provided'}
                 {(o.shippingAddress?.city || o.shippingAddress?.state || o.shippingAddress?.postalCode) && (

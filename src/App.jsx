@@ -12,6 +12,7 @@ import UserProfileModal from './components/ui/UserProfileModal';
 import CustomerLoginModal from './components/ui/CustomerLoginModal';
 import Footer from './components/layout/Footer';
 import { useAuth } from './context/AuthContext';
+import { SettingsProvider } from './context/SettingsContext';
 
 const Home = React.lazy(() => import('./pages/Home'));
 const Products = React.lazy(() => import('./pages/Products'));
@@ -29,6 +30,7 @@ const DistributorNetworkPage = React.lazy(() => import('./pages/DistributorNetwo
 const WhyUs = React.lazy(() => import('./pages/WhyUs'));
 const OrderTracking = React.lazy(() => import('./pages/OrderTracking'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const CustomerAccount = React.lazy(() => import('./pages/CustomerAccount'));
 
 const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -109,9 +111,15 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <WishlistProvider>
+<<<<<<< Updated upstream
           <Router>
             <ScrollToTop />
             <Suspense fallback={<div className="flex h-[50vh] w-full items-center justify-center text-slate-500">Loading...</div>}>
+=======
+          <SettingsProvider>
+            <Router>
+              <ScrollToTop />
+>>>>>>> Stashed changes
               <Routes>
               {/* Admin Routes - Completely Isolated */}
               <Route path="/admin" element={<AdminRoute />}>
@@ -150,11 +158,18 @@ export default function App() {
                 <Route path="/track-order" element={<OrderTracking />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/distributor-network" element={<DistributorNetworkPage />} />
+                <Route path="/account/*" element={<CustomerAccount />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
+<<<<<<< Updated upstream
             </Routes>
             </Suspense>
           </Router>
+=======
+            </Routes>
+            </Router>
+          </SettingsProvider>
+>>>>>>> Stashed changes
         </WishlistProvider>
       </CartProvider>
     </AuthProvider>

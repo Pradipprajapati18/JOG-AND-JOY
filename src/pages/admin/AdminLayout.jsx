@@ -4,7 +4,7 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import { LayoutDashboard, ShoppingBag, PackageSearch, Settings, LogOut, Package, Tag, BarChart3, Star, Truck, MessageSquare, IndianRupee, Bell, BellOff, CheckCircle, Users, Menu, X, Home, Folder, LayoutGrid, Diamond, Square, PanelTop, Columns, PieChart, Circle, Asterisk, Mail } from 'lucide-react';
 import { useAuth as useAdmin } from '../../context/AuthContext';
 import AdminLogin from './AdminLogin';
-import { SettingsProvider, useSettingsContext } from '../../context/SettingsContext';
+import { useSettingsContext } from '../../context/SettingsContext';
 import { UIProvider } from '../../context/UIContext';
 import { useRecentActivity } from '../../queries/useRecentActivity';
 
@@ -228,10 +228,8 @@ function AdminLayoutContent() {
 
 export default function AdminLayout() {
   return (
-    <SettingsProvider>
-      <UIProvider>
-        <AdminLayoutContent />
-      </UIProvider>
-    </SettingsProvider>
+    <UIProvider>
+      <AdminLayoutContent />
+    </UIProvider>
   );
 }
