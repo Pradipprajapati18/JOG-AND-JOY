@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
@@ -13,36 +13,36 @@ import CustomerLoginModal from './components/ui/CustomerLoginModal';
 import Footer from './components/layout/Footer';
 import { useAuth } from './context/AuthContext';
 
-import Home from './pages/Home';
-import Products from './pages/Products';
-import ProductDetails from './pages/ProductDetails';
-import Wishlist from './pages/Wishlist';
-import Checkout from './pages/Checkout';
-import Collections from './pages/Collections';
-import AboutUs from './pages/AboutUs';
-import ContactUs from './pages/ContactUs';
-import Invoice from './pages/Invoice';
-import NotFound from './pages/NotFound';
-import KidsPage from './pages/KidsPage';
-import NewArrivalsPage from './pages/NewArrivalsPage';
-import DistributorNetworkPage from './pages/DistributorNetworkPage';
-import WhyUs from './pages/WhyUs';
-import OrderTracking from './pages/OrderTracking';
-import ResetPassword from './pages/ResetPassword';
+const Home = React.lazy(() => import('./pages/Home'));
+const Products = React.lazy(() => import('./pages/Products'));
+const ProductDetails = React.lazy(() => import('./pages/ProductDetails'));
+const Wishlist = React.lazy(() => import('./pages/Wishlist'));
+const Checkout = React.lazy(() => import('./pages/Checkout'));
+const Collections = React.lazy(() => import('./pages/Collections'));
+const AboutUs = React.lazy(() => import('./pages/AboutUs'));
+const ContactUs = React.lazy(() => import('./pages/ContactUs'));
+const Invoice = React.lazy(() => import('./pages/Invoice'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
+const KidsPage = React.lazy(() => import('./pages/KidsPage'));
+const NewArrivalsPage = React.lazy(() => import('./pages/NewArrivalsPage'));
+const DistributorNetworkPage = React.lazy(() => import('./pages/DistributorNetworkPage'));
+const WhyUs = React.lazy(() => import('./pages/WhyUs'));
+const OrderTracking = React.lazy(() => import('./pages/OrderTracking'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminCustomers from './pages/admin/AdminCustomers';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminInventory from './pages/admin/AdminInventory';
-import AdminPromotions from './pages/admin/AdminPromotions';
-import AdminAnalytics from './pages/admin/AdminAnalytics';
-import AdminReviews from './pages/admin/AdminReviews';
-import AdminMessages from './pages/admin/AdminMessages';
-import AdminFinancials from './pages/admin/AdminFinancials';
-import AdminCategories from './pages/admin/AdminCategories';
+const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminProducts = React.lazy(() => import('./pages/admin/AdminProducts'));
+const AdminOrders = React.lazy(() => import('./pages/admin/AdminOrders'));
+const AdminCustomers = React.lazy(() => import('./pages/admin/AdminCustomers'));
+const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
+const AdminInventory = React.lazy(() => import('./pages/admin/AdminInventory'));
+const AdminPromotions = React.lazy(() => import('./pages/admin/AdminPromotions'));
+const AdminAnalytics = React.lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminReviews = React.lazy(() => import('./pages/admin/AdminReviews'));
+const AdminMessages = React.lazy(() => import('./pages/admin/AdminMessages'));
+const AdminFinancials = React.lazy(() => import('./pages/admin/AdminFinancials'));
+const AdminCategories = React.lazy(() => import('./pages/admin/AdminCategories'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -111,7 +111,8 @@ export default function App() {
         <WishlistProvider>
           <Router>
             <ScrollToTop />
-            <Routes>
+            <Suspense fallback={<div className="flex h-[50vh] w-full items-center justify-center text-slate-500">Loading...</div>}>
+              <Routes>
               {/* Admin Routes - Completely Isolated */}
               <Route path="/admin" element={<AdminRoute />}>
                 <Route element={<AdminLayout />}>
@@ -152,6 +153,7 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>
+            </Suspense>
           </Router>
         </WishlistProvider>
       </CartProvider>
