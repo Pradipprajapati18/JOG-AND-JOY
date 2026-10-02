@@ -111,15 +111,10 @@ export default function App() {
     <AuthProvider>
       <CartProvider>
         <WishlistProvider>
-<<<<<<< Updated upstream
-          <Router>
-            <ScrollToTop />
-            <Suspense fallback={<div className="flex h-[50vh] w-full items-center justify-center text-slate-500">Loading...</div>}>
-=======
           <SettingsProvider>
             <Router>
               <ScrollToTop />
->>>>>>> Stashed changes
+              <Suspense fallback={<div className="flex h-[50vh] w-full items-center justify-center text-slate-500">Loading...</div>}>
               <Routes>
               {/* Admin Routes - Completely Isolated */}
               <Route path="/admin" element={<AdminRoute />}>
@@ -161,15 +156,10 @@ export default function App() {
                 <Route path="/account/*" element={<CustomerAccount />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
-<<<<<<< Updated upstream
-            </Routes>
-            </Suspense>
-          </Router>
-=======
-            </Routes>
+              </Routes>
+              </Suspense>
             </Router>
           </SettingsProvider>
->>>>>>> Stashed changes
         </WishlistProvider>
       </CartProvider>
     </AuthProvider>

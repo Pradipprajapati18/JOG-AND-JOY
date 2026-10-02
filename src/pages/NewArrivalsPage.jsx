@@ -144,14 +144,14 @@ export default function NewArrivalsPage() {
           </div>
 
           {/* Right Lifestyle Badge */}
-          <div className="flex items-center gap-4 bg-[#FFF8EC] px-6 py-3.5 rounded-2xl border border-[#FFE0D6]">
-            <div className="text-3xl font-black text-slate-900 font-serif leading-none">01</div>
+          <Link to="/kids" className="flex items-center gap-4 bg-[#FFF8EC] px-6 py-3.5 rounded-2xl border border-[#FFE0D6] cursor-pointer hover:bg-[#FFF0E0] transition-colors group">
+            <div className="text-3xl font-black text-slate-900 font-serif leading-none group-hover:text-[#FF7A59] transition-colors">01</div>
             <div className="text-left">
               <div className="text-[10px] font-black uppercase tracking-wider text-[#FF7A59]">Lifestyle</div>
               <div className="text-xs font-extrabold text-slate-900">Set Up Your Kids Wardrobe With Latest Trends</div>
             </div>
-            <ArrowRight className="w-4 h-4 text-slate-800 ml-2 shrink-0" />
-          </div>
+            <ArrowRight className="w-4 h-4 text-slate-800 ml-2 shrink-0 group-hover:translate-x-1 transition-transform" />
+          </Link>
 
         </div>
 

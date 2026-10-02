@@ -7,6 +7,8 @@ import AdminLogin from './AdminLogin';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { UIProvider } from '../../context/UIContext';
 import { useRecentActivity } from '../../queries/useRecentActivity';
+import { useOrdersList } from '../../queries/useOrders';
+import { useCombinedProducts } from '../../queries/useCombinedProducts';
 
 function AdminLayoutContent() {
   const location = useLocation();
@@ -16,10 +18,30 @@ function AdminLayoutContent() {
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isNotifMuted, setIsNotifMuted] = useState(false);
-  const [readState, setReadState] = useState({}); // Track read notifications locally
+  
+  // Track read notifications locally and persist
+  const [readState, setReadState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('admin_notif_read_state');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const { activities } = useRecentActivity();
+  
+  // Queries for dynamic badges
+  const { data: ordersData } = useOrdersList();
+  const orders = ordersData?.data || [];
+  const { products = [] } = useCombinedProducts();
+  
+  const pendingOrders = orders.filter(o => o.status === 'PENDING').length;
+  const outOfStockCount = products.reduce((count, product) => {
+    return count + product.variants.filter(v => (v.onHand - v.reserved) <= 0).length;
+  }, 0);
   
   const notifications = activities.map(a => ({
     ...a,
@@ -30,6 +52,13 @@ function AdminLayoutContent() {
     const newReadState = { ...readState };
     activities.forEach(a => { newReadState[a.id] = true; });
     setReadState(newReadState);
+    localStorage.setItem('admin_notif_read_state', JSON.stringify(newReadState));
+  };
+  
+  const markAsRead = (id) => {
+    const newReadState = { ...readState, [id]: true };
+    setReadState(newReadState);
+    localStorage.setItem('admin_notif_read_state', JSON.stringify(newReadState));
   };
 
  const navGroups = [
@@ -45,13 +74,13 @@ function AdminLayoutContent() {
      items: [
        { name: 'Products', path: '/admin/products', icon: Square },
        { name: 'Categories', path: '/admin/categories', icon: PanelTop },
-       { name: 'Inventory', path: '/admin/inventory', icon: Columns, badge: 3 },
+       { name: 'Inventory', path: '/admin/inventory', icon: Columns, badge: outOfStockCount > 0 ? outOfStockCount : null },
      ]
    },
    {
      title: 'SALES',
      items: [
-       { name: 'Orders', path: '/admin/orders', icon: PieChart, badge: 12 },
+       { name: 'Orders', path: '/admin/orders', icon: PieChart, badge: pendingOrders > 0 ? pendingOrders : null },
        { name: 'Customers', path: '/admin/customers', icon: Circle },
        { name: 'Promotions', path: '/admin/promotions', icon: Asterisk },
        { name: 'Financials', path: '/admin/financials', icon: IndianRupee },
@@ -180,7 +209,10 @@ function AdminLayoutContent() {
                 <Link 
                   key={n.id} 
                   to={`/admin/orders?orderId=${n.sourceId}`}
-                  onClick={() => setIsNotifOpen(false)}
+                  onClick={() => {
+                    setIsNotifOpen(false);
+                    markAsRead(n.id);
+                  }}
                   className={`block p-4 hover:bg-zinc-50 transition-colors ${!n.read ? 'bg-blue-600/5' : ''}`}
                 >
                   <div className="flex justify-between items-start gap-3">
