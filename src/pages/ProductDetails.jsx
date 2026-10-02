@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useReviewsList, useCreateReview } from '../queries/useReviews';
@@ -157,9 +158,24 @@ export default function ProductDetails() {
     }
   }, [product]);
 
+  
   const activeVariantImage = product?.variants?.find(
     (v) => v.colorHex?.toLowerCase() === selectedColor?.toLowerCase() && v.size === selectedSize
   )?.image;
+
+  
+
+
+  const availableSizesForColor = product?.sizes?.filter(size => {
+    if (!product?.variants) return true;
+    return product.variants.some(v => v.size === size && v.colorHex?.toLowerCase() === selectedColor?.toLowerCase() && !v.isHidden);
+  }) || [];
+
+  useEffect(() => {
+    if (selectedSize && availableSizesForColor.length > 0 && !availableSizesForColor.includes(selectedSize)) {
+      setSelectedSize(availableSizesForColor[0]);
+    }
+  }, [selectedColor, availableSizesForColor, selectedSize]);
 
   useEffect(() => {
     if (activeVariantImage) {
@@ -168,6 +184,7 @@ export default function ProductDetails() {
       setActiveImage(product.image);
     }
   }, [activeVariantImage, product?.image, selectedColor, selectedSize]);
+
 
   if (isLoading) {
     return (
@@ -215,14 +232,16 @@ export default function ProductDetails() {
     return globalColors.slice(0, 9);
   };
 
+
   const getVisibleSizes = () => {
-    if (showAllSizes || !product.sizes || product.sizes.length <= 9) return product.sizes;
-    const selectedIdx = product.sizes.findIndex(s => s === selectedSize);
+    if (showAllSizes || !availableSizesForColor || availableSizesForColor.length <= 9) return availableSizesForColor;
+    const selectedIdx = availableSizesForColor.findIndex(s => s === selectedSize);
     if (selectedIdx >= 9) {
-      return [...product.sizes.slice(0, 8), product.sizes[selectedIdx]];
+      return [...availableSizesForColor.slice(0, 8), availableSizesForColor[selectedIdx]];
     }
-    return product.sizes.slice(0, 9);
+    return availableSizesForColor.slice(0, 9);
   };
+
 
   const activeVariant = product.variants?.find(
     (v) => v.colorHex?.toLowerCase() === selectedColor?.toLowerCase() && v.size === selectedSize
@@ -234,7 +253,7 @@ export default function ProductDetails() {
   const isFavorited = isInWishlist(product.id, selectedSize, selectedColor);
 
   const handleBuyNow = () => {
-    if (!selectedSize && product.sizes && product.sizes.length > 0) {
+    if (!selectedSize && availableSizesForColor && availableSizesForColor.length > 0) {
       setSizeError(true);
       document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => setSizeError(false), 2000);
@@ -245,7 +264,7 @@ export default function ProductDetails() {
   };
 
   const handleAddToCart = (e, isBuyNow = false) => {
-    if (!selectedSize && product.sizes && product.sizes.length > 0) {
+    if (!selectedSize && availableSizesForColor && availableSizesForColor.length > 0) {
       setSizeError(true);
       document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => setSizeError(false), 2000);
@@ -452,7 +471,7 @@ export default function ProductDetails() {
                 </button>
               </div>
 
-              {product.sizes && product.sizes.length > 0 ? (
+              {availableSizesForColor && availableSizesForColor.length > 0 ? (
                 <div className="flex flex-wrap gap-2.5">
                   {getVisibleSizes()?.map((size, idx) => (
                     <button
@@ -475,7 +494,7 @@ export default function ProductDetails() {
                       onClick={() => setShowAllSizes(true)}
                       className="min-w-[70px] sm:min-w-[80px] h-10 px-3 rounded-lg border border-slate-300 bg-slate-50 font-medium text-[15px] text-black hover:bg-slate-100 transition-colors flex items-center justify-center"
                     >
-                      +{product.sizes.length - 9}
+                      +{availableSizesForColor.length - 9}
                     </button>
                   )}
                 </div>

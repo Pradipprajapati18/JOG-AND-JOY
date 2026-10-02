@@ -93,6 +93,11 @@ export async function create(table, payload) {
     updatedAt: now
   };
 
+  // The sizes table doesn't have an updatedAt column
+  if (table === 'sizes') {
+    delete record.updatedAt;
+  }
+
   let query = supabase.from(table).insert([record]);
   
   // Guest orders will fail RLS if we try to SELECT after INSERT. 
@@ -116,9 +121,14 @@ export async function update(table, id, patch) {
     Object.entries(patch).filter(([_, v]) => v !== undefined)
   );
 
+  const updateData = { ...cleanPatch, updatedAt: new Date().toISOString() };
+  if (table === 'sizes') {
+    delete updateData.updatedAt;
+  }
+
   const { data, error } = await supabase
     .from(table)
-    .update({ ...cleanPatch, updatedAt: new Date().toISOString() })
+    .update(updateData)
     .eq('id', id)
     .select();
 

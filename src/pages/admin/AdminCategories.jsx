@@ -387,6 +387,60 @@ export default function AdminCategories() {
           </div>
         </div>
       )}
+
+      {showSizeModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-text-dark">{editSize ? 'Edit Size' : 'Add Size'}</h2>
+              <button onClick={() => setShowSizeModal(false)} className="p-2 text-zinc-400 hover:text-text-dark hover:bg-zinc-100 rounded-xl transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Size Name</label>
+                <input 
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all" 
+                  value={sizeForm.label} 
+                  onChange={(e) => setSizeForm((p) => ({ ...p, label: e.target.value }))} 
+                  placeholder="e.g. S, M, L, XL" 
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Status</label>
+                  <select 
+                    className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all bg-white" 
+                    value={sizeForm.status} 
+                    onChange={(e) => setSizeForm((p) => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Draft">Draft</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-zinc-50 flex items-center justify-end gap-3">
+              <button 
+                className="px-5 py-2.5 text-zinc-600 font-bold text-sm hover:bg-zinc-200 rounded-xl transition-colors" 
+                onClick={() => setShowSizeModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="px-5 py-2.5 bg-white border border-slate-200 text-[#003366] font-bold text-sm hover:bg-slate-50 shadow-sm rounded-xl transition-colors disabled:opacity-50" 
+                disabled={createSizeMut.isPending || updateSizeMut.isPending} 
+                onClick={handleSaveSize}
+              >
+                {createSizeMut.isPending || updateSizeMut.isPending ? 'Saving...' : editSize ? 'Save Changes' : 'Add Size'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

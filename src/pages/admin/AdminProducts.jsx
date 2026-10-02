@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Edit2, Trash2, CheckCircle2, Image as ImageIcon, Plus, X, ChevronLeft, ChevronRight, Link as LinkIcon } from 'lucide-react';
 import { useProductsList, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../../queries/useProducts';
 import { useCategoriesList } from '../../queries/useCategories';
+import { useSizesList } from '../../queries/useSizes';
 
 export default function AdminProducts() {
   const [search, setSearch] = useState('');
@@ -37,7 +38,7 @@ export default function AdminProducts() {
   const [customColorName, setCustomColorName] = useState('');
   const [customColorHex, setCustomColorHex] = useState('#000000');
 
-  const AVAILABLE_SIZES = ['2-3 Y', '3-4 Y', '4-5 Y', '5-6 Y', '7-8 Y', '9-10 Y', '11-12 Y'];
+  
   const AVAILABLE_COLORS = [
     { hex: '#000000', name: 'Black' },
     { hex: '#ffffff', name: 'White' },
@@ -53,6 +54,9 @@ export default function AdminProducts() {
   let products = data?.data || [];
 
   const { data: categoriesResponse } = useCategoriesList();
+  const { data: sizesResponse } = useSizesList();
+  const dbSizes = sizesResponse?.data || [];
+  const AVAILABLE_SIZES = dbSizes.map(s => s.label);
   const dbCategories = categoriesResponse?.data || [];
 
   // Compute all unique categories (DB + existing on products)
@@ -139,12 +143,13 @@ export default function AdminProducts() {
           size: size,
           stock: existing?.stock || 0,
           price: existing?.price || '',
-          image: existing?.image || ''
+          image: existing?.image || '',
+          isHidden: existing?.isHidden || false
         });
       });
     });
 
-    const variantsChanged = newVariants.length !== formData.variants.length || newVariants.some((nv, i) => nv.colorHex !== formData.variants[i]?.colorHex || nv.size !== formData.variants[i]?.size);
+    const variantsChanged = newVariants.length !== formData.variants.length || newVariants.some((nv, i) => nv.colorHex !== formData.variants[i]?.colorHex || nv.size !== formData.variants[i]?.size || nv.isHidden !== formData.variants[i]?.isHidden);
     
     if (variantsChanged) {
       setFormData(prev => ({ ...prev, variants: newVariants }));
@@ -254,11 +259,10 @@ export default function AdminProducts() {
   const handleSave = (e) => {
     e.preventDefault();
     if (!formData.title || !formData.categoryId || !formData.vendor || !formData.originalPrice || 
-        !formData.collections || formData.collections.length === 0 || 
         formData.images.length === 0 || 
         formData.sizes.length === 0 || 
         formData.colors.length === 0) {
-      return alert('Please fill out all required fields (including Seasonal Collections, Images, Sizes, and Colors).');
+      return alert('Please fill out all required fields (including Images, Sizes, and Colors).');
     }
 
     const calculatedPrice = Math.round(Number(formData.originalPrice) * (1 - Number(formData.discountPercent) / 100));
@@ -310,7 +314,8 @@ export default function AdminProducts() {
         size: v.size,
         stock: Number(v.stock),
         price: v.price ? Number(v.price) : undefined,
-        image: v.image || undefined
+        image: v.image || undefined,
+        isHidden: v.isHidden || false
       }))
     };
 
@@ -556,7 +561,7 @@ export default function AdminProducts() {
               
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center p-4 bg-zinc-50 border border-slate-200 rounded-xl">
                 <div className="flex-1">
-                  <label className="block text-sm font-bold text-text-muted mb-3">Seasonal Collections *</label>
+                  <label className="block text-sm font-bold text-text-muted mb-3">Seasonal Collections</label>
                   <div className="flex flex-wrap gap-3">
                     {['Summer', 'Winter', 'Monsoon', 'Festive'].map(season => (
                       <label key={season} className="flex items-center gap-2 cursor-pointer group">
@@ -836,11 +841,12 @@ export default function AdminProducts() {
                         <th className="p-4 w-32">Stock *</th>
                         <th className="p-4 w-32">Price (Override)</th>
                         <th className="p-4 w-48">Image (Optional)</th>
+                        <th className="p-4 w-20 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {formData.variants.map((variant) => (
-                        <tr key={variant.id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={variant.id} className={`hover:bg-slate-50 transition-colors ${variant.isHidden ? 'opacity-50 bg-slate-50/50' : ''}`}>
                           <td className="p-4 font-bold flex items-center gap-2">
                             {variant.colorName !== 'Standard' && (
                               <span className="w-4 h-4 rounded-full border border-slate-200" style={{ backgroundColor: variant.colorHex }}></span>
@@ -887,6 +893,16 @@ export default function AdminProducts() {
                                 <option key={i} value={img}>Main Image {i + 1}</option>
                               ))}
                             </select>
+                          </td>
+                          <td className="p-4 text-center">
+                            <button 
+                              type="button"
+                              onClick={() => handleUpdateVariant(variant.id, 'isHidden', !variant.isHidden)}
+                              className={`p-2 rounded-lg transition-colors ${variant.isHidden ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-emerald-500 bg-emerald-50 hover:bg-emerald-100'}`}
+                              title={variant.isHidden ? 'Hidden from customers' : 'Visible to customers'}
+                            >
+                              {variant.isHidden ? <X className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+                            </button>
                           </td>
                         </tr>
                       ))}
