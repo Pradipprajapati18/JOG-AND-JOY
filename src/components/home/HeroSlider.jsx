@@ -64,6 +64,8 @@ export default function HeroSlider() {
           <img
             src={slide.bgImage}
             alt={slide.title}
+            fetchPriority={idx === 0 ? "high" : "low"}
+            loading={idx === 0 ? "eager" : "lazy"}
             className="w-full h-full object-cover object-center scale-105 animate-pulse-slow"
             onError={(e) => {
               e.target.onerror = null;

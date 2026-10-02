@@ -30,6 +30,10 @@ const trailImages = [
 export default function HeroSection() {
   return (
     <section className="relative w-full text-slate-900 flex flex-col md:block items-center justify-center cursor-crosshair h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] bg-white overflow-hidden">
+      {/* Preload critical background images */}
+      <link rel="preload" as="image" href={heroBgDesktop} fetchPriority="high" media="(min-width: 768px)" />
+      <link rel="preload" as="image" href={heroBgMobile} fetchPriority="high" media="(max-width: 767px)" />
+
       {/* Desktop Background */}
       <div className="absolute inset-0 max-md:hidden z-0" style={{
         backgroundImage: `url(${heroBgDesktop})`,
