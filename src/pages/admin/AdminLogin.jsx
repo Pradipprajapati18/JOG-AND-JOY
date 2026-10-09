@@ -27,7 +27,7 @@ export default function AdminLogin() {
     let success = false;
     const loginResult = await login(formData.email, formData.password);
     success = loginResult && loginResult.success;
-    if (!success) setError('Invalid credentials. Please try again.');
+    if (!success) setError(loginResult?.message || 'Invalid credentials. Please try again.');
     
     setIsLoading(false);
   };

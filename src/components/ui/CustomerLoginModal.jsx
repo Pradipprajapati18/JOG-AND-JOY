@@ -108,7 +108,7 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
       const result = await login(formData.email.trim(), formData.password);
       success = result?.success;
       if (!success) {
-        setError('Invalid email or password.');
+        setError(result?.message || 'Invalid email or password.');
       } else {
         registeredOrLoggedInUser = result.user;
       }
@@ -153,29 +153,34 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 border border-slate-100 overflow-hidden"
+          className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-white rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.2)] border border-slate-100 overflow-hidden"
         >
           {/* Close Button */}
           {view !== 'complete_profile' && (
             <button
               onClick={onClose}
-              className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors z-10"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 w-10 h-10 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all z-20"
             >
               <X className="w-5 h-5" />
             </button>
           )}
 
-          <div className="mb-6">
-            <h2 className="text-2xl font-black text-slate-900 mb-2">
-              {view === 'login' ? 'Welcome Back!' : view === 'register' ? 'Join Jog & Joy' : view === 'complete_profile' ? 'Complete Your Profile' : 'Reset Password'}
+          <div className="overflow-y-auto p-6 sm:p-8 w-full relative">
+            {/* Decorative blurs */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFD5A1] rounded-full blur-3xl opacity-30 -z-10 -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
+            <div className="absolute top-10 left-0 w-24 h-24 bg-[#AEE6FF] rounded-full blur-3xl opacity-30 -z-10 -translate-x-1/2 pointer-events-none"></div>
+
+            <div className="mb-8 pr-8">
+            <h2 className="text-3xl font-black text-[#1e293b] mb-2 tracking-tight">
+              {view === 'login' ? 'Welcome Back 👋' : view === 'register' ? 'Join Jog & Joy ✨' : view === 'complete_profile' ? 'Complete Profile 📍' : 'Reset Password 🔐'}
             </h2>
-            <p className="text-slate-500 font-medium text-sm">
+            <p className="text-slate-500 font-semibold text-sm leading-relaxed">
               {view === 'login' 
                 ? 'Sign in to view your orders and saved items.' 
                 : view === 'register' 
@@ -193,58 +198,64 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
+                  className="overflow-hidden space-y-4"
                 >
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
-                  <div className="relative">
-                    <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      name="name"
-                      placeholder="Jane Doe"
-                      value={formData.name}
-                      onChange={handleChange}
-                      required={view === 'register'}
-                      pattern="^[A-Za-z\s]+$"
-                      title="Name can only contain letters and spaces"
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                    />
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Full Name</label>
+                    <div className="relative group">
+                      <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
+                      <input
+                        type="text"
+                        name="name"
+                        placeholder="Jane Doe"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required={view === 'register'}
+                        pattern="^[A-Za-z\s]+$"
+                        title="Name can only contain letters and spaces"
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
+                      />
+                    </div>
                   </div>
 
-                  <label className="block text-xs font-bold text-slate-700 mt-4 mb-1">Phone Number</label>
-                  <div className="relative">
-                    <Phone className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="tel"
-                      name="phone"
-                      placeholder="9876543210"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      required={view === 'register'}
-                      pattern="^[0-9]{10}$"
-                      maxLength={10}
-                      title="Phone number must be exactly 10 digits"
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                    />
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone Number</label>
+                    <div className="relative group">
+                      <Phone className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
+                      <input
+                        type="tel"
+                        name="phone"
+                        placeholder="9876543210"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        required={view === 'register'}
+                        pattern="^[0-9]{10}$"
+                        maxLength={10}
+                        title="Phone number must be exactly 10 digits"
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
+                      />
+                    </div>
                   </div>
 
-                  <label className="block text-xs font-bold text-slate-700 mt-4 mb-1">Address Line</label>
-                  <div className="relative">
-                    <MapPin className="w-5 h-5 absolute left-4 top-4 text-slate-400" />
-                    <textarea
-                      name="address"
-                      placeholder="Flat, House no., Building, Company, Apartment"
-                      value={formData.address}
-                      onChange={handleChange}
-                      required={view === 'register'}
-                      rows={2}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors resize-none"
-                    />
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Address Line</label>
+                    <div className="relative group">
+                      <MapPin className="w-5 h-5 absolute left-4 top-4 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
+                      <textarea
+                        name="address"
+                        placeholder="Flat, House no., Building, Company, Apartment"
+                        value={formData.address}
+                        onChange={handleChange}
+                        required={view === 'register'}
+                        rows={2}
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200 resize-none"
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
+                      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">City</label>
                       <input
                         type="text"
                         name="city"
@@ -252,11 +263,11 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                         value={formData.city}
                         onChange={handleChange}
                         required={view === 'register'}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">State</label>
+                      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">State</label>
                       <input
                         type="text"
                         name="state"
@@ -264,21 +275,23 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                         value={formData.state}
                         onChange={handleChange}
                         required={view === 'register'}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                       />
                     </div>
                   </div>
 
-                  <label className="block text-xs font-bold text-slate-700 mt-4 mb-1">Pincode</label>
-                  <input
-                    type="text"
-                    name="pincode"
-                    placeholder="e.g. 400001"
-                    value={formData.pincode}
-                    onChange={handleChange}
-                    required={view === 'register'}
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                  />
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Pincode</label>
+                    <input
+                      type="text"
+                      name="pincode"
+                      placeholder="e.g. 400001"
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      required={view === 'register'}
+                      className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
+                    />
+                  </div>
                 </motion.div>
               )}
 
@@ -287,25 +300,27 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
+                  className="overflow-hidden space-y-4"
                 >
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Address Line</label>
-                  <div className="relative">
-                    <MapPin className="w-5 h-5 absolute left-4 top-4 text-slate-400" />
-                    <textarea
-                      name="address"
-                      placeholder="Flat, House no., Building, Company, Apartment"
-                      value={formData.address}
-                      onChange={handleChange}
-                      required
-                      rows={2}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors resize-none"
-                    />
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Address Line</label>
+                    <div className="relative group">
+                      <MapPin className="w-5 h-5 absolute left-4 top-4 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
+                      <textarea
+                        name="address"
+                        placeholder="Flat, House no., Building, Company, Apartment"
+                        value={formData.address}
+                        onChange={handleChange}
+                        required
+                        rows={2}
+                        className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200 resize-none"
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mt-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
+                      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">City</label>
                       <input
                         type="text"
                         name="city"
@@ -313,11 +328,11 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                         value={formData.city}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1">State</label>
+                      <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">State</label>
                       <input
                         type="text"
                         name="state"
@@ -325,21 +340,23 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                         value={formData.state}
                         onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                       />
                     </div>
                   </div>
 
-                  <label className="block text-xs font-bold text-slate-700 mt-4 mb-1">Pincode</label>
-                  <input
-                    type="text"
-                    name="pincode"
-                    placeholder="e.g. 400001"
-                    value={formData.pincode}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                  />
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Pincode</label>
+                    <input
+                      type="text"
+                      name="pincode"
+                      placeholder="e.g. 400001"
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      required
+                      className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
+                    />
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -347,9 +364,9 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
             {view !== 'forgot' && view !== 'complete_profile' && (
               <>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                  <div className="relative">
-                    <Mail className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Email Address</label>
+                  <div className="relative group">
+                    <Mail className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
                     <input
                       type="email"
                       name="email"
@@ -357,25 +374,25 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                       value={formData.email}
                       onChange={handleChange}
                       required
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                     />
                   </div>
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-slate-700">Password</label>
+                  <div className="flex items-center justify-between mb-1.5 ml-1">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500">Password</label>
                     {view === 'login' && (
                       <button 
                         type="button" 
                         onClick={() => { setView('forgot'); setError(''); setSuccessMsg(''); }}
-                        className="text-[10px] font-bold text-[#EF4A45] hover:underline"
+                        className="text-[11px] font-black text-[#EF4A45] hover:text-[#d33a36] hover:underline transition-colors"
                       >
                         Forgot Password?
                       </button>
                     )}
                   </div>
-                  <div className="relative">
-                    <Lock className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <div className="relative group">
+                    <Lock className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
                     <input
                       type="password"
                       name="password"
@@ -384,7 +401,7 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                       onChange={handleChange}
                       required={view !== 'forgot'}
                       minLength={6}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                      className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                     />
                   </div>
                 </div>
@@ -393,9 +410,9 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
 
             {view === 'forgot' && (
                <div>
-                 <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
-                 <div className="relative">
-                   <Mail className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                 <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Email Address</label>
+                 <div className="relative group">
+                   <Mail className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#EF4A45] transition-colors" />
                    <input
                      type="email"
                      name="email"
@@ -403,7 +420,7 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                      value={formData.email}
                      onChange={handleChange}
                      required
-                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 text-sm font-medium focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                     className="w-full pl-11 pr-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
                    />
                  </div>
                </div>
@@ -411,20 +428,22 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
 
             {error && (
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-[#EF4A45] text-xs font-bold bg-[#EF4A45]/10 p-3 rounded-lg"
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[#EF4A45] text-xs font-bold bg-[#EF4A45]/10 p-4 rounded-2xl flex items-center gap-2 border border-[#EF4A45]/20"
               >
+                <div className="w-1.5 h-1.5 rounded-full bg-[#EF4A45]"></div>
                 {error}
               </motion.div>
             )}
             
             {successMsg && (
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-green-600 text-xs font-bold bg-green-50 p-3 rounded-lg border border-green-100"
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-green-700 text-xs font-bold bg-green-50 p-4 rounded-2xl flex items-center gap-2 border border-green-200"
               >
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
                 {successMsg}
               </motion.div>
             )}
@@ -432,21 +451,21 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#EF4A45] text-white font-bold py-3.5 rounded-xl hover:bg-[#d33a36] transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
+              className="w-full bg-[#EF4A45] text-white font-black py-4 rounded-2xl hover:bg-[#d33a36] shadow-[0_8px_16px_rgba(239,74,69,0.25)] hover:shadow-[0_12px_24px_rgba(239,74,69,0.3)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mt-6"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
                   {view === 'login' ? 'Sign In' : view === 'register' ? 'Create Account' : view === 'complete_profile' ? 'Save & Continue' : 'Send Recovery Link'}
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </>
               )}
             </button>
           </form>
 
           {view !== 'complete_profile' && (
-            <div className="mt-6 text-center text-sm font-medium text-slate-600">
+            <div className="mt-8 text-center text-sm font-semibold text-slate-500">
               {view === 'login' ? "Don't have an account? " : view === 'register' ? "Already have an account? " : "Remembered your password? "}
               <button
                 type="button"
@@ -456,12 +475,13 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                   setSuccessMsg('');
                   setFormData({ name: '', email: '', password: '', phone: '', address: '', city: '', state: '', pincode: '' });
                 }}
-                className="text-[#EF4A45] hover:underline font-bold"
+                className="text-[#EF4A45] hover:text-[#d33a36] hover:underline font-black transition-colors"
               >
                 {view === 'login' ? 'Sign up' : 'Log in'}
               </button>
             </div>
           )}
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>
