@@ -1,62 +1,106 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { AGE_GROUPS } from '../../data/productsData';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Smile, Star, HeartHandshake } from 'lucide-react';
+
+const ageIcons = [Smile, Star, HeartHandshake, Sparkles];
 
 export default function ShopByAge() {
   return (
-    <section className="py-6 bg-white relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-14 sm:py-20 bg-[#FFFDF9] relative overflow-hidden border-t border-[#ECECEC]">
+      {/* Background Soft Floating Accents */}
+      <div className="absolute top-10 left-5 w-24 h-24 rounded-full bg-[#AEE6FF]/30 blur-2xl pointer-events-none" />
+      <div className="absolute bottom-10 right-5 w-32 h-32 rounded-full bg-[#FFD5A1]/40 blur-3xl pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         
-        {/* Section Title */}
-        <div className="text-center max-w-2xl mx-auto mb-12 space-y-2">
-          <span className="px-4 py-1.5 rounded-full bg-[#E6D6FF]/40 text-purple-800 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" /> Perfect Fit Guarantee
-          </span>
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-3">
+          {/* Unique Style: Tailor Precision Ruler Tape & Trust Seal */}
+          <div className="inline-flex items-center justify-center gap-2.5 sm:gap-4 select-none cursor-default group mb-3">
+            {/* PERFECT FIT: Tailor Ruler Tape */}
+            <div className="relative inline-flex flex-col items-center">
+              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.3em] bg-linear-to-r from-[#FF6B4A] via-[#FF9E00] to-[#E65100] bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300">
+                PERFECT FIT
+              </span>
+              {/* Playful tailor measuring tape ruler underline with tick marks */}
+              <svg className="w-full h-2.5 text-[#FFB800] mt-0.5" viewBox="0 0 130 9" fill="none">
+                <line x1="2" y1="7" x2="128" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="8" y1="7" x2="8" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="22" y1="7" x2="22" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="36" y1="7" x2="36" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="50" y1="7" x2="50" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="65" y1="7" x2="65" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="80" y1="7" x2="80" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="95" y1="7" x2="95" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="109" y1="7" x2="109" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="122" y1="7" x2="122" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* Sparkle star connector */}
+            <span className="text-amber-400 text-xs sm:text-sm -mt-2 animate-pulse">★</span>
+
+            {/* GUARANTEE: Cheerful Trust Seal */}
+            <div className="relative inline-flex flex-col items-center">
+              <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.32em] text-[#5B2E89] rotate-1 group-hover:rotate-2 transition-transform duration-200">
+                GUARANTEE
+              </span>
+              {/* Playful curved cyan smile arc */}
+              <svg className="w-full h-2 text-[#00A3E0] mt-0.5" viewBox="0 0 100 8" fill="none">
+                <path d="M4 2 Q 50 8, 96 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+            </div>
+          </div>
           <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            Shop By <span className="text-[#EF4A45]">Age Group</span>
+            Shop By <span className="text-[#FF7A59]">Age Group</span>
           </h2>
-          <p className="text-sm sm:text-base text-slate-500 font-medium">
-            Find clothing tailored specifically to your child's age, growth stage, and play habits.
+          <p className="text-sm sm:text-base text-slate-500 font-medium leading-relaxed">
+            Clothing thoughtfully crafted for every stage of your child's joyful journey.
           </p>
         </div>
 
         {/* Age Group Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {AGE_GROUPS.map((item, index) => (
-            <Link
-              key={index}
-              to={`/products?age=${encodeURIComponent(item.label)}`}
-              className="group relative p-6 rounded-3xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl border border-slate-100 flex flex-col justify-between overflow-hidden"
-              style={{ backgroundColor: item.color }} // 100% opacity background
-            >
-              {/* Card Badge */}
-              <div className="flex justify-between items-start mb-6">
-                <span
-                  className="px-3 py-1 rounded-full text-[11px] font-black text-slate-800 bg-white shadow-xs"
-                >
-                  {item.badge}
-                </span>
-                <div className="w-9 h-9 rounded-full bg-white text-slate-800 flex items-center justify-center shadow-sm group-hover:bg-[#EF4A45] group-hover:text-white transition-colors">
-                  <ArrowRight className="w-4 h-4" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
+          {AGE_GROUPS.map((item, index) => {
+            const Icon = ageIcons[index % ageIcons.length];
+            return (
+              <Link
+                key={index}
+                to={`/kids?age=${encodeURIComponent(item.label)}`}
+                className="group relative p-4 sm:p-7 rounded-[24px] sm:rounded-[28px] bg-white border border-[#ECECEC] shadow-xs hover:shadow-xl transition-all duration-300 hover:-translate-y-2 flex flex-col justify-between overflow-hidden"
+              >
+                {/* Top Pill & Icon */}
+                <div className="flex justify-between items-center mb-4 sm:mb-8">
+                  <span className="px-2.5 py-0.5 sm:px-3.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-extrabold bg-[#FFF3EE] text-[#FF7A59] border border-[#FFE0D6]">
+                    {item.badge}
+                  </span>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-[10px] sm:rounded-2xl bg-[#FFFDF9] border border-[#ECECEC] text-slate-700 flex items-center justify-center group-hover:bg-[#FF7A59] group-hover:text-white group-hover:border-[#FF7A59] transition-all duration-300 shadow-xs">
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5 group-hover:rotate-12 transition-transform duration-300" />
+                  </div>
                 </div>
-              </div>
 
-              {/* Card Body */}
-              <div className="space-y-1">
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight group-hover:text-[#EF4A45] transition-colors">
-                  {item.label}
-                </h3>
-                <p className="text-xs text-slate-600 font-bold">{item.sub}</p>
-              </div>
+                {/* Card Title & Sub */}
+                <div className="space-y-1 sm:space-y-2 mb-3 sm:mb-6">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight group-hover:text-[#FF7A59] transition-colors">
+                    {item.label}
+                  </h3>
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-semibold leading-normal">
+                    {item.sub}
+                  </p>
+                </div>
 
-              {/* Bottom Decorative Circle */}
-              <div
-                className="absolute -bottom-6 -right-6 w-24 h-24 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-300"
-                style={{ backgroundColor: '#ffffff' }}
-              />
-            </Link>
-          ))}
+                {/* Explore Action Banner */}
+                <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-bold text-[#FF7A59] group-hover:translate-x-1 transition-transform duration-300">
+                  <span>Explore Items</span>
+                  <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                </div>
+
+                {/* Bottom Soft Hover Accent */}
+                <div className="absolute -bottom-10 -right-10 w-28 h-28 rounded-full bg-[#FF7A59]/10 group-hover:scale-150 transition-transform duration-500 pointer-events-none" />
+              </Link>
+            );
+          })}
         </div>
 
       </div>

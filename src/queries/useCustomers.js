@@ -39,3 +39,11 @@ export function useDeleteCustomer() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
   });
 }
+
+export function useUpsertCustomerByEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ email, data, orderAmount }) => customersApi.upsertByEmail(email, data, orderAmount),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
+  });
+}

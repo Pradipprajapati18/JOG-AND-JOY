@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { flyToCart } from '../../utils/animations';
+import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
+import { createSlug } from '../../utils/helpers';
 
 export default function WomenProductCard({ product }) {
   const { addToCart } = useCart();
@@ -49,14 +52,16 @@ export default function WomenProductCard({ product }) {
   };
 
   return (
-    <div className="flex flex-col group w-full bg-transparent transition-all duration-300 relative">
-      {/* Image Block with Slide-up Size Selector Overlay */}
-      <div className="relative aspect-[3/4] w-full bg-[#FFF8EC] rounded-xl overflow-hidden mb-3 border border-slate-100/50">
-        <Link to={`/product/${product.id}`} className="absolute inset-0">
+    <div className="flex flex-col group cursor-pointer w-full">
+      {/* Image Block */}
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-slate-50 mb-4">
+        <Link to={`/product/${createSlug(product.name || product.title) || product.id}`} className="absolute inset-0">
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover transition-all duration-700 group-hover:scale-105"
           />
         </Link>
 
@@ -207,11 +212,10 @@ export default function WomenProductCard({ product }) {
         </div>
       </div>
 
-      {/* Content Block (Left-Aligned, clean styling) */}
-      <div className="flex flex-col items-start text-left space-y-1 mt-1 px-0.5">
-        {/* Title */}
-        <Link to={`/product/${product.id}`} className="w-full">
-          <h3 className="text-sm font-semibold text-slate-800 tracking-tight line-clamp-1 hover:text-[#EF4A45]">
+      {/* Details (Ultra Minimalist) */}
+      <div className="mt-4 space-y-1 flex flex-col items-center text-center">
+        <Link to={`/product/${createSlug(product.name || product.title) || product.id}`}>
+          <h3 className="text-sm font-semibold text-black tracking-wide line-clamp-1 uppercase hover:underline">
             {product.name}
           </h3>
         </Link>

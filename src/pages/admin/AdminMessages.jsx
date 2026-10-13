@@ -72,16 +72,16 @@ export default function AdminMessages() {
     <div className="w-full animate-in fade-in duration-300 pb-12 h-screen flex flex-col pt-4">
       <div className="flex justify-between items-end mb-6 shrink-0">
         <div>
-          <span className="text-[10px] text-accent-green font-bold uppercase tracking-widest font-mono">Support</span>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-primary-dark mt-0.5">Inbox</h1>
-          <p className="text-xs text-text-secondary mt-1">Ticketing & customer communications</p>
+          <span className="text-[10px] text-blue-600 font-bold uppercase tracking-widest font-mono">Support</span>
+          <h1 className="text-2xl md:text-3xl font-extrabold text-text-dark mt-0.5">Inbox</h1>
+          <p className="text-xs text-text-muted mt-1">Ticketing & customer communications</p>
         </div>
       </div>
 
-      <div className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row flex-1 min-h-[500px]">
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col md:flex-row flex-1 min-h-125">
         {/* Left Pane: Conversation List */}
-        <div className="w-full md:w-80 flex flex-col border-r border-border bg-zinc-50/50">
-          <div className="p-4 border-b border-border bg-white">
+        <div className="w-full md:w-80 flex flex-col border-r border-slate-200 bg-zinc-50/50">
+          <div className="p-4 border-b border-slate-200 bg-white">
             <div className="relative w-full mb-3">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input 
@@ -89,7 +89,7 @@ export default function AdminMessages() {
                 placeholder="Search messages..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 rounded-xl border border-border bg-zinc-50 focus:outline-none focus:bg-white focus:border-accent-green text-sm transition-colors"
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-zinc-50 focus:outline-none focus:bg-white focus:ring-1 focus:ring-blue-600 text-sm transition-colors"
               />
             </div>
             <div className="flex bg-zinc-100 p-1 rounded-xl">
@@ -98,7 +98,7 @@ export default function AdminMessages() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg capitalize transition-colors ${
-                    activeTab === tab ? 'bg-white text-primary-dark shadow-sm' : 'text-zinc-500 hover:text-primary-dark'
+                    activeTab === tab ? 'bg-white text-text-dark shadow-sm' : 'text-zinc-500 hover:text-text-dark'
                   }`}
                 >
                   {tab}
@@ -111,9 +111,9 @@ export default function AdminMessages() {
             {isLoading ? (
               <div className="p-8 text-center text-zinc-400 text-sm font-semibold">Loading...</div>
             ) : threads.length === 0 ? (
-              <div className="p-12 text-center text-text-secondary">
+              <div className="p-12 text-center text-text-muted">
                 <MessageSquare className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                <p className="font-bold text-primary-dark text-sm">All caught up!</p>
+                <p className="font-bold text-text-dark text-sm">All caught up!</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -126,17 +126,17 @@ export default function AdminMessages() {
                     }`}
                   >
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-sm text-primary-dark line-clamp-1">{thread.subject || 'No Subject'}</span>
+                      <span className="font-bold text-sm text-text-dark line-clamp-1">{thread.subject || 'No Subject'}</span>
                       <span className="text-[10px] text-zinc-400 whitespace-nowrap ml-2">2h</span>
                     </div>
-                    <p className="text-xs text-text-secondary line-clamp-2">
+                    <p className="text-xs text-text-muted line-clamp-2">
                       {thread.messages?.[thread.messages.length - 1]?.body || 'No messages'}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider ${
                         thread.priority === 'high' ? 'bg-error/10 text-error' : 'bg-zinc-200 text-zinc-600'
                       }`}>{thread.priority || 'normal'}</span>
-                      {thread.orderId && <span className="flex items-center gap-1 text-[10px] font-semibold text-text-secondary"><FileText className="w-3 h-3" /> {thread.orderId}</span>}
+                      {thread.orderId && <span className="flex items-center gap-1 text-[10px] font-semibold text-text-muted"><FileText className="w-3 h-3" /> {thread.orderId}</span>}
                     </div>
                   </button>
                 ))}
@@ -150,10 +150,10 @@ export default function AdminMessages() {
           {selectedThread ? (
             <>
               {/* Action Bar */}
-              <div className="p-4 border-b border-border flex justify-between items-center shrink-0">
+              <div className="p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <div>
-                  <h2 className="font-bold text-lg text-primary-dark">{selectedThread.subject || 'No Subject'}</h2>
-                  <p className="text-xs text-text-secondary flex items-center gap-2 mt-0.5">
+                  <h2 className="font-bold text-lg text-text-dark">{selectedThread.subject || 'No Subject'}</h2>
+                  <p className="text-xs text-text-muted flex items-center gap-2 mt-0.5">
                     <User className="w-3 h-3" /> {selectedThread.customerId}
                   </p>
                 </div>
@@ -167,10 +167,10 @@ export default function AdminMessages() {
                     </button>
                   )}
                   <div className="relative group">
-                    <button className="p-1.5 text-zinc-400 hover:text-primary-dark rounded-lg hover:bg-zinc-100">
+                    <button className="p-1.5 text-zinc-400 hover:text-text-dark rounded-lg hover:bg-zinc-100">
                       <MoreVertical className="w-4 h-4" />
                     </button>
-                    <div className="absolute right-0 mt-2 w-48 bg-white border border-border rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
                       <div className="p-1">
                         <button onClick={() => handleStatusChange('closed')} className="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-zinc-50 rounded-lg text-error">
                           Close Ticket
@@ -188,12 +188,12 @@ export default function AdminMessages() {
                   return (
                     <div key={i} className={`flex flex-col max-w-[80%] ${isAdmin ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                       <div className="flex items-center gap-2 mb-1 px-1">
-                        <span className="text-[10px] font-bold text-text-secondary">{isAdmin ? 'Agent' : 'Customer'}</span>
+                        <span className="text-[10px] font-bold text-text-muted">{isAdmin ? 'Agent' : 'Customer'}</span>
                         <span className="text-[10px] text-zinc-400">10:45 AM</span>
                       </div>
                       <div className={`p-3 rounded-2xl text-sm leading-relaxed ${
-                        msg.internal ? 'bg-warning/20 border-warning/30 border text-primary-dark rounded-tr-sm' :
-                        isAdmin ? 'bg-primary-dark text-white rounded-tr-sm' : 'bg-white border border-border text-primary-dark rounded-tl-sm shadow-sm'
+                        msg.internal ? 'bg-warning/20 border-warning/30 border text-text-dark rounded-tr-sm' :
+                        isAdmin ? 'bg-primary-dark text-white rounded-tr-sm' : 'bg-white border border-slate-100 text-text-dark rounded-tl-sm shadow-sm transition-all'
                       }`}>
                         {msg.internal && <span className="block text-[10px] font-extrabold uppercase tracking-widest text-warning-dark mb-1">Internal Note</span>}
                         {msg.body}
@@ -204,10 +204,10 @@ export default function AdminMessages() {
               </div>
 
               {/* Reply Box */}
-              <div className="p-4 border-t border-border bg-white shrink-0">
-                <div className="border border-border rounded-xl overflow-hidden focus-within:border-accent-green focus-within:ring-1 focus-within:ring-accent-green transition-shadow">
-                  <div className="flex items-center gap-2 p-2 border-b border-border bg-zinc-50">
-                    <button onClick={handleInsertCanned} className="p-1.5 text-zinc-500 hover:text-primary-dark hover:bg-zinc-200 rounded-lg" title="Insert Canned Response"><FileTerminal className="w-4 h-4" /></button>
+              <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+                <div className="border border-slate-200 rounded-xl overflow-hidden focus-within:ring-1 focus-within:ring-blue-600 focus-within:ring-1 focus-within:ring-blue-600 transition-shadow">
+                  <div className="flex items-center gap-2 p-2 border-b border-slate-200 bg-zinc-50">
+                    <button onClick={handleInsertCanned} className="p-1.5 text-zinc-500 hover:text-text-dark hover:bg-zinc-200 rounded-lg" title="Insert Canned Response"><FileTerminal className="w-4 h-4" /></button>
                     <label className="flex items-center gap-1.5 ml-auto text-xs font-bold text-zinc-500 cursor-pointer">
                       <input type="checkbox" checked={isInternal} onChange={e => setIsInternal(e.target.checked)} className="rounded text-warning focus:ring-warning" />
                       Internal Note
@@ -226,7 +226,7 @@ export default function AdminMessages() {
                       onClick={handleSendReply}
                       disabled={updateMut.isPending || !replyText.trim()}
                       className={`px-4 py-1.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors ${
-                        isInternal ? 'bg-warning text-primary-dark hover:bg-warning-dark' : 'bg-primary-dark text-white hover:bg-primary-hover'
+                        isInternal ? 'bg-warning text-text-dark hover:bg-warning-dark' : 'bg-primary-dark text-white hover:bg-primary-hover'
                       } disabled:opacity-50`}
                     >
                       <Send className="w-4 h-4" /> {isInternal ? 'Add Note' : 'Send'}
@@ -238,7 +238,7 @@ export default function AdminMessages() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center text-zinc-400">
               <HelpCircle className="w-12 h-12 mb-4 opacity-20" />
-              <p className="font-bold text-primary-dark text-lg">No conversation selected</p>
+              <p className="font-bold text-text-dark text-lg">No conversation selected</p>
               <p className="text-sm mt-1">Choose a ticket from the left pane to view details and reply.</p>
             </div>
           )}

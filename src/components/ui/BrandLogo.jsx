@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
+import { getImageUrl } from '../../utils/getImageUrl';
 
 export default function BrandLogo({ className = 'h-10', showTagline = true, animate = false, linkTo = '/' }) {
   const containerRef = useRef(null);
@@ -199,7 +200,7 @@ export default function BrandLogo({ className = 'h-10', showTagline = true, anim
       <div ref={containerRef} className="relative inline-block overflow-visible select-none">
         {/* The logo image - 100% static, no movement, scaling, rotation or distortion */}
         <img
-          src="/images/official_logo.png"
+          src={getImageUrl('official_logo.webp')}
           alt="JOG&JOY® - Love is in the wear"
           className={`${className} w-auto object-contain relative z-20`}
           onError={(e) => {
@@ -238,12 +239,12 @@ export default function BrandLogo({ className = 'h-10', showTagline = true, anim
             >
               {/* Studs */}
               {block.studs === 2 ? (
-                <div className="absolute -top-[1.5px] left-0 right-0 flex justify-around px-0.5 pointer-events-none">
+                <div className="absolute top-[-1.5px] left-0 right-0 flex justify-around px-0.5 pointer-events-none">
                   <div className="w-[3px] h-[1.5px] rounded-t-[0.5px] bg-inherit brightness-90" />
                   <div className="w-[3px] h-[1.5px] rounded-t-[0.5px] bg-inherit brightness-90" />
                 </div>
               ) : (
-                <div className="absolute -top-[1.5px] left-0 right-0 flex justify-center pointer-events-none">
+                <div className="absolute top-[-1.5px] left-0 right-0 flex justify-center pointer-events-none">
                   <div className="w-1 h-[1.5px] rounded-t-[0.5px] bg-inherit brightness-90" />
                 </div>
               )}

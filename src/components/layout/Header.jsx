@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, Menu, X, ShoppingBag, ArrowRight } from 'lucide-react';
+import { getImageUrl } from '../../utils/getImageUrl';
+import { createSlug } from '../../utils/helpers';
 
 export const productCategories = [
-  { name: 'Kids T-Shirt', slug: 'kids-t-shirt', category: 'Kids' },
-  { name: 'Kids Joggers & Tracks', slug: 'kids-joggers-tracks', category: 'Kids' },
-  { name: 'Kids Shorts & Bermudas', slug: 'kids-shorts-bermudas', category: 'Kids' },
-  { name: 'Kids Night Suits', slug: 'kids-night-suits', category: 'Kids' },
-  { name: 'Kids Pajama Suits', slug: 'kids-pajama-suits', category: 'Kids' },
-  { name: 'Girl Frocks', slug: 'girl-frocks', category: 'Kids' },
+  { name: 'KIDS Co-ord Suit', slug: 'kids-co-ord-suit', category: 'Kids' },
+  { name: 'KIDS T-shirts', slug: 'kids-t-shirts', category: 'Kids' },
+  { name: 'KIDS Night Suit', slug: 'kids-night-suit', category: 'Kids' },
+  { name: 'KIDS Short Co-ord Suit', slug: 'kids-short-co-ord-suit', category: 'Kids' },
+  { name: 'KIDS Shorts', slug: 'kids-shorts', category: 'Kids' },
+  { name: 'KIDS Sweat_Pants', slug: 'kids-sweat-pants', category: 'Kids' },
+  { name: 'KIDS Track_Pants', slug: 'kids-track-pants', category: 'Kids' },
+  { name: 'KIDS Track_Suit', slug: 'kids-track-suit', category: 'Kids' },
 ];
 
 export default function Header() {
@@ -17,8 +21,32 @@ export default function Header() {
   const [isProductsDropdownOpen, setIsProductsDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchResults = async () => {
+      if (searchQuery.trim().length > 1) {
+        setIsSearching(true);
+        try {
+          const { list } = await import('../../api/mockApi');
+          const { data } = await list('products', { search: searchQuery, pageSize: 5 });
+          setSearchResults(data || []);
+        } catch (error) {
+          console.error("Search error", error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    };
+    
+    const timeoutId = setTimeout(fetchResults, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -55,7 +83,7 @@ export default function Header() {
             <Link to="/" className="flex items-center gap-3 group">
               <div className="relative overflow-hidden rounded-xl bg-[#ccff00] p-1.5 transition-transform group-hover:scale-105">
                 <img 
-                  src="/images/logo.png" 
+                  src={getImageUrl('logo.webp')} 
                   alt="Jog & Joy Logo" 
                   className="h-7 w-auto object-contain"
                   onError={(e) => {
@@ -237,6 +265,35 @@ export default function Header() {
                 Search
               </button>
             </form>
+
+            {/* Live Search Results */}
+            {searchQuery.trim().length > 1 && (
+              <div className="max-w-3xl mx-auto mt-2 bg-slate-800/95 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl relative z-[60]">
+                {isSearching ? (
+                  <div className="p-4 text-center text-sm text-slate-400">Searching...</div>
+                ) : searchResults.length > 0 ? (
+                  <div className="flex flex-col">
+                    {searchResults.map((product) => (
+                      <Link 
+                        key={product.id}
+                        to={`/product/${createSlug(product.name || product.title) || product.id}`}
+                        onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }}
+                        className="flex items-center gap-4 p-3 hover:bg-slate-700/50 transition-colors border-b border-slate-700/50 last:border-0"
+                      >
+                        <img src={product.image || product.images?.[0] || getImageUrl('placeholder.jpg')} alt={product.title} className="w-12 h-12 rounded-lg object-cover bg-slate-900" />
+                        <div className="flex-1">
+                          <h4 className="text-sm font-bold text-white line-clamp-1">{product.title || product.name}</h4>
+                          <p className="text-xs text-slate-400">{product.category}</p>
+                        </div>
+                        <div className="text-sm font-bold text-[#ccff00]">₹{product.price}</div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 text-center text-sm text-slate-400">No products found.</div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </header>

@@ -1,30 +1,54 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import KidsProductCard from '../components/ui/KidsProductCard';
 import QuickViewModal from '../components/ui/QuickViewModal';
+import CustomDropdown from '../components/ui/CustomDropdown';
+import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
+import { useCategoriesList } from '../queries/useCategories';
 import ShopByAge from '../components/home/ShopByAge';
+import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
+
+
+
+const kidsSortOptions = [
+  { label: 'Recommended', value: 'Recommended' },
+  { label: 'Price: Low to High', value: 'Price: Low to High' },
+  { label: 'Price: High to Low', value: 'Price: High to Low' },
+  { label: 'Rating: High to Low', value: 'Rating: High to Low' },
+  { label: 'Newest Arrivals', value: 'Newest Arrivals' }
+];
 
 export default function KidsPage() {
+  const [searchParams] = useSearchParams();
+  const initialGender = searchParams.get('gender');
+  const ageParam = searchParams.get('age');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     productType: true,
     price: true,
+    ageGroup: true,
     gender: true,
     size: true,
-    color: true,
-    fabric: true,
-    pattern: true
+    color: true
   });
 
   const [filters, setFilters] = useState({
     types: [],
     prices: [],
-    genders: [],
+    ageGroups: ageParam ? [ageParam.replace('–', '-')] : [],
     sizes: [],
-    colors: [],
-    fabrics: [],
-    patterns: []
+    colors: []
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+    const newAge = searchParams.get('age');
+    if (newAge) {
+      setFilters(prev => ({ ...prev, ageGroups: [newAge.replace('–', '-')] }));
+    }
+  }, [searchParams]);
 
   const [sortBy, setSortBy] = useState('Recommended');
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,9 +82,7 @@ export default function KidsPage() {
 
   const { combinedProducts, isLoading } = useCombinedProducts();
 
-  const kidsProducts = useMemo(() => {
-    return combinedProducts.filter((p) => ['Boys', 'Girls', 'Newborn', 'Unisex'].includes(p.category));
-  }, [combinedProducts]);
+  const kidsProducts = combinedProducts;
 
   const filteredProducts = useMemo(() => {
     let result = kidsProducts.filter((p) => {
@@ -69,11 +91,13 @@ export default function KidsPage() {
       // Type Filter
       let matchType = filters.types.length === 0;
       if (!matchType) {
-        if (filters.types.includes('T-Shirts') && (nameLower.includes('tee') || nameLower.includes('t-shirt'))) matchType = true;
-        if (filters.types.includes('Joggers') && (nameLower.includes('track') || nameLower.includes('jogger'))) matchType = true;
-        if (filters.types.includes('Shorts') && (nameLower.includes('short') || nameLower.includes('bermuda') || nameLower.includes('dungaree'))) matchType = true;
-        if (filters.types.includes('Suits') && (nameLower.includes('suit') || nameLower.includes('kurta') || nameLower.includes('set'))) matchType = true;
-        if (filters.types.includes('Frocks') && (nameLower.includes('frock') || nameLower.includes('dress'))) matchType = true;
+        if (
+          filters.types.includes(p.categoryId) || 
+          filters.types.includes(p.categoryLabel) || 
+          filters.types.includes(p.category)
+        ) {
+          matchType = true;
+        }
       }
 
       // Price Filter
@@ -84,40 +108,59 @@ export default function KidsPage() {
         if (filters.prices.includes('high') && p.price > 999) matchPrice = true;
       }
 
-      // Gender Filter (maps to category)
-      let matchGender = filters.genders.length === 0;
-      if (!matchGender) {
-        if (filters.genders.includes('Boys') && p.category === 'Boys') matchGender = true;
-        if (filters.genders.includes('Girls') && p.category === 'Girls') matchGender = true;
-        if (filters.genders.includes('Newborn') && p.category === 'Newborn') matchGender = true;
-        if (filters.genders.includes('Unisex') && p.category === 'Unisex') matchGender = true;
-      }
 
-      // Size Filter (mock)
+
+      // Size Filter
       let matchSize = filters.sizes.length === 0;
-      if (!matchSize) matchSize = true; // since size isn't in db, simulate pass or do mock matching
+      if (!matchSize) {
+        const productSizes = p.sizes || [];
+        const variantSizes = (p.variants || []).map(v => v.size).filter(Boolean);
+        const allSizes = [...new Set([...productSizes, ...variantSizes])];
+        matchSize = allSizes.some(s => filters.sizes.includes(s));
+      }
 
-      // Color Filter (mock)
+      // Color Filter
       let matchColor = filters.colors.length === 0;
-      if (!matchColor) matchColor = true; // simulate pass
-
-      // Fabric Filter (mock)
-      let matchFabric = filters.fabrics.length === 0;
-      if (!matchFabric) {
-        if (filters.fabrics.includes('Cotton') && nameLower.includes('cotton')) matchFabric = true;
-        if (filters.fabrics.includes('Denim') && nameLower.includes('denim')) matchFabric = true;
-        // else simulate pass for demo
-        else matchFabric = true;
+      if (!matchColor) {
+        const productColors = (p.colors || []).map(c => typeof c === 'object' ? c.name : c).filter(Boolean);
+        const variantColors = (p.variants || []).map(v => v.colorName).filter(Boolean);
+        const allColors = [...new Set([...productColors, ...variantColors])];
+        matchColor = allColors.some(c => filters.colors.includes(c));
       }
 
-      // Pattern Filter (mock)
-      let matchPattern = filters.patterns.length === 0;
-      if (!matchPattern) {
-        if (filters.patterns.includes('Floral') && nameLower.includes('floral')) matchPattern = true;
-        else matchPattern = true; // simulate pass
+      // Age Group Filter
+      let matchAge = filters.ageGroups.length === 0;
+      if (!matchAge) {
+        matchAge = filters.ageGroups.some(selectedAge => {
+          const normAge = selectedAge.toLowerCase().replace('–', '-');
+          
+          if (p.ageGroup && p.ageGroup.toLowerCase().replace('–', '-') === normAge) {
+            return true;
+          }
+
+          const allSizes = [
+            ...(p.sizes || []),
+            ...(p.variants || []).map(v => v.size)
+          ].filter(Boolean).map(s => s.toLowerCase().replace('–', '-'));
+
+          if (normAge.includes('0-2')) {
+            return allSizes.some(s => s.includes('0-3') || s.includes('3-6') || s.includes('6-12') || s.includes('1-2') || s.includes('2-3') || s.includes('months') || s.includes('0-2'));
+          }
+          if (normAge.includes('3-5')) {
+            return allSizes.some(s => s.includes('3-4') || s.includes('4-5') || s.includes('5-6') || s.includes('3-5'));
+          }
+          if (normAge.includes('6-8')) {
+            return allSizes.some(s => s.includes('6-7') || s.includes('7-8') || s.includes('8-9') || s.includes('6-8'));
+          }
+          if (normAge.includes('9-12')) {
+            return allSizes.some(s => s.includes('9-10') || s.includes('10-11') || s.includes('11-12') || s.includes('9-12'));
+          }
+
+          return false;
+        });
       }
 
-      return matchType && matchPrice && matchGender && matchSize && matchColor && matchFabric && matchPattern;
+      return matchType && matchPrice && matchSize && matchColor && matchAge;
     });
 
     // Sort Logic
@@ -160,41 +203,164 @@ export default function KidsPage() {
     return pages;
   };
 
-  const productTypes = [
-    { id: 'T-Shirts', label: 'T-Shirts', count: kidsProducts.filter(p => p.name.toLowerCase().includes('tee') || p.name.toLowerCase().includes('t-shirt')).length },
-    { id: 'Joggers', label: 'Joggers & Tracks', count: kidsProducts.filter(p => p.name.toLowerCase().includes('track') || p.name.toLowerCase().includes('jogger')).length },
-    { id: 'Shorts', label: 'Shorts & Bermudas', count: kidsProducts.filter(p => p.name.toLowerCase().includes('short') || p.name.toLowerCase().includes('bermuda') || p.name.toLowerCase().includes('dungaree')).length },
-    { id: 'Suits', label: 'Night Suits', count: kidsProducts.filter(p => p.name.toLowerCase().includes('suit') || p.name.toLowerCase().includes('kurta') || p.name.toLowerCase().includes('set')).length },
-    { id: 'Frocks', label: 'Frocks & Dresses', count: kidsProducts.filter(p => p.name.toLowerCase().includes('frock') || p.name.toLowerCase().includes('dress')).length },
-  ];
+  const { data: categoriesResponse } = useCategoriesList();
+  const dbCategories = categoriesResponse?.data || [];
 
-  const genderOptions = [
-    { id: 'Boys', label: 'Boys' },
-    { id: 'Girls', label: 'Girls' },
-    { id: 'Newborn', label: 'Newborn' },
-    { id: 'Unisex', label: 'Unisex' }
-  ];
+  const productTypes = useMemo(() => {
+    return dbCategories.map(c => ({
+      id: c.label,
+      label: c.label,
+      count: kidsProducts.filter(p => p.categoryId === c.id || p.category === c.label).length
+    }));
+  }, [dbCategories, kidsProducts]);
 
-  const sizeOptions = ['XS', 'S', 'M', 'L', 'XL'];
-  const colorOptions = ['Red', 'Blue', 'Green', 'Yellow', 'Black', 'White'];
-  const fabricOptions = ['Cotton', 'Denim', 'Fleece', 'Organic'];
-  const patternOptions = ['Solid', 'Printed', 'Floral', 'Striped'];
+
+
+  const ageGroupOptions = useMemo(() => {
+    const ages = new Set(['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years']);
+    kidsProducts.forEach(p => {
+      if (p.ageGroup) {
+        ages.add(p.ageGroup.replace('–', '-'));
+      }
+    });
+    return Array.from(ages).sort();
+  }, [kidsProducts]);
+
+  const sizeOptions = useMemo(() => {
+    const sizes = new Set();
+    kidsProducts.forEach(p => {
+      p.sizes?.forEach(s => sizes.add(s));
+      p.variants?.forEach(v => {
+        if (v.size && v.size !== 'Standard') sizes.add(v.size);
+      });
+    });
+    return Array.from(sizes).sort();
+  }, [kidsProducts]);
+
+  const colorOptions = useMemo(() => {
+    const colors = new Set();
+    kidsProducts.forEach(p => {
+      p.colors?.forEach(c => {
+        const colorName = typeof c === 'object' ? c.name : c;
+        if (colorName) colors.add(colorName);
+      });
+      p.variants?.forEach(v => {
+        if (v.colorName && v.colorName !== 'Standard') colors.add(v.colorName);
+      });
+    });
+    return Array.from(colors).sort();
+  }, [kidsProducts]);
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 xl:px-8 pt-8">
+    <div className="min-h-screen bg-[#FFF8EC] relative overflow-hidden pb-20">
+      {/* Animated Cloth Doodles Background Swapped from Home */}
+      <ClothDoodlesBackground />
 
-        {/* Video Hero Section */}
-        <div className="w-full max-w-5xl mx-auto rounded-[2rem] overflow-hidden mb-8 shadow-sm relative aspect-video bg-slate-100 flex items-center justify-center">
+      {/* Full-Screen Video Hero Section */}
+      <div style={{
+        position: 'relative',
+        width: '100%',
+        height: 'calc(100vh - 70px)',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: '0'
+      }}>
+        {/* Background Video Swapped from Home */}
+        <div className="absolute inset-0 z-0 flex items-center bg-black">
           <video
-            src="/videos/kids wear hero.mp4"
+            src="/videos/kids-hero-new.mp4"
             autoPlay
-            loop
             muted
+            loop
             playsInline
-            className="w-full h-full object-contain"
+            onCanPlay={(e) => { e.currentTarget.playbackRate = 2; }}
+            className="w-full h-full object-cover block opacity-90"
           />
         </div>
+
+        {/* Hero Content */}
+        <div style={{
+          position: 'relative',
+          zIndex: 10,
+          textAlign: 'center',
+          padding: '0 20px',
+          maxWidth: '800px'
+        }}>
+          {/* Style 4: Sleek Stacked Gradient Typography (Matching New Arrivals Style 4) */}
+          <div className="inline-flex flex-col items-center justify-center mb-6 select-none group cursor-default">
+            {/* Row 1: KIDS */}
+            <div className="inline-flex flex-col items-center">
+              <span className="text-sm sm:text-base font-black uppercase tracking-[0.34em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                KIDS
+              </span>
+              <div className="w-full min-w-[95px] sm:min-w-[115px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1.5 shadow-2xs" />
+            </div>
+
+            {/* Row 2: COLLECTION */}
+            <div className="inline-flex flex-col items-center mt-2.5">
+              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.44em] text-[#0F172A] transition-colors duration-300 group-hover:text-[#5B2E89]">
+                COLLECTION
+              </span>
+              <div className="w-full min-w-[130px] sm:min-w-[155px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1.5 shadow-2xs" />
+            </div>
+          </div>
+
+          <h1 style={{
+            fontSize: 'clamp(2.2rem, 5vw, 4rem)',
+            fontWeight: 900,
+            color: '#2F1B2B',
+            lineHeight: 1.2,
+            margin: '0 0 20px'
+          }}>
+            Little Ones,{' '}
+            <span style={{ color: '#FFD800' }}>Big Style</span>
+          </h1>
+
+          <p style={{
+            fontSize: 'clamp(0.95rem, 1.4vw, 1.15rem)',
+            color: '#555555',
+            marginBottom: '36px',
+            fontWeight: 500,
+            lineHeight: 1.6
+          }}>
+            Premium kids wear — comfortable, colourful & built to play.
+          </p>
+
+          <a
+            href="#kids-products"
+            style={{
+              display: 'inline-block',
+              backgroundColor: '#EF4A45',
+              color: '#ffffff',
+              padding: '14px 38px',
+              borderRadius: '30px',
+              fontWeight: 700,
+              fontSize: '1rem',
+              textDecoration: 'none',
+              border: '1.5px solid #222222',
+              boxShadow: '0 4px 0 #222222',
+              transition: 'transform 0.15s, box-shadow 0.15s'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 0 #222222';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 0 #222222';
+            }}
+          >
+            Shop Kids Wear →
+          </a>
+        </div>
+
+
+      </div>
+
+      {/* Products Section Anchor */}
+      <div id="kids-products" className="max-w-[1600px] mx-auto px-4 sm:px-6 xl:px-8 pt-8">
 
         {/* Shop By Age Filter Section */}
         <div className="mb-6">
@@ -202,30 +368,33 @@ export default function KidsPage() {
         </div>
 
         {/* Top Controls */}
-        <div ref={topControlsRef} className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-4 border-b border-slate-100">
-          <div className="text-slate-700 font-black text-sm mb-4 sm:mb-0">
-            Showing {filteredProducts.length} Products
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-xs font-bold">Sort by:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-transparent border border-slate-200 rounded-full px-4 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:border-slate-400 cursor-pointer"
+        <div ref={topControlsRef} className="relative z-30 flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 pb-4 border-b border-slate-100 gap-4 sm:gap-0">
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <div className="text-slate-700 font-black text-sm">
+              Showing {filteredProducts.length} Products
+            </div>
+            {/* Mobile Filter Toggle */}
+            <button 
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-700"
             >
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
-              <option>Rating: High to Low</option>
-              <option>Newest Arrivals</option>
-              <option>Recommended</option>
-            </select>
+              <SlidersHorizontal className="w-3.5 h-3.5" /> {showMobileFilters ? 'Hide Filters' : 'Filters'}
+            </button>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <CustomDropdown
+              options={kidsSortOptions}
+              value={sortBy}
+              onChange={setSortBy}
+              icon={SlidersHorizontal}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
 
           {/* Left Sidebar Filters */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className={`lg:col-span-1 space-y-4 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
 
             {/* Product Type Accordion */}
             <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
@@ -289,26 +458,28 @@ export default function KidsPage() {
               )}
             </div>
 
-            {/* Gender Accordion */}
+
+
+            {/* Age Group Accordion */}
             <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
               <button
-                onClick={() => toggleSection('gender')}
+                onClick={() => toggleSection('ageGroup')}
                 className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
               >
-                <span className="text-sm font-black text-slate-800">Gender</span>
-                {expandedSections.gender ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                <span className="text-sm font-black text-slate-800">Age Group</span>
+                {expandedSections.ageGroup ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
               </button>
-              {expandedSections.gender && (
+              {expandedSections.ageGroup && (
                 <div className="p-5 space-y-3">
-                  {genderOptions.map((g) => (
-                    <label key={g.id} className="flex items-center gap-3 group cursor-pointer">
+                  {ageGroupOptions.map((age) => (
+                    <label key={age} className="flex items-center gap-3 group cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={filters.genders.includes(g.id)}
-                        onChange={() => handleFilterChange('genders', g.id)}
+                        checked={filters.ageGroups.includes(age)}
+                        onChange={() => handleFilterChange('ageGroups', age)}
                         className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
                       />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{g.label}</span>
+                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{age}</span>
                     </label>
                   ))}
                 </div>
@@ -367,67 +538,17 @@ export default function KidsPage() {
               )}
             </div>
 
-            {/* Fabric Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('fabric')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Fabric</span>
-                {expandedSections.fabric ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.fabric && (
-                <div className="p-5 space-y-3">
-                  {fabricOptions.map((f) => (
-                    <label key={f} className="flex items-center gap-3 group cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.fabrics.includes(f)}
-                        onChange={() => handleFilterChange('fabrics', f)}
-                        className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                      />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{f}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* Pattern Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('pattern')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Pattern</span>
-                {expandedSections.pattern ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.pattern && (
-                <div className="p-5 space-y-3">
-                  {patternOptions.map((p) => (
-                    <label key={p} className="flex items-center gap-3 group cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.patterns.includes(p)}
-                        onChange={() => handleFilterChange('patterns', p)}
-                        className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                      />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{p}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
 
           </div>
 
           {/* Right Product Grid */}
           <div className="lg:col-span-4">
             {isLoading ? (
-              <div className="flex items-center justify-center py-20 text-slate-400 font-bold">Loading kids collection...</div>
+              <AnimatedLogoLoader text="Loading Kids Collection..." />
             ) : currentProducts.length > 0 ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-6 sm:gap-x-6 sm:gap-y-10">
                   {currentProducts.map((product) => (
                     <KidsProductCard key={product.id} product={product} onQuickView={setQuickViewProduct} />
                   ))}

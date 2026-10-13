@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from 'lucide-react';
 import Button from '../ui/Button';
+import { getImageUrl } from '../../utils/getImageUrl';
 
 const slides = [
   {
@@ -8,7 +9,7 @@ const slides = [
     tag: 'Summer Vibes Collection 2026',
     title: 'Color Scheme For Summer Vibes',
     subtitle: 'High performance activewear engineered with breathable tech fabrics and dynamic street style.',
-    bgImage: '/images/hero_summer.png',
+    bgImage: getImageUrl('hero_summer.webp'),
     fallbackBg: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1600&auto=format&fit=crop',
     ctaText: 'Explore Collection',
     ctaLink: '/products',
@@ -18,7 +19,7 @@ const slides = [
     tag: 'Athleisure Fashion',
     title: 'Love Is In The Wear',
     subtitle: 'From kids activewear to men’s premium trackpants — precision stitched for supreme comfort.',
-    bgImage: '/images/cat_men_joggers.png',
+    bgImage: getImageUrl('cat_men_joggers.webp'),
     fallbackBg: 'https://images.unsplash.com/photo-1483721074892-4a85807d2d2d?q=80&w=1600&auto=format&fit=crop',
     ctaText: 'Discover Athleisure',
     ctaLink: '/collections',
@@ -57,12 +58,14 @@ export default function HeroSlider() {
             idx === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent z-10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/60 z-10" />
+          <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/80 to-transparent z-10" />
+          <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-transparent to-slate-950/60 z-10" />
           
           <img
             src={slide.bgImage}
             alt={slide.title}
+            fetchPriority={idx === 0 ? "high" : "low"}
+            loading={idx === 0 ? "eager" : "lazy"}
             className="w-full h-full object-cover object-center scale-105 animate-pulse-slow"
             onError={(e) => {
               e.target.onerror = null;

@@ -1,11 +1,29 @@
-import React from 'react';
-import { REVIEWS } from '../../data/productsData';
+import React, { useMemo } from 'react';
+import { REVIEWS as MOCK_REVIEWS } from '../../data/productsData';
 import { Star, CheckCircle2, Quote, Sparkles } from 'lucide-react';
 import SpotlightCard from '../ui/SpotlightCard';
+import { useReviewsList } from '../../queries/useReviews';
 
 export default function CustomerReviews() {
+  const { data, isLoading } = useReviewsList();
+
+  const reviews = useMemo(() => {
+    if (!isLoading && data?.data && data.data.length > 0) {
+      return data.data.map(r => ({
+        id: r.id,
+        name: r.author_name || r.authorName || 'Guest User',
+        rating: r.rating || 5,
+        comment: r.comment || '',
+        date: new Date(r.created_at || r.createdAt).toLocaleDateString(),
+        avatar: `https://ui-avatars.com/api/?name=${r.author_name || r.authorName || 'User'}&background=AEE6FF&color=000&size=100`,
+        product: r.product_id === 'guest_default' ? 'Jog & Joy Apparels' : 'Verified Purchase'
+      }));
+    }
+    return MOCK_REVIEWS;
+  }, [data, isLoading]);
+
   return (
-    <section className="py-16 bg-[#FFF8EC] relative">
+    <section className="py-16 bg-white relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
@@ -33,7 +51,7 @@ export default function CustomerReviews() {
         `}</style>
         <div className="flex overflow-hidden relative w-full pb-8">
           <div className="flex gap-6 animate-scroll-reviews w-max">
-            {[...REVIEWS, ...REVIEWS, ...REVIEWS, ...REVIEWS].map((review, index) => {
+            {[...reviews, ...reviews, ...reviews, ...reviews].map((review, index) => {
               const spotlightColors = [
                 'rgba(174, 230, 255, 0.4)', // Soft Blue
                 'rgba(239, 74, 69, 0.25)',  // Soft Red
@@ -42,7 +60,7 @@ export default function CustomerReviews() {
               return (
                 <SpotlightCard
                   key={index}
-                  className="kids-card p-6 border border-slate-100 flex flex-col justify-between space-y-4 bg-white w-[350px] flex-shrink-0 transform hover:-translate-y-2 hover:shadow-2xl hover:border-slate-200 transition-all duration-300"
+                  className="kids-card p-6 border border-slate-100 flex flex-col justify-between space-y-4 bg-white w-87.5 shrink-0 transform hover:-translate-y-2 hover:shadow-2xl hover:border-slate-200 transition-all duration-300"
                   spotlightColor={spotlightColors[index % spotlightColors.length]}
                 >
                   <div className="space-y-3">

@@ -3,6 +3,7 @@ import { Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { createSlug } from '../../utils/helpers';
 import { flyToCart } from '../../utils/animations';
 
 export default function MenProductCard({ product }) {
@@ -49,23 +50,30 @@ export default function MenProductCard({ product }) {
   };
 
   return (
-    <div className="flex flex-col group w-full bg-transparent transition-all duration-300 relative">
-      {/* Image Block with Slide-up Size Selector Overlay */}
-      <div className="relative aspect-[3/4] w-full bg-[#FFF8EC] rounded-xl overflow-hidden mb-3 border border-slate-100/50">
-        <Link to={`/product/${product.id}`} className="absolute inset-0">
+    <div className="flex flex-col group cursor-pointer w-full">
+      {/* Image Block */}
+      <div className="relative aspect-square w-full bg-[#F5F5F5] rounded-3xl overflow-hidden mb-4">
+        <Link to={`/product/${createSlug(product.name || product.title) || product.id}`} className="absolute inset-0">
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-contain p-8 mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=600&auto=format&fit=crop";
+            }}
           />
         </Link>
 
         {/* Wishlist Heart Icon */}
         <button
-          onClick={handleToggleWishlist}
-          className="absolute top-3.5 right-3.5 w-8 h-8 flex items-center justify-center rounded-full bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-[#EF4A45] hover:scale-110 transition-all z-25 cursor-pointer"
+          onClick={handleWishlistClick}
+          aria-label="Toggle Wishlist"
+          className={`absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center transition-opacity duration-300 z-10 hover:bg-slate-50 cursor-pointer ${isWished ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         >
-          <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-[#EF4A45] text-[#EF4A45]' : ''}`} />
+          <Heart className={`w-4 h-4 transition-all duration-300 ${isWished ? 'text-[#FF7A59] fill-[#FF7A59]' : 'text-slate-600 hover:text-[#FF7A59]'} ${animateHeart ? 'scale-[1.75]' : 'scale-100'}`} />
         </button>
 
         {/* Size Chart Modal Overlay (inside the card) */}
@@ -207,29 +215,20 @@ export default function MenProductCard({ product }) {
         </div>
       </div>
 
-      {/* Content Block (Left-Aligned, clean styling) */}
-      <div className="flex flex-col items-start text-left space-y-1 mt-1 px-0.5">
-        {/* Title */}
-        <Link to={`/product/${product.id}`} className="w-full">
-          <h3 className="text-sm font-semibold text-slate-800 tracking-tight line-clamp-1 hover:text-[#EF4A45]">
+      {/* Details */}
+      <div className="px-1 space-y-1">
+        <Link to={`/product/${createSlug(product.name || product.title) || product.id}`}>
+          <h3 className="text-sm font-bold text-[#1f2923] leading-snug line-clamp-2 hover:underline">
             {product.name}
           </h3>
         </Link>
-
-        {/* Pricing Block */}
-        <div className="flex items-center gap-2 pt-0.5">
-          <span className="text-sm font-black text-slate-900">
-            ₹{product.price.toLocaleString('en-IN')}
-          </span>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <>
-              <span className="text-xs text-slate-400 line-through">
-                ₹{product.originalPrice.toLocaleString('en-IN')}
-              </span>
-              <span className="text-xs text-emerald-600 font-semibold">
-                ({discountPercent}% off)
-              </span>
-            </>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+          JOG & JOY
+        </p>
+        <div className="flex items-baseline gap-2 pt-1">
+          <span className="text-sm font-black text-[#1f2923]">₹{product.price}</span>
+          {product.originalPrice && (
+            <span className="text-xs font-bold text-slate-400 line-through">₹{product.originalPrice}</span>
           )}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import ToastContainer from '../components/ui/ToastContainer';
 
 const UIContext = createContext(null);
 
@@ -6,33 +7,35 @@ export function UIProvider({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
 
-  const addToast = (message, type = 'success') => {
+  const addToast = (message, type = 'success', description = '') => {
     const id = Date.now().toString();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, msg: message, type, description }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
+    }, 4000);
+  };
+  
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
   return (
-    <UIContext.Provider value={{ sidebarOpen, setSidebarOpen, toasts, addToast }}>
+    <UIContext.Provider value={{ sidebarOpen, setSidebarOpen, toasts, addToast, removeToast }}>
       {children}
-      {/* Toast renderer */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((t) => (
-          <div key={t.id} className={`px-4 py-3 rounded-lg shadow-lg text-sm font-semibold text-white transition-all ${
-            t.type === 'error' ? 'bg-error' : 'bg-success'
-          }`}>
-            {t.message}
-          </div>
-        ))}
-      </div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} position="bottom-right" />
     </UIContext.Provider>
   );
 }
 
+const defaultUIContext = {
+  sidebarOpen: false,
+  setSidebarOpen: () => {},
+  toasts: [],
+  addToast: () => {},
+  removeToast: () => {}
+};
+
 export function useUIContext() {
   const ctx = useContext(UIContext);
-  if (!ctx) throw new Error('useUIContext must be used within UIProvider');
-  return ctx;
+  return ctx || defaultUIContext;
 }

@@ -26,7 +26,7 @@ export default function LiveChatDrawer({ isOpen, onClose }) {
 
     // Simulated Bot Reply
     setTimeout(() => {
-      let botReply = "Thank you for reaching out! Our kids fashion specialists are available to assist you. You can also chat directly with us on WhatsApp at +91 79 2213 9665!";
+      let botReply = "Thank you for reaching out! Our kids fashion specialists are available to assist you. You can also chat directly with us on WhatsApp at +91 94299 05118!";
       if (text.includes('size')) {
         botReply = "For kids sizing, we recommend choosing 1 size up if your child is in between ages. Check our official Size Guide modal on any product page!";
       } else if (text.includes('Track') || text.includes('order')) {
@@ -49,7 +49,7 @@ export default function LiveChatDrawer({ isOpen, onClose }) {
           className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between border-l border-slate-100"
         >
           {/* Header */}
-          <div className="p-4 bg-gradient-to-r from-[#AEE6FF] via-[#FFD6BA] to-[#E6D6FF] flex items-center justify-between border-b border-white/60">
+          <div className="p-4 bg-linear-to-r from-[#AEE6FF] via-[#FFD6BA] to-[#E6D6FF] flex items-center justify-between border-b border-white/60">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-white text-slate-800 flex items-center justify-center shadow-md">
                 <Bot className="w-5 h-5 text-[#EF4A45]" />
@@ -72,7 +72,7 @@ export default function LiveChatDrawer({ isOpen, onClose }) {
           </div>
 
           {/* Messages Container */}
-          <div className="p-4 flex-grow overflow-y-auto space-y-4 bg-[#FFF8EC]">
+          <div className="p-4 grow overflow-y-auto space-y-4 bg-[#FFF8EC]">
             {messages.map((msg, idx) => (
               <div
                 key={idx}
@@ -127,7 +127,7 @@ export default function LiveChatDrawer({ isOpen, onClose }) {
                 placeholder="Ask a question..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-[#EF4A45]"
+                className="w-full px-4 py-2.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-red-500"
               />
               <button
                 type="submit"

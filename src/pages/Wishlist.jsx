@@ -11,10 +11,10 @@ export default function Wishlist() {
   const { combinedProducts } = useCombinedProducts();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
-  const favoritedProducts = wishlist.map(w => {
-    const p = combinedProducts.find(cp => String(cp.id) === String(w.id));
+  const favoritedProducts = wishlist.map(id => {
+    const p = combinedProducts.find(cp => String(cp.id) === String(id));
     if (!p) return null;
-    return { ...p, wishlistSize: w.size, wishlistColor: w.color };
+    return p;
   }).filter(Boolean);
 
   return (
@@ -46,7 +46,7 @@ export default function Wishlist() {
               </button>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {favoritedProducts.map((product, idx) => (
                 <ProductCard key={`${product.id}-${idx}`} product={product} onQuickView={setQuickViewProduct} />
               ))}

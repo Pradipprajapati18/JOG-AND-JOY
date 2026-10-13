@@ -1,23 +1,21 @@
-import { Db } from '../db';
+import * as mockApi from '../mockApi';
 
 const TABLE = 'settings';
 
-async function simulateNetwork() {
-  return new Promise((r) => setTimeout(r, 200));
-}
-
 export const settingsApi = {
-  async get() {
-    await simulateNetwork();
-    const rows = Db.readTable(TABLE);
-    return rows[0] ?? null;
+  get: async () => {
+    const list = await mockApi.list(TABLE);
+    return list.data[0] || null;
   },
-  async update(patch) {
-    await simulateNetwork();
-    const rows = Db.readTable(TABLE);
-    const current = rows[0] ?? {};
-    const updated = { ...current, ...patch };
-    Db.writeTable(TABLE, [updated]);
-    return updated;
+  update: async (patch) => {
+    const list = await mockApi.list(TABLE);
+    
+    if (list.data.length > 0) {
+      const res = await mockApi.update(TABLE, list.data[0].id, patch);
+      return res;
+    } else {
+      const res = await mockApi.create(TABLE, patch);
+      return res;
+    }
   },
 };

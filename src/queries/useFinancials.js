@@ -14,3 +14,10 @@ export function usePayouts() {
     queryFn: financialsApi.getPayouts,
   });
 }
+
+export function useSalesSeries(params) {
+  return useQuery({
+    queryKey: ['financials', 'salesSeries', params],
+    queryFn: () => financialsApi.getSalesSeries(params),
+  });
+}

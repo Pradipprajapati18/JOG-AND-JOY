@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles, ShoppingBag, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '../../utils/getImageUrl';
 
 const freshProducts = [
   {
@@ -10,7 +11,7 @@ const freshProducts = [
     price: '₹499',
     rating: 5,
     tag: 'NEW DROP',
-    image: '/images/cat_kids_tshirt.png',
+    image: getImageUrl('cat_kids_tshirt.webp'),
     fallback: 'https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=800&auto=format&fit=crop'
   },
   {
@@ -20,7 +21,7 @@ const freshProducts = [
     price: '₹999',
     rating: 5,
     tag: 'BESTSELLER',
-    image: '/images/cat_men_joggers.png',
+    image: getImageUrl('cat_men_joggers.webp'),
     fallback: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=800&auto=format&fit=crop'
   },
   {

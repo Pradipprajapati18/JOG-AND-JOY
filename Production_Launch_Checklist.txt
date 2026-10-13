@@ -1,0 +1,42 @@
+JOG & JOY - PRODUCTION LAUNCH CHECKLIST
+=======================================
+
+This document outlines the essential infrastructure, integration, and compliance steps required to take the Jog & Joy platform from a development environment to a live, production-ready business.
+
+---
+
+1. PAYMENT GATEWAY INTEGRATION
+Currently, checkout math is calculated, but no funds are captured.
+- Provider Selection: Choose a provider (e.g., Razorpay, Stripe, or Cashfree).
+- Frontend Integration: Implement the payment provider's SDK on the Checkout page to securely capture credit card/UPI details.
+- Backend Webhooks: Set up secure serverless functions (via Supabase Edge Functions or a Node.js backend) to listen for successful payment events and automatically mark the order status as Paid in the database.
+
+2. TRANSACTIONAL EMAIL SYSTEM
+The platform needs to communicate with users automatically.
+- Provider: Set up an account with SendGrid, Resend, or AWS SES.
+- Templates: Design branded HTML email templates for:
+  * Order Confirmations (with items, total, and tracking link)
+  * Shipping Updates
+  * Password Resets
+- Trigger Logic: Hook these emails into the Supabase database triggers so they fire off automatically when a row changes (e.g., when an order status changes from PROCESSING to SHIPPED).
+
+3. LEGAL & COMPLIANCE PAGES
+Payment gateways will physically review your website before approving your merchant account. You must have these pages accessible (typically in the footer):
+- Privacy Policy: Detail how customer data (emails, addresses) is stored and used.
+- Terms of Service: Standard e-commerce terms.
+- Refund & Cancellation Policy: Explicitly state the timeline and rules for returns.
+- Shipping Policy: Detail delivery timelines and costs.
+(Note: Tackle this step first, as getting approved for a Payment Gateway can take a few days of bureaucratic review).
+
+4. LIVE ENVIRONMENT & HOSTING
+Moving off localhost and into the cloud.
+- Production Database: Upgrade the Supabase project to a production tier, apply all SQL schemas, and ensure Row Level Security (RLS) is strictly enforced.
+- App Hosting: Deploy the React frontend to a global CDN provider like Vercel or AWS Amplify.
+- Domain & SSL: Purchase jogandjoy.in (or similar), point the DNS records to your hosting provider, and ensure HTTPS (SSL) is active.
+- Environment Variables: Securely store the live Supabase API keys and Payment Gateway secrets in the hosting dashboard (never in the code).
+
+5. SEO & ANALYTICS INTEGRATION
+Ensure the store can be found and tracked.
+- Google Analytics (GA4): Add tracking scripts to index.html to monitor visitor traffic and conversion rates.
+- Meta/Facebook Pixel: Essential if you plan to run Instagram or Facebook ads.
+- Dynamic Meta Tags: Ensure the <head> of your site dynamically updates its title, description, and OpenGraph images based on the specific product being viewed, so social media sharing looks professional.

@@ -15,12 +15,14 @@ export default function InstagramGallery() {
         
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
-          <span className="px-4 py-1.5 rounded-full bg-[#FFD6BA]/50 text-orange-900 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1">
-            <Camera className="w-3.5 h-3.5 text-[#EF4A45]" /> @JogAndJoyKids
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            Follow Us On <span className="text-[#EF4A45]">Instagram</span>
-          </h2>
+          <a href="https://www.instagram.com/jognjoy_official?mdxt=MXdncjk4NDlqczFxcA==" target="_blank" rel="noopener noreferrer" className="px-4 py-1.5 rounded-full bg-[#FFD6BA]/50 hover:bg-[#FFD6BA] text-orange-900 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1 transition-colors cursor-pointer">
+            <Camera className="w-3.5 h-3.5 text-[#EF4A45]" /> @jognjoy_official
+          </a>
+          <a href="https://www.instagram.com/jognjoy_official?mdxt=MXdncjk4NDlqczFxcA==" target="_blank" rel="noopener noreferrer" className="block hover:scale-105 transition-transform duration-300">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+              Follow Us On <span className="text-[#EF4A45]">Instagram</span>
+            </h2>
+          </a>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
             Tag #JogAndJoyKids on Instagram for a chance to be featured on our official page!
           </p>

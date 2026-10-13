@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, X, ArrowRight, Truck, CreditCard, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
+import { createSlug, getColorName } from '../utils/helpers';
 
 export default function CartPage() {
   const {
@@ -14,6 +15,8 @@ export default function CartPage() {
     shippingFee,
     cartGrandTotal,
     appliedCoupon,
+    autoCoupon,
+    activeDiscount,
     applyCoupon,
     removeCoupon
   } = useCart();
@@ -89,23 +92,27 @@ export default function CartPage() {
                             <div className="flex items-center gap-4">
                               <button 
                                 onClick={() => removeFromCart(item.id, item.size, item.color)}
-                                className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:text-white hover:bg-[#EF4A45] transition-colors flex-shrink-0"
+                                className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-400 hover:text-white hover:bg-[#EF4A45] transition-colors shrink-0"
                                 title="Remove Item"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                              <div className="w-20 h-24 rounded-xl overflow-hidden bg-slate-50 flex-shrink-0 border border-slate-100">
+                              <div className="w-20 h-24 rounded-xl overflow-hidden bg-slate-50 shrink-0 border border-slate-100">
                                 <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                               </div>
                               <div className="flex flex-col">
-                                <Link to={`/product/${item.id}`} className="font-bold text-slate-800 hover:text-[#EF4A45] transition-colors leading-tight mb-1">
+                                <Link to={`/product/${createSlug(item.name || item.title) || item.id}`} className="font-bold text-slate-800 hover:text-[#EF4A45] transition-colors leading-tight mb-1">
                                   {item.name}
                                 </Link>
                                 <div className="text-xs font-semibold text-slate-500">
                                   Size: {item.size}
                                 </div>
-                                <div className="text-xs font-semibold text-slate-500 flex items-center gap-1 mt-1">
-                                  Color: <span className="w-3 h-3 rounded-full inline-block border border-slate-200" style={{ backgroundColor: item.color }}></span>
+                                <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 mt-1">
+                                  <span>Color:</span>
+                                  {item.color && (
+                                    <span className="w-3 h-3 rounded-full inline-block border border-slate-200 shrink-0" style={{ backgroundColor: item.color }}></span>
+                                  )}
+                                  <span className="text-slate-700 font-bold">{item.colorName || getColorName(item.color)}</span>
                                 </div>
                               </div>
                             </div>
@@ -124,7 +131,8 @@ export default function CartPage() {
                               <span className="font-black text-slate-800 text-sm w-4 text-center">{item.quantity}</span>
                               <button 
                                 onClick={() => updateQuantity(item.id, item.size, item.color, 1)}
-                                className="text-slate-400 hover:text-[#EF4A45] transition-colors"
+                                disabled={item.quantity >= (item.stock || Infinity)}
+                                className={`transition-colors ${item.quantity >= (item.stock || Infinity) ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-[#EF4A45]'}`}
                               >
                                 <Plus className="w-3.5 h-3.5" />
                               </button>
@@ -169,7 +177,7 @@ export default function CartPage() {
                     placeholder="Coupon code (Try KIDS20)" 
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
-                    className="w-full pl-4 pr-24 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#EF4A45] transition-colors"
+                    className="w-full pl-4 pr-24 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-500 transition-colors"
                   />
                   <button 
                     type="submit"
@@ -180,12 +188,14 @@ export default function CartPage() {
                   {couponError && <p className="text-red-500 text-xs font-bold mt-2 ml-1">{couponError}</p>}
                 </form>
 
-                {appliedCoupon && (
+                {activeDiscount && (
                   <div className="flex items-center justify-between p-3 bg-green-50 text-green-700 border border-green-200 rounded-xl mb-6 text-sm font-bold">
-                    <span>Coupon {appliedCoupon.code} applied!</span>
-                    <button onClick={removeCoupon} className="hover:text-red-500 transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
+                    <span>Discount {activeDiscount.code} applied!</span>
+                    {appliedCoupon && (
+                      <button onClick={removeCoupon} className="hover:text-red-500 transition-colors">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 )}
 

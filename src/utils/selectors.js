@@ -58,7 +58,9 @@ export function computeSalesSeries(orders, { granularity = 'week' } = {}) {
   paidOrders.forEach(o => {
     const date = parseISO(o.createdAt);
     let bucketKey;
-    if (granularity === 'week') {
+    if (granularity === 'day') {
+      bucketKey = format(date, 'yyyy-MM-dd');
+    } else if (granularity === 'week') {
       bucketKey = format(startOfWeek(date), 'yyyy-MM-dd');
     } else {
       bucketKey = format(startOfMonth(date), 'yyyy-MM');

@@ -1,26 +1,46 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useCart } from './CartContext';
+import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
 
 const WishlistContext = createContext();
 
 export function WishlistProvider({ children }) {
+  const { user } = useAuth();
   const [wishlist, setWishlist] = useState(() => {
     try {
-      const saved = localStorage.getItem('kids_wishlist');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        // Migrate old string arrays to object arrays
-        return parsed.map(item => typeof item === 'string' ? { id: item, size: null, color: null } : item);
-      }
-      return [];
+      const saved = localStorage.getItem('jog_n_joy_wishlist');
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
   });
 
+  // Load wishlist from Supabase when user logs in
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!user?.id) {
+         setWishlist([]);
+         localStorage.removeItem('jog_n_joy_wishlist');
+         return;
+      }
+      const { data, error } = await supabase
+        .from('users')
+        .select('wishlist')
+        .eq('id', user.id)
+        .single();
+        
+      if (!error && data?.wishlist) {
+         setWishlist(data.wishlist);
+         localStorage.setItem('jog_n_joy_wishlist', JSON.stringify(data.wishlist));
+      }
+    };
+    fetchWishlist();
+  }, [user]);
+
   useEffect(() => {
     try {
-      localStorage.setItem('kids_wishlist', JSON.stringify(wishlist));
+      localStorage.setItem('jog_n_joy_wishlist', JSON.stringify(wishlist));
     } catch {
       // ignore
     }
@@ -28,24 +48,31 @@ export function WishlistProvider({ children }) {
 
   const { showToast } = useCart();
 
-  const toggleWishlist = (productId, size = null, color = null) => {
-    setWishlist((prev) => {
-      const exists = prev.some(item => item.id === productId && item.size === size && item.color === color);
-      if (exists) {
-        showToast && showToast('Removed from Wishlist 💔');
-        return prev.filter(item => !(item.id === productId && item.size === size && item.color === color));
-      } else {
-        showToast && showToast('Added to Wishlist 💖');
-        return [...prev, { id: productId, size, color }];
-      }
-    });
+  const toggleWishlist = async (productId) => {
+    let newWishlist = [];
+    if (wishlist.includes(productId)) {
+      showToast && showToast('Removed from Wishlist 💔');
+      newWishlist = wishlist.filter((id) => id !== productId);
+    } else {
+      showToast && showToast('Added to Wishlist 💖');
+      newWishlist = [...wishlist, productId];
+    }
+    setWishlist(newWishlist);
+
+    // Sync to DB
+    if (user?.id) {
+       await supabase.from('users').update({ wishlist: newWishlist }).eq('id', user.id);
+    }
   };
 
-  const clearWishlist = () => setWishlist([]);
-
-  const isInWishlist = (productId, size = null, color = null) => {
-    return wishlist.some(item => item.id === productId && item.size === size && item.color === color);
+  const clearWishlist = async () => {
+    setWishlist([]);
+    if (user?.id) {
+       await supabase.from('users').update({ wishlist: [] }).eq('id', user.id);
+    }
   };
+
+  const isInWishlist = (productId) => wishlist.includes(productId);
 
   return (
     <WishlistContext.Provider

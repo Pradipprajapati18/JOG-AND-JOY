@@ -1,8 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { usePromotionsList, useUpdatePromotion } from '../queries/usePromotions';
+import { useSettings } from '../queries/useSettings';
+import { useAuth } from './AuthContext';
+import { supabase } from '../lib/supabase';
+import ToastContainer from '../components/ui/ToastContainer';
+import { getColorName } from '../utils/helpers';
 
 const CartContext = createContext();
 
 export function CartProvider({ children }) {
+  const { user } = useAuth();
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('kids_cart');
@@ -13,113 +20,134 @@ export function CartProvider({ children }) {
   });
 
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code: 'KIDS20', discountPercent: 20 }
-  const [toastMessage, setToastMessage] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
 
+  // Sync Cart to Supabase whenever it changes and user is logged in
   useEffect(() => {
+    const syncToCloud = async () => {
+      if (user?.id && !isSyncing) {
+        await supabase.from('users').update({ cart }).eq('id', user.id);
+      }
+    };
+    
     try {
       localStorage.setItem('kids_cart', JSON.stringify(cart));
-    } catch {
-      // ignore
-    }
-  }, [cart]);
+    } catch {}
+    
+    syncToCloud();
+  }, [cart, user?.id]);
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
-  const flyToCart = (event, imageUrl) => {
-    if (!event || !imageUrl) return;
-    try {
-      const startRect = event.currentTarget.getBoundingClientRect();
-      const desktopCart = document.getElementById('cart-icon-desktop');
-      const mobileCart = document.getElementById('cart-icon-mobile');
-      
-      let targetEl = desktopCart;
-      if (mobileCart && window.innerWidth < 768) {
-         targetEl = mobileCart;
+  // Load and merge Cart from Supabase when user logs in
+  useEffect(() => {
+    const fetchAndMergeCart = async () => {
+      if (!user?.id) {
+        // User logged out, clear cart to prevent leakage
+        setCart([]);
+        localStorage.removeItem('kids_cart');
+        return;
       }
 
-      if (!targetEl) return;
-      const targetRect = targetEl.getBoundingClientRect();
+      setIsSyncing(true);
+      const { data, error } = await supabase
+        .from('users')
+        .select('cart')
+        .eq('id', user.id)
+        .single();
 
-      const img = document.createElement('img');
-      img.src = imageUrl;
-      img.style.position = 'fixed';
-      img.style.zIndex = '99999';
-      img.style.left = `${startRect.left}px`;
-      img.style.top = `${startRect.top}px`;
-      img.style.width = `${startRect.width || 50}px`;
-      img.style.height = `${startRect.height || 50}px`;
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '50%';
-      img.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
-      img.style.pointerEvents = 'none';
-      img.style.transition = 'all 0.7s cubic-bezier(0.2, 1, 0.3, 1)';
-      
-      document.body.appendChild(img);
+      if (!error && data) {
+        const remoteCart = data.cart || [];
+        
+        // Merge logic: Combine local cart (built while logged out) with remote cart
+        setCart(prevLocal => {
+          if (prevLocal.length === 0) return remoteCart;
+          
+          let merged = [...remoteCart];
+          prevLocal.forEach(localItem => {
+            const existingIdx = merged.findIndex(
+              (item) => item.id === localItem.id && item.size === localItem.size && item.color === localItem.color
+            );
+            if (existingIdx > -1) {
+               // If item exists in both, keep the highest quantity or sum them
+               merged[existingIdx].quantity = Math.max(merged[existingIdx].quantity, localItem.quantity);
+            } else {
+               merged.push(localItem);
+            }
+          });
+          
+          // Save merged cart back to cloud immediately
+          supabase.from('users').update({ cart: merged }).eq('id', user.id);
+          return merged;
+        });
+      }
+      setIsSyncing(false);
+    };
 
-      // Trigger reflow
-      img.getBoundingClientRect();
+    fetchAndMergeCart();
+  }, [user?.id]);
 
-      img.style.left = `${targetRect.left + targetRect.width / 2 - 15}px`;
-      img.style.top = `${targetRect.top + targetRect.height / 2 - 15}px`;
-      img.style.width = '30px';
-      img.style.height = '30px';
-      img.style.opacity = '0.1';
-
-      setTimeout(() => {
-        if (document.body.contains(img)) document.body.removeChild(img);
-        targetEl.style.transition = 'transform 0.2s ease-out';
-        targetEl.style.transform = 'scale(1.2)';
-        setTimeout(() => targetEl.style.transform = 'scale(1)', 200);
-      }, 700);
-    } catch (e) {
-      console.warn("Fly animation failed", e);
-    }
+  const showToast = (msg, type = 'success', description = '') => {
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, msg, type, description }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  };
+  
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const addToCart = (product, selectedSize = '4Y-5Y', selectedColor = '#AEE6FF', event = null, quantityToAdd = 1, openDrawer = true) => {
+  const addToCart = (product, selectedSize = '4Y-5Y', selectedColor = '#AEE6FF', e = null, quantity = 1, fromDetails = false, availableStock = Infinity, colorName = null) => {
     const rawPrice = product.price ?? 499;
     const numericPrice = typeof rawPrice === 'number'
       ? rawPrice
       : parseInt(String(rawPrice).replace(/[^0-9]/g, ''), 10) || 499;
 
-    setCart((prev) => {
-      const existingIdx = prev.findIndex(
-        (item) => item.id === product.id && item.size === selectedSize && item.color === selectedColor
-      );
-      if (existingIdx > -1) {
-        const updated = [...prev];
-        updated[existingIdx].quantity += quantityToAdd;
-        return updated;
-      } else {
-        return [
-          ...prev,
-          {
-            id: product.id,
-            name: product.name,
-            category: product.category,
-            price: rawPrice,
-            numericPrice: numericPrice,
-            image: product.image,
-            size: selectedSize,
-            color: selectedColor,
-            quantity: quantityToAdd
-          }
-        ];
-      }
-    });
+    const resolvedColorName = colorName || (product.colors?.find(c => (c.hex || c) === selectedColor)?.name) || getColorName(selectedColor);
 
-    if (event) {
-      flyToCart(event, product.image);
+    const existingIdx = cart.findIndex(
+      (item) => item.id === product.id && item.size === selectedSize && item.color === selectedColor
+    );
+
+    if (existingIdx > -1) {
+      const currentQty = cart[existingIdx].quantity;
+      if (currentQty + quantity > availableStock) {
+        showToast(`Only ${availableStock} units available in stock.`, 'error');
+        return;
+      }
+      const updated = [...cart];
+      updated[existingIdx].quantity += quantity;
+      if (!updated[existingIdx].colorName && resolvedColorName) {
+        updated[existingIdx].colorName = resolvedColorName;
+      }
+      setCart(updated);
+    } else {
+      if (quantity > availableStock) {
+        showToast(`Only ${availableStock} units available in stock.`, 'error');
+        return;
+      }
+      setCart([
+        ...cart,
+        {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          price: rawPrice,
+          numericPrice: numericPrice,
+          image: product.image,
+          size: selectedSize,
+          color: selectedColor,
+          colorName: resolvedColorName,
+          quantity: quantity,
+          stock: availableStock
+        }
+      ]);
     }
+    
     showToast(`Added ${product.name} to bag!`);
-    if (openDrawer) {
-      setIsCartOpen(true);
-    }
+    setIsCartOpen(true);
   };
 
   const removeFromCart = (id, size, color) => {
@@ -127,59 +155,107 @@ export function CartProvider({ children }) {
   };
 
   const updateQuantity = (id, size, color, delta) => {
-    setCart((prev) =>
-      prev.map((item) => {
-        if (item.id === id && item.size === size && item.color === color) {
-          const newQty = item.quantity + delta;
-          return newQty > 0 ? { ...item, quantity: newQty } : item;
-        }
-        return item;
-      })
-    );
+    const itemIdx = cart.findIndex(item => item.id === id && item.size === size && item.color === color);
+    if (itemIdx > -1) {
+      const item = cart[itemIdx];
+      const newQty = item.quantity + delta;
+      if (newQty > (item.stock || Infinity)) {
+        showToast(`Only ${item.stock} units available in stock.`, 'error');
+        return;
+      }
+      if (newQty <= 0) {
+        setCart(cart.filter((_, idx) => idx !== itemIdx));
+      } else {
+        const updated = [...cart];
+        updated[itemIdx] = { ...item, quantity: newQty };
+        setCart(updated);
+      }
+    }
   };
 
+  const { data: promosData } = usePromotionsList();
+  const { data: settingsData } = useSettings();
+  const settings = settingsData || {};
+  
+  const [autoCoupon, setAutoCoupon] = useState(null);
+
+  const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const cartSubtotal = cart.reduce((sum, item) => sum + item.numericPrice * item.quantity, 0);
+
+  useEffect(() => {
+    const promos = promosData?.data || [];
+    const now = new Date();
+    const activeAutoPromos = promos.filter(p => 
+      p.active && 
+      p.method === 'automatic' &&
+      (!p.startsAt || new Date(p.startsAt) <= now) && 
+      (!p.expiresAt || new Date(p.expiresAt) >= now) &&
+      (!p.minOrderValue || cartSubtotal >= p.minOrderValue) &&
+      (!p.usageLimit || (p.usageCount || 0) < p.usageLimit)
+    );
+
+    if (activeAutoPromos.length > 0) {
+      // Sort by best value
+      activeAutoPromos.sort((a, b) => {
+        const valA = a.discountType === 'percentage' ? (cartSubtotal * (a.value / 100)) : a.value;
+        const valB = b.discountType === 'percentage' ? (cartSubtotal * (b.value / 100)) : b.value;
+        return valB - valA;
+      });
+      const best = activeAutoPromos[0];
+      setAutoCoupon({
+        id: best.id,
+        code: best.title || 'Automatic Discount',
+        discountPercent: best.discountType === 'percentage' ? best.value : 0,
+        discountFixed: best.discountType === 'fixed' ? best.value : 0,
+        freeShipping: best.discountType === 'free_shipping',
+        minOrderValue: best.minOrderValue || 0
+      });
+    } else {
+      setAutoCoupon(null);
+    }
+  }, [promosData?.data, cartSubtotal]);
+
   const applyCoupon = (code) => {
-    try {
-      const rawPromotions = localStorage.getItem('jogjoy_admin_db_v1:promotions');
-      const promotions = rawPromotions ? JSON.parse(rawPromotions) : [];
-      
-      const promo = promotions.find(p => p.code === code.trim().toUpperCase() && p.active && p.method === 'code');
-      
-      if (promo) {
-        if (promo.discountType === 'percentage') {
-          setAppliedCoupon({ code: promo.code, discountPercent: promo.value });
-          showToast(`Coupon ${promo.code} applied! ${promo.value}% OFF`);
-          return { success: true, message: `${promo.value}% discount applied!` };
-        } else if (promo.discountType === 'flat') {
-          setAppliedCoupon({ code: promo.code, discountAmount: promo.value });
-          showToast(`Coupon ${promo.code} applied! ₹${promo.value} OFF`);
-          return { success: true, message: `₹${promo.value} discount applied!` };
-        } else if (promo.discountType === 'free_shipping') {
-          setAppliedCoupon({ code: promo.code, freeShipping: true });
-          showToast(`Free shipping coupon ${promo.code} applied!`);
-          return { success: true, message: 'Free shipping granted!' };
-        } else if (promo.discountType === 'buy_x_get_y') {
-          setAppliedCoupon({ code: promo.code, buyXGetY: true });
-          showToast(`Coupon ${promo.code} applied! Buy X Get Y`);
-          return { success: true, message: 'Buy X Get Y applied!' };
-        }
-      }
-    } catch (e) {
-      console.error(e);
+    if (appliedCoupon) {
+      return { success: false, message: 'A coupon is already applied. Please remove it first to apply a new one.' };
     }
 
-    // Fallback for hardcoded coupons
-    if (code.trim().toUpperCase() === 'KIDS20') {
-      setAppliedCoupon({ code: 'KIDS20', discountPercent: 20 });
-      showToast('Coupon KIDS20 applied! 20% OFF');
-      return { success: true, message: '20% discount applied!' };
-    } else if (code.trim().toUpperCase() === 'FREESHIP') {
-      setAppliedCoupon({ code: 'FREESHIP', discountPercent: 0, freeShipping: true });
-      showToast('Free shipping coupon applied!');
-      return { success: true, message: 'Free shipping granted!' };
-    } else {
-      return { success: false, message: 'Invalid coupon code.' };
+    const promos = promosData?.data || [];
+    const matchedPromo = promos.find(p => p.code?.toUpperCase() === code.trim().toUpperCase() && p.active === true);
+
+    if (matchedPromo) {
+      const now = new Date();
+      if (matchedPromo.startsAt && new Date(matchedPromo.startsAt) > now) {
+        return { success: false, message: 'This coupon is not active yet.' };
+      }
+      if (matchedPromo.expiresAt && new Date(matchedPromo.expiresAt) < now) {
+        return { success: false, message: 'This coupon has expired.' };
+      }
+
+      if (matchedPromo.minOrderValue && cartSubtotal < matchedPromo.minOrderValue) {
+        return { success: false, message: `Minimum order value is ₹${matchedPromo.minOrderValue}` };
+      }
+
+      if (matchedPromo.usageLimit && (matchedPromo.usageCount || 0) >= matchedPromo.usageLimit) {
+        return { success: false, message: 'This coupon has reached its usage limit.' };
+      }
+
+      if (matchedPromo.discountType === 'percentage') {
+        setAppliedCoupon({ id: matchedPromo.id, code: matchedPromo.code, discountPercent: matchedPromo.value, minOrderValue: matchedPromo.minOrderValue });
+        showToast(`Coupon ${matchedPromo.code} applied! ${matchedPromo.value}% OFF`);
+        return { success: true, message: `${matchedPromo.value}% discount applied!` };
+      } else if (matchedPromo.discountType === 'fixed') {
+        setAppliedCoupon({ id: matchedPromo.id, code: matchedPromo.code, discountFixed: matchedPromo.value, minOrderValue: matchedPromo.minOrderValue });
+        showToast(`Coupon ${matchedPromo.code} applied! ₹${matchedPromo.value} OFF`);
+        return { success: true, message: `₹${matchedPromo.value} discount applied!` };
+      } else if (matchedPromo.discountType === 'free_shipping') {
+        setAppliedCoupon({ id: matchedPromo.id, code: matchedPromo.code, discountPercent: 0, freeShipping: true, minOrderValue: matchedPromo.minOrderValue });
+        showToast('Free shipping coupon applied!');
+        return { success: true, message: 'Free shipping granted!' };
+      }
     }
+
+    return { success: false, message: 'Invalid or expired coupon code.' };
   };
 
   const removeCoupon = () => {
@@ -187,13 +263,40 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = () => setCart([]);
-
-  const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartSubtotal = cart.reduce((sum, item) => sum + item.numericPrice * item.quantity, 0);
   
-  const discountAmount = appliedCoupon ? Math.round((cartSubtotal * (appliedCoupon.discountPercent || 0)) / 100) : 0;
-  const shippingFee = cartSubtotal >= 999 || appliedCoupon?.freeShipping ? 0 : (cartSubtotal > 0 ? 99 : 0);
+  const baseShippingRate = settings.baseShippingRate ?? 99;
+  const freeShippingThreshold = settings.freeShippingThreshold ?? 999;
+  const expressShippingRate = settings.expressShippingRate ?? 149;
+
+  let discountAmount = 0;
+  
+  let validAppliedCoupon = appliedCoupon;
+  if (appliedCoupon && appliedCoupon.minOrderValue && cartSubtotal < appliedCoupon.minOrderValue) {
+    validAppliedCoupon = null;
+  }
+
+  const activeDiscount = validAppliedCoupon || autoCoupon;
+
+  if (activeDiscount) {
+    if (activeDiscount.discountPercent) {
+      discountAmount = cartSubtotal * (activeDiscount.discountPercent / 100);
+    } else if (activeDiscount.discountFixed) {
+      discountAmount = Math.min(cartSubtotal, activeDiscount.discountFixed);
+    }
+  }
+  const shippingFee = cartSubtotal >= freeShippingThreshold || activeDiscount?.freeShipping ? 0 : (cartSubtotal > 0 ? baseShippingRate : 0);
   const cartGrandTotal = Math.max(0, cartSubtotal - discountAmount + shippingFee);
+
+  const updatePromoMut = useUpdatePromotion();
+  const recordCouponUsage = () => {
+    if (activeDiscount?.id) {
+      const promos = promosData?.data || [];
+      const promo = promos.find(p => p.id === activeDiscount.id);
+      if (promo) {
+        updatePromoMut.mutate({ id: promo.id, patch: { usageCount: (promo.usageCount || 0) + 1 } });
+      }
+    }
+  };
 
   return (
     <CartContext.Provider
@@ -209,20 +312,20 @@ export function CartProvider({ children }) {
         cartSubtotal,
         discountAmount,
         shippingFee,
+        expressShippingRate,
         cartGrandTotal,
         appliedCoupon,
+        autoCoupon,
+        activeDiscount,
         applyCoupon,
         removeCoupon,
-        toastMessage,
-        showToast
+        removeToast,
+        showToast,
+        recordCouponUsage
       }}
     >
       {children}
-      {toastMessage && (
-        <div className="fixed bottom-20 right-6 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-bounce">
-          <span>✨ {toastMessage}</span>
-        </div>
-      )}
+      <ToastContainer toasts={toasts} removeToast={removeToast} position="bottom-right" />
     </CartContext.Provider>
   );
 }

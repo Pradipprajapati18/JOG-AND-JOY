@@ -1,0 +1,103 @@
+/* ShopByDepartment.css */
+@import url('https://fonts.googleapis.com/css?family=Courgette|Roboto');
+
+.sbd-container {
+  position: relative;
+  width: 100%;
+}
+
+.sbd-hero {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  /* Use dvh for mobile to account for dynamic toolbars */
+  height: 100dvh;
+}
+
+.sbd-hero-inner {
+  position: absolute;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  clip: rect(0, auto, auto, 0);
+}
+
+@supports (-webkit-overflow-scrolling: touch) {
+  .sbd-hero-inner {
+    clip: unset;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
+  }
+}
+
+.sbd-figure {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background-size: cover;
+  background-position: var(--bg-pos-mobile, center);
+  background-image: var(--bg-mobile);
+  margin: 0;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .sbd-figure {
+    background-image: var(--bg-tab, var(--bg-desktop, var(--bg-mobile)));
+    background-position: var(--bg-pos-tab, center);
+  }
+}
+
+@media (min-width: 1024px) {
+  .sbd-figure {
+    background-image: var(--bg-desktop, var(--bg-mobile));
+    background-position: var(--bg-pos-desktop, center);
+  }
+}
+
+.sbd-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.sbd-hero__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 0 1rem;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  color: white;
+  font-family: 'Courgette', 'Roboto', sans-serif;
+  font-size: 10vw;
+  letter-spacing: -0.125rem;
+  text-align: center;
+  text-decoration: none;
+  z-index: 10;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+@media (min-width: 1200px) {
+  .sbd-hero__title {
+    font-size: 6rem;
+  }
+}
+
+.sbd-hero__title:hover {
+  transform: scale(1.05);
+  color: #A9DFBF; /* User's accent color */
+}
+
+.sbd-content {
+  position: relative;
+  background-color: white;
+  z-index: 20;
+}

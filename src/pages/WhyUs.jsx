@@ -2,10 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, ShieldCheck, Heart, Award } from 'lucide-react';
 import WhyChooseUs from '../components/home/WhyChooseUs';
+import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 
 export default function WhyUs() {
   return (
-    <div className="bg-[#F8F9FA] min-h-screen font-sans">
+    <div className="bg-[#FFF8EC] min-h-screen font-sans relative overflow-hidden">
+      <ClothDoodlesBackground />
 
       {/* Hero Section */}
       <section className="relative w-full min-h-[50vh] flex flex-col items-center justify-center pt-32 pb-16 px-4 overflow-hidden">
@@ -21,9 +23,24 @@ export default function WhyUs() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-block px-5 py-2 rounded-full bg-white border border-slate-200 text-slate-800 text-sm font-bold uppercase tracking-widest shadow-sm">
-              The JOG & JOY Difference
-            </span>
+            {/* The JOG & JOY Difference: Style 4 Premium Stacked Typography */}
+            <div className="inline-flex flex-col items-center justify-center select-none group cursor-default">
+              {/* Row 1: THE JOG & JOY */}
+              <div className="inline-flex flex-col items-center">
+                <span className="text-xs sm:text-sm font-black uppercase tracking-[0.34em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                  THE JOG & JOY
+                </span>
+                <div className="w-full min-w-[160px] sm:min-w-[190px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1.5 shadow-2xs" />
+              </div>
+
+              {/* Row 2: DIFFERENCE */}
+              <div className="inline-flex flex-col items-center mt-2">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.44em] text-[#0F172A] transition-colors duration-300 group-hover:text-[#5B2E89]">
+                  DIFFERENCE
+                </span>
+                <div className="w-full min-w-[125px] sm:min-w-[150px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1.5 shadow-2xs" />
+              </div>
+            </div>
           </motion.div>
 
           <motion.h1

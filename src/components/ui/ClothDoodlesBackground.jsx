@@ -2,12 +2,12 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 const doodles = [
-  // T-Shirt Doodle (Top Left)
+  // 1. T-Shirt Doodle (Top Left)
   {
-    top: '5%',
+    top: '4%',
     left: '3%',
-    color: '#EF4A45',
-    size: 'w-12 h-12',
+    color: '#FF7A59',
+    size: 'w-10 h-10',
     duration: 5,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -15,12 +15,12 @@ const doodles = [
       </svg>
     )
   },
-  // Hanger Doodle (Top Right)
+  // 2. Swinging Hanger (Top Right)
   {
-    top: '8%',
-    right: '5%',
-    color: '#00A3E0',
-    size: 'w-14 h-14',
+    top: '6%',
+    right: '4%',
+    color: '#AEE6FF',
+    size: 'w-12 h-12',
     duration: 6,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -29,121 +29,150 @@ const doodles = [
       </svg>
     )
   },
-  // Shorts Doodle (Upper Mid Left)
+  // 3. Floating Paper Plane (Upper Mid Left)
+  {
+    top: '14%',
+    left: '5%',
+    color: '#8DD67C',
+    size: 'w-10 h-10',
+    duration: 7,
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 2L11 13" />
+        <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+      </svg>
+    )
+  },
+  // 4. Bouncing Teddy Bear (Upper Mid Right)
   {
     top: '18%',
-    left: '6%',
-    color: '#F7B633',
-    size: 'w-10 h-10',
+    right: '5%',
+    color: '#FFD5A1',
+    size: 'w-11 h-11',
     duration: 4.5,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 4h16v6l-4 10h-3.5L12 14l-0.5 6H8L4 10V4z" />
+        <circle cx="12" cy="14" r="6" />
+        <circle cx="12" cy="7" r="4" />
+        <circle cx="7" cy="4" r="2" />
+        <circle cx="17" cy="4" r="2" />
+        <circle cx="10" cy="6" r="0.5" fill="currentColor" />
+        <circle cx="14" cy="6" r="0.5" fill="currentColor" />
       </svg>
     )
   },
-  // Button Doodle (Upper Mid Right)
+  // 5. Pastel Rainbow (Mid Left)
   {
-    top: '22%',
-    right: '8%',
-    color: '#3BB573',
-    size: 'w-10 h-10',
-    duration: 5.5,
-    svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <circle cx="9" cy="9" r="1" fill="currentColor" />
-        <circle cx="15" cy="9" r="1" fill="currentColor" />
-        <circle cx="9" cy="15" r="1" fill="currentColor" />
-        <circle cx="15" cy="15" r="1" fill="currentColor" />
-      </svg>
-    )
-  },
-  // Frock / Dress Doodle (Mid Left)
-  {
-    top: '38%',
-    left: '4%',
-    color: '#F36E21',
+    top: '28%',
+    left: '3%',
+    color: '#FF7A59',
     size: 'w-12 h-12',
     duration: 6.5,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 2h8l2 6-4 2v12H10V10L6 8l2-6z" />
-        <path d="M6 22h12" />
+        <path d="M22 17a10 10 0 0 0-20 0" />
+        <path d="M19 17a7 7 0 0 0-14 0" />
+        <path d="M16 17a4 4 0 0 0-8 0" />
       </svg>
     )
   },
-  // Needle & Thread Doodle (Mid Right)
+  // 6. Blinking Smiley Face (Mid Right)
   {
-    top: '42%',
+    top: '34%',
     right: '4%',
-    color: '#EF4A45',
-    size: 'w-12 h-12',
-    duration: 5.2,
+    color: '#FFD5A1',
+    size: 'w-10 h-10',
+    duration: 5,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 2l-10 10" />
-        <path d="M12 12c-2 2-5 2-7 0s-2-5 0-7 5-2 7 0" />
-        <circle cx="20" cy="4" r="1" />
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+        <line x1="9" y1="9" x2="9.01" y2="9" />
+        <line x1="15" y1="9" x2="15.01" y2="9" />
       </svg>
     )
   },
-  // Scissors Doodle (Lower Mid Left)
+  // 7. Rotating Building Block (Lower Mid Left)
   {
-    top: '58%',
-    left: '5%',
-    color: '#00A3E0',
+    top: '48%',
+    left: '4%',
+    color: '#AEE6FF',
     size: 'w-11 h-11',
-    duration: 4.8,
+    duration: 8,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="6" cy="6" r="3" />
-        <circle cx="6" cy="18" r="3" />
-        <line x1="8.5" y1="8.5" x2="20" y2="20" />
-        <line x1="8.5" y1="15.5" x2="20" y2="4" />
+        <rect x="4" y="4" width="16" height="16" rx="4" />
+        <path d="M8 8h8v8H8z" />
       </svg>
     )
   },
-  // Crown / Sparkle Doodle (Lower Mid Right)
+  // 8. Floating Balloon (Lower Mid Right)
   {
-    top: '64%',
-    right: '6%',
-    color: '#F7B633',
-    size: 'w-12 h-12',
+    top: '52%',
+    right: '5%',
+    color: '#FF7A59',
+    size: 'w-11 h-11',
+    duration: 5.5,
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a7 7 0 0 0-7 7c0 5 7 11 7 11s7-6 7-11a7 7 0 0 0-7-7z" />
+        <path d="M12 20v4" />
+      </svg>
+    )
+  },
+  // 9. Cute Sock (Bottom Left)
+  {
+    top: '68%',
+    left: '3%',
+    color: '#8DD67C',
+    size: 'w-10 h-10',
     duration: 6.2,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 18h20L18 8l-6 5-6-5-4 10z" />
-        <circle cx="12" cy="5" r="1.5" fill="currentColor" />
-        <circle cx="4" cy="7" r="1.5" fill="currentColor" />
-        <circle cx="20" cy="7" r="1.5" fill="currentColor" />
+        <path d="M8 2h8v8l3 4v4a3 3 0 0 1-3 3h-2a6 6 0 0 1-6-6V2z" />
       </svg>
     )
   },
-  // T-Shirt Doodle 2 (Bottom Left)
+  // 10. Tiny Flower & Sparkle (Bottom Right)
   {
-    top: '78%',
-    left: '3%',
-    color: '#3BB573',
-    size: 'w-14 h-14',
-    duration: 5.4,
+    top: '74%',
+    right: '4%',
+    color: '#FFD5A1',
+    size: 'w-10 h-10',
+    duration: 5.8,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 2L2 6v4l4-2v14h12V8l4 2V6l-4-4-4 2-4-2z" />
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3" />
       </svg>
     )
   },
-  // Hanger & Sock Doodle (Bottom Right)
+  // 11. ABC Letter Block (Far Bottom Left)
   {
-    top: '84%',
+    top: '86%',
+    left: '4%',
+    color: '#AEE6FF',
+    size: 'w-10 h-10',
+    duration: 7.2,
+    svg: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="3" />
+        <path d="M9 17l3-8 3 8" />
+        <path d="M10 14h4" />
+      </svg>
+    )
+  },
+  // 12. Toy Car (Far Bottom Right)
+  {
+    top: '90%',
     right: '5%',
-    color: '#F36E21',
+    color: '#8DD67C',
     size: 'w-12 h-12',
-    duration: 6.8,
+    duration: 6.6,
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2a3 3 0 0 0-3 3c0 .8.3 1.5.8 2L2 14h20L14.2 7A3 3 0 0 0 12 2z" />
-        <path d="M2 14v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4" />
+        <path d="M5 17h14M7 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
+        <path d="M5 13l2-6h10l2 6v4H5v-4z" />
       </svg>
     )
   }
@@ -161,13 +190,13 @@ export default function ClothDoodlesBackground() {
             left: d.left,
             right: d.right,
             color: d.color,
-            opacity: 0.18
+            opacity: 0.2
           }}
-          className={`${d.size} select-none`}
+          className={`${d.size} select-none hidden md:block`}
           animate={{
-            y: [0, -16, 0],
-            rotate: [-6, 6, -6],
-            scale: [0.95, 1.05, 0.95]
+            y: [0, -14, 0],
+            rotate: [-5, 5, -5],
+            scale: [0.96, 1.04, 0.96]
           }}
           transition={{
             duration: d.duration,

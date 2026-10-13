@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Outlet } from 'react-router-dom';
+import React, { useState, useEffect, Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import AnnouncementBar from './components/layout/AnnouncementBar';
@@ -9,34 +9,44 @@ import FloatingActions from './components/layout/FloatingActions';
 import CartPage from './pages/CartPage';
 import LiveChatDrawer from './components/ui/LiveChatDrawer';
 import UserProfileModal from './components/ui/UserProfileModal';
+import CustomerLoginModal from './components/ui/CustomerLoginModal';
 import Footer from './components/layout/Footer';
+import { useAuth } from './context/AuthContext';
+import { SettingsProvider } from './context/SettingsContext';
+import { UIProvider } from './context/UIContext';
 
-import Home from './pages/Home';
-import Products from './pages/Products';
-import ProductDetails from './pages/ProductDetails';
-import Wishlist from './pages/Wishlist';
-import Checkout from './pages/Checkout';
-import Collections from './pages/Collections';
-import AboutUs from './pages/AboutUs';
-import ContactUs from './pages/ContactUs';
-import NotFound from './pages/NotFound';
-import KidsPage from './pages/KidsPage';
-import NewArrivalsPage from './pages/NewArrivalsPage';
-import DistributorNetworkPage from './pages/DistributorNetworkPage';
-import WhyUs from './pages/WhyUs';
+const Home = React.lazy(() => import('./pages/Home'));
+const Products = React.lazy(() => import('./pages/Products'));
+const ProductDetails = React.lazy(() => import('./pages/ProductDetails'));
+const Wishlist = React.lazy(() => import('./pages/Wishlist'));
+const Checkout = React.lazy(() => import('./pages/Checkout'));
+const Collections = React.lazy(() => import('./pages/Collections'));
+const AboutUs = React.lazy(() => import('./pages/AboutUs'));
+const ContactUs = React.lazy(() => import('./pages/ContactUs'));
+const Invoice = React.lazy(() => import('./pages/Invoice'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
+const KidsPage = React.lazy(() => import('./pages/KidsPage'));
+const NewArrivalsPage = React.lazy(() => import('./pages/NewArrivalsPage'));
+const DistributorNetworkPage = React.lazy(() => import('./pages/DistributorNetworkPage'));
+const WhyUs = React.lazy(() => import('./pages/WhyUs'));
+const OrderTracking = React.lazy(() => import('./pages/OrderTracking'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const CustomerAccount = React.lazy(() => import('./pages/CustomerAccount'));
+const PoliciesPage = React.lazy(() => import('./pages/PoliciesPage'));
 
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminInventory from './pages/admin/AdminInventory';
-import AdminPromotions from './pages/admin/AdminPromotions';
-import AdminAnalytics from './pages/admin/AdminAnalytics';
-import AdminReviews from './pages/admin/AdminReviews';
-import AdminShipping from './pages/admin/AdminShipping';
-import AdminMessages from './pages/admin/AdminMessages';
-import AdminFinancials from './pages/admin/AdminFinancials';
+const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
+const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminProducts = React.lazy(() => import('./pages/admin/AdminProducts'));
+const AdminOrders = React.lazy(() => import('./pages/admin/AdminOrders'));
+const AdminCustomers = React.lazy(() => import('./pages/admin/AdminCustomers'));
+const AdminSettings = React.lazy(() => import('./pages/admin/AdminSettings'));
+const AdminInventory = React.lazy(() => import('./pages/admin/AdminInventory'));
+const AdminPromotions = React.lazy(() => import('./pages/admin/AdminPromotions'));
+const AdminAnalytics = React.lazy(() => import('./pages/admin/AdminAnalytics'));
+const AdminReviews = React.lazy(() => import('./pages/admin/AdminReviews'));
+const AdminMessages = React.lazy(() => import('./pages/admin/AdminMessages'));
+const AdminFinancials = React.lazy(() => import('./pages/admin/AdminFinancials'));
+const AdminCategories = React.lazy(() => import('./pages/admin/AdminCategories'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -54,7 +64,7 @@ function ScrollToTop() {
           if (url.pathname === window.location.pathname && url.origin === window.location.origin && !url.hash) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
-        } catch (err) {
+        } catch {
         }
       }
     };
@@ -66,16 +76,23 @@ function ScrollToTop() {
 }
 
 function StoreLayout({ isLiveChatOpen, setIsLiveChatOpen, isProfileOpen, setIsProfileOpen }) {
+  const { isAuthenticated } = useAuth();
+
   return (
-    <div className="min-h-screen bg-[#FFF8EC] text-slate-800 flex flex-col font-sans selection:bg-[#AEE6FF] selection:text-slate-900 pb-16 md:pb-0">
+    <div className="min-h-screen w-full relative bg-white text-slate-800 flex flex-col font-sans selection:bg-[#AEE6FF] selection:text-slate-900 pb-16 md:pb-0">
       <AnnouncementBar />
       <Navbar onOpenProfile={() => setIsProfileOpen(true)} />
 
       <LiveChatDrawer isOpen={isLiveChatOpen} onClose={() => setIsLiveChatOpen(false)} />
-      <UserProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-
-      <div className="flex-grow">
-        <Outlet />
+      
+      {isAuthenticated ? (
+        <UserProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      ) : (
+        <CustomerLoginModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      )}
+      
+      <div className="grow">
+        <Outlet context={{ setIsProfileOpen, setIsLiveChatOpen }} />
       </div>
 
       <Footer />
@@ -85,51 +102,75 @@ function StoreLayout({ isLiveChatOpen, setIsLiveChatOpen, isProfileOpen, setIsPr
   );
 }
 
+import { AuthProvider } from './context/AuthContext';
+import AdminRoute from './components/layout/AdminRoute';
+
 export default function App() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
 
   return (
-    <CartProvider>
-      <WishlistProvider>
-        <Router>
-          <ScrollToTop />
-          <Routes>
-            {/* Admin Routes - Completely Isolated */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<AdminDashboard />} />
-              <Route path="products" element={<AdminProducts />} />
-              <Route path="orders" element={<AdminOrders />} />
-              <Route path="inventory" element={<AdminInventory />} />
-              <Route path="promotions" element={<AdminPromotions />} />
-              <Route path="analytics" element={<AdminAnalytics />} />
-              <Route path="reviews" element={<AdminReviews />} />
-              <Route path="shipping" element={<AdminShipping />} />
-              <Route path="messages" element={<AdminMessages />} />
-              <Route path="financials" element={<AdminFinancials />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
+    <AuthProvider>
+      <CartProvider>
+        <WishlistProvider>
+          <SettingsProvider>
+            <UIProvider>
+              <Router>
+              <ScrollToTop />
+              <Suspense fallback={<div className="flex h-[50vh] w-full items-center justify-center text-slate-500">Loading...</div>}>
+              <Routes>
+              {/* Admin Routes - Completely Isolated */}
+              <Route path="/admin" element={<AdminRoute />}>
+                <Route element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="products" element={<AdminProducts />} />
+                  <Route path="categories" element={<AdminCategories />} />
+                  <Route path="orders" element={<AdminOrders />} />
+                  <Route path="customers" element={<AdminCustomers />} />
+                  <Route path="inventory" element={<AdminInventory />} />
+                  <Route path="promotions" element={<AdminPromotions />} />
+                  <Route path="analytics" element={<AdminAnalytics />} />
+                  <Route path="reviews" element={<AdminReviews />} />
+                  <Route path="messages" element={<AdminMessages />} />
+                  <Route path="financials" element={<AdminFinancials />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                </Route>
+              </Route>
 
-            {/* Storefront Routes */}
-            <Route element={<StoreLayout isLiveChatOpen={isLiveChatOpen} setIsLiveChatOpen={setIsLiveChatOpen} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/cart" element={<CartPage />} />
-              <Route path="/kids" element={<KidsPage />} />
-              <Route path="/new-arrivals" element={<NewArrivalsPage />} />
-              <Route path="/product/:id" element={<ProductDetails />} />
-              <Route path="/wishlist" element={<Wishlist />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/collections" element={<Collections />} />
-              <Route path="/about-us" element={<AboutUs />} />
-              <Route path="/why-us" element={<WhyUs />} />
-              <Route path="/contact-us" element={<ContactUs />} />
-              <Route path="/distributor-network" element={<DistributorNetworkPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </Router>
-      </WishlistProvider>
-    </CartProvider>
+              {/* Storefront Routes */}
+              <Route element={<StoreLayout isLiveChatOpen={isLiveChatOpen} setIsLiveChatOpen={setIsLiveChatOpen} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/cart" element={<CartPage />} />
+                <Route path="/kids" element={<KidsPage />} />
+                <Route path="/men" element={<Navigate to="/products?category=Male" replace />} />
+                <Route path="/new-arrivals" element={<NewArrivalsPage />} />
+                <Route path="/product/:id" element={<ProductDetails />} />
+                <Route path="/wishlist" element={<Wishlist />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/collections" element={<Collections />} />
+                <Route path="/about-us" element={<AboutUs />} />
+                <Route path="/why-us" element={<WhyUs />} />
+                <Route path="/contact-us" element={<ContactUs />} />
+                <Route path="/invoice/:orderId" element={<Invoice />} />
+                <Route path="/track-order" element={<OrderTracking />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/distributor-network" element={<DistributorNetworkPage />} />
+                <Route path="/account/*" element={<CustomerAccount />} />
+                <Route path="/terms-conditions" element={<PoliciesPage />} />
+                <Route path="/terms-services" element={<PoliciesPage />} />
+                <Route path="/privacy-policy" element={<PoliciesPage />} />
+                <Route path="/refund-policy" element={<PoliciesPage />} />
+                <Route path="/shipping-policy" element={<PoliciesPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+              </Routes>
+              </Suspense>
+            </Router>
+          </UIProvider>
+        </SettingsProvider>
+        </WishlistProvider>
+      </CartProvider>
+    </AuthProvider>
   );
 }

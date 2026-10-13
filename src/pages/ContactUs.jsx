@@ -1,33 +1,100 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Send, CheckCircle2, ArrowRight, User } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Mail, Phone, MapPin, Send, CheckCircle2, ArrowRight, User, Play, ChevronRight, ChevronLeft, Star, MessageSquare, Clock, Sparkles, X, Building2, Globe, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabase';
+import emailjs from '@emailjs/browser';
 import { Input, Textarea } from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Modal from '../components/ui/Modal';
+import CustomDropdown from '../components/ui/CustomDropdown';
+
+const inquiryOptions = [
+  { label: '🎈 General Inquiry', value: 'general' },
+  { label: '🛍️ Wholesale / Dealership', value: 'wholesale' },
+  { label: '📦 Order Support & Tracking', value: 'support' },
+  { label: '📏 Size & Fit Consultation', value: 'size' }
+];
+
+// --- PLAYFUL SVG DOODLE COMPONENTS ---
+const SparkleDoodle = ({ className = "w-6 h-6 text-amber-400" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 0L14.59 8.41L23 11L14.59 13.59L12 22L9.41 13.59L1 11L9.41 8.41L12 0Z" />
+  </svg>
+);
+
+const SquiggleDoodle = ({ className = "w-16 h-4 text-orange-400" }) => (
+  <svg className={className} viewBox="0 0 100 20" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round">
+    <path d="M5 10 Q 25 2, 45 10 T 85 10 T 95 10" />
+  </svg>
+);
+
+const CloudDoodle = ({ className = "w-12 h-8 text-sky-400" }) => (
+  <svg className={className} viewBox="0 0 64 40" fill="currentColor" opacity="0.9">
+    <path d="M18 36h30a14 14 0 002-27.8 18 18 0 00-34.6-2.2A12 12 0 0018 36z" />
+  </svg>
+);
+
+const SmileyDoodle = ({ className = "w-8 h-8 text-[#FF5500]" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <circle cx="12" cy="12" r="10" fill="#FFE5D9" />
+    <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="#FF5500" strokeWidth="2.5" />
+    <circle cx="9" cy="9" r="1.5" fill="#FF5500" />
+    <circle cx="15" cy="9" r="1.5" fill="#FF5500" />
+  </svg>
+);
+
+const CrownDoodle = ({ className = "w-8 h-6 text-amber-400" }) => (
+  <svg className={className} viewBox="0 0 24 16" fill="currentColor">
+    <path d="M2 14L0 3L6.5 8L12 0L17.5 8L24 3L22 14H2Z" />
+  </svg>
+);
+
+const RocketDoodle = ({ className = "w-10 h-10 text-[#FF5500]" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.71 1.26-1.5 1.76-2.34L4.5 16.5z" fill="#FFD800" />
+    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-3.05 11a22.35 22.35 0 0 1-3.95 2z" fill="#FF5500" stroke="currentColor" />
+    <circle cx="15" cy="9" r="2" fill="#fff" />
+  </svg>
+);
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
     email: '',
+    inquiryType: 'general',
     comment: ''
   });
 
   const [errors, setErrors] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === 'mobile') {
+      const onlyNums = value.replace(/\D/g, '');
+      if (onlyNums.length <= 10) {
+        setFormData((prev) => ({ ...prev, [name]: onlyNums }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
 
     if (!formData.name.trim()) newErrors.name = 'Your Name is required';
-    if (!formData.mobile.trim()) newErrors.mobile = 'Mobile Number is required';
+    if (!formData.mobile.trim()) {
+      newErrors.mobile = 'Mobile Number is required';
+    } else if (formData.mobile.length !== 10) {
+      newErrors.mobile = 'Mobile Number must be exactly 10 digits';
+    }
     if (!formData.email.trim()) newErrors.email = 'Email Address is required';
     if (!formData.comment.trim()) newErrors.comment = 'Comment/Inquiry is required';
 
@@ -36,259 +103,364 @@ export default function ContactUs() {
       return;
     }
 
-    setIsModalOpen(true);
+    setIsSubmitting(true);
+    try {
+      // 1. Send to Google Sheets
+      const scriptData = new URLSearchParams();
+      scriptData.append('name', formData.name);
+      scriptData.append('mobile', formData.mobile);
+      scriptData.append('email', formData.email);
+      scriptData.append('inquiryType', formData.inquiryType);
+      scriptData.append('comment', formData.comment);
+
+      await fetch(import.meta.env.VITE_GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        body: scriptData,
+        mode: 'no-cors'
+      });
+      
+      setIsModalOpen(true);
+      setFormData({
+        name: '',
+        mobile: '',
+        email: '',
+        inquiryType: 'general',
+        comment: ''
+      });
+    } catch (err) {
+      console.error('Error submitting form:', err);
+      alert('Sorry, there was an error sending your message. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+
   return (
-    <div className="bg-[#F8F9FA] min-h-screen font-sans">
+    <div className="bg-[#FAF9F5] min-h-screen font-sans text-slate-900 overflow-x-hidden">
 
-      {/* --- p.Bank Style HERO SECTION --- */}
-      <section className="relative w-full min-h-[70vh] flex items-center justify-center pt-8 pb-16 overflow-hidden">
+      {/* --- HERO SECTION --- */}
+      <section className="relative w-full pt-12 pb-20 overflow-hidden bg-linear-to-b from-[#FFFDF8] via-[#FAF9F5] to-[#F3F1E9]">
+        
+        {/* Subtle geometric floaters */}
+        <div className="absolute top-12 left-10 w-16 h-16 bg-[#FF5500]/10 rounded-2xl rotate-12 blur-sm pointer-events-none"></div>
+        <div className="absolute top-1/3 right-12 w-24 h-24 bg-[#FF5500]/20 rounded-3xl -rotate-12 blur-md pointer-events-none"></div>
 
-        {/* Subtle Background Pattern (Curved lines) */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0,50 Q25,20 50,50 T100,50" fill="none" stroke="black" strokeWidth="0.5" />
-            <path d="M0,70 Q25,40 50,70 T100,70" fill="none" stroke="black" strokeWidth="0.5" />
-            <path d="M0,30 Q25,0 50,30 T100,30" fill="none" stroke="black" strokeWidth="0.5" />
-          </svg>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full text-center">
+          <div className="flex flex-col items-center justify-center">
+
+            {/* Headline + CTA */}
+            <div className="space-y-6 flex flex-col items-center">
+
+              {/* Unique Dual-Capsule Dock (No Dot) */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mb-3"
+              >
+                <div className="inline-flex flex-wrap items-center justify-center gap-2 p-1.5 sm:p-2 rounded-full bg-white/90 backdrop-blur-md border border-orange-200/70 shadow-sm hover:shadow-lg hover:border-orange-300 transition-all duration-300 select-none cursor-default group">
+                  
+                  {/* Capsule 1: New Spring 2026 Collection */}
+                  <div className="flex items-center gap-2 bg-linear-to-r from-[#FF5500] via-[#FF6F00] to-[#FFAE19] text-white px-3.5 sm:px-4 py-1.5 rounded-full shadow-xs group-hover:scale-[1.02] transition-transform duration-300">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-200 shrink-0" />
+                    <span className="text-xs sm:text-[13px] font-black tracking-wide uppercase font-sans">
+                      New Spring 2026 Collection
+                    </span>
+                  </div>
+
+                  {/* Capsule 2: 24/7 Support */}
+                  <div className="flex items-center gap-1.5 bg-[#00A3E0]/10 border border-[#00A3E0]/30 text-[#008BBF] px-3.5 sm:px-4 py-1.5 rounded-full group-hover:bg-[#00A3E0] group-hover:text-white transition-colors duration-300">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-xs sm:text-[13px] font-black tracking-wider uppercase font-mono">
+                      24/7 Support
+                    </span>
+                  </div>
+
+                </div>
+              </motion.div>
+
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="text-5xl sm:text-6xl lg:text-[4.2rem] font-black tracking-tight text-slate-900 leading-[1.08]"
+              >
+                Reflect Who<br />
+                You Are with<br />
+                Our <span className="text-[#FF5500]">Style</span>
+              </motion.h1>
+
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-slate-600 font-medium text-base sm:text-lg leading-relaxed max-w-lg"
+              >
+                The season of growth has arrived. Reflect who you are with our premium kids activewear collection and dedicated support team.
+              </motion.p>
+
+              {/* Email Subscribe / Quick Message bar removed per user request */}
+
+
+            </div>
+          </div>
         </div>
+      </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
 
-          {/* Left Column (Content) */}
-          <div className="lg:col-span-5 space-y-8">
-            <div className="inline-flex items-center gap-2 text-purple-700 font-bold text-sm tracking-wide">
-              <span className="text-xl">✦</span> 24/7 Dedicated Support
-            </div>
 
-            <h1 className="text-5xl lg:text-[4rem] font-black tracking-tight text-slate-900 leading-[1.1]">
-              The Best<br />Support<br />Experience
-            </h1>
 
-            <p className="text-slate-500 font-medium text-lg leading-relaxed max-w-md">
-              Need help with a kids activewear order, wholesale inquiry, or finding the perfect fit? We are here to assist you instantly.
-            </p>
 
-            {/* Input + Button Row */}
-            <div className="flex w-full max-w-md bg-white rounded-full border border-slate-200 p-1 shadow-sm">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="flex-1 px-6 bg-transparent outline-none text-slate-700 placeholder-slate-400"
-              />
-              <button className="bg-slate-900 text-white px-8 py-3.5 rounded-full font-bold hover:bg-slate-800 transition-colors">
-                Get Started
-              </button>
-            </div>
-
-            {/* Quick Connect Widget */}
-            <div className="pt-6">
-              <p className="text-sm font-bold text-slate-800 mb-4">Send Message to</p>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-20 rounded-2xl bg-slate-900 flex flex-col items-center justify-center gap-2 cursor-pointer shadow-lg shadow-slate-900/20 hover:-translate-y-1 transition-transform">
-                  <div className="w-8 h-8 rounded-full border border-slate-700 flex items-center justify-center text-white">
-                    +
-                  </div>
-                  <span className="text-[10px] text-white font-bold text-center leading-tight">Add new<br />contact</span>
-                </div>
-
-                <div className="w-16 h-20 rounded-2xl bg-white border border-slate-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:-translate-y-1 transition-transform shadow-sm">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                    J
-                  </div>
-                  <span className="text-[10px] text-slate-600 font-bold text-center leading-tight">Sales<br />Team</span>
-                </div>
-
-                <div className="w-16 h-20 rounded-2xl bg-white border border-slate-200 flex flex-col items-center justify-center gap-2 cursor-pointer hover:-translate-y-1 transition-transform shadow-sm">
-                  <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop" alt="Support" className="w-full h-full object-cover" />
-                  </div>
-                  <span className="text-[10px] text-slate-600 font-bold text-center leading-tight">Kiely<br />Mae</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Center Column (Visuals - Arch & Person) */}
-          <div className="lg:col-span-5 relative flex justify-center items-end h-[600px]">
-            {/* The Arch Shape */}
-            <div className="absolute bottom-0 w-[320px] h-[480px] bg-[#89A894] rounded-t-[200px] z-0"></div>
-
-            {/* The Person (Using an image inside the arch container if cutout isn't available, but we'll use a cutout-style portrait) */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="relative z-10 w-full max-w-[400px] flex justify-center pb-0"
-            >
-              {/* Note: In a real environment we'd use a transparent PNG. We use a high-quality portrait here. */}
-              <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop"
-                alt="Support Agent"
-                className="w-[300px] h-[400px] object-cover object-top rounded-t-[150px] rounded-b-2xl shadow-xl border-4 border-white/20"
-              />
-            </motion.div>
-
-            {/* Floating UI Card 1 (Top Right) */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-              className="absolute top-1/4 right-0 z-20 bg-white p-3 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-3 w-48"
-            >
-              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden">
-                <img src="https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?q=80&w=100&auto=format&fit=crop" alt="Amazon" className="w-full h-full object-cover" />
-              </div>
+      {/* --- MAIN CONTACT FORM & DIRECT CARDS SECTION --- */}
+      <section id="contact-form" className="py-20 bg-white border-y border-slate-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            
+            {/* Left Column: Direct Info Cards */}
+            <div className="lg:col-span-5 space-y-8">
               <div>
-                <p className="text-xs font-bold text-slate-800">Wholesale</p>
-                <p className="text-[10px] text-slate-400">Order Confirmed</p>
+                <span className="text-xs font-extrabold uppercase tracking-widest text-[#FF5500]">Direct Connect</span>
+                <h2 className="text-4xl font-black text-slate-900 mt-1">Get In Touch With Us</h2>
+                <p className="text-slate-500 text-sm font-medium mt-2 leading-relaxed">
+                  Have questions about our kids activewear line or want to place a custom order? Fill out the form or reach out directly.
+                </p>
               </div>
-              <div className="ml-auto text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-1 rounded-full">+ 5s</div>
-            </motion.div>
 
-            {/* Floating UI Card 2 (Middle Left) */}
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
-              className="absolute top-1/2 -left-10 z-20 bg-white/90 backdrop-blur-sm p-4 rounded-2xl shadow-lg border border-slate-100 min-w-[140px]"
+              <div className="space-y-4">
+                
+                {/* Phone Card */}
+                <div className="p-6 rounded-3xl bg-[#FAF9F5] border border-slate-200/80 hover:border-[#FF5500]/40 transition-colors flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FF5500] text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-orange-500/20">
+                    <Phone className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">Call Us Directly</h4>
+                    <p className="text-lg font-black text-slate-900 mt-0.5">+91 94299 05118</p>
+                    <p className="text-xs text-slate-500 font-medium">Mon - Sat: 10:00 AM - 7:00 PM IST</p>
+                  </div>
+                </div>
+
+                {/* Email Card */}
+                <div className="p-6 rounded-3xl bg-[#FAF9F5] border border-slate-200/80 hover:border-[#FF5500]/40 transition-colors flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#00A3E0] text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-sky-500/20">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">Email Support</h4>
+                    <p className="text-lg font-black text-slate-900 mt-0.5">jogjoy85@gmail.com</p>
+                    <p className="text-xs text-slate-500 font-medium">Fast response within 24 business hours</p>
+                  </div>
+                </div>
+
+                {/* Location Card */}
+                <div className="p-6 rounded-3xl bg-[#FAF9F5] border border-slate-200/80 hover:border-[#FF5500]/40 transition-colors flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-emerald-500/20">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">Head Office Location</h4>
+                    <p className="text-sm font-black text-slate-900 mt-0.5 leading-snug">
+                      2488, Navo Vas, Swaminarayan Mandir, Kalupur, Ahmedabad, Gujarat-24
+                    </p>
+                  </div>
+                </div>
+
+                {/* Live Google Map Embedded */}
+                <div className="w-full h-48 mt-4 rounded-3xl overflow-hidden border border-slate-200 shadow-sm relative group">
+                  <iframe 
+                    title="Jog and Joy Location"
+                    src="https://www.google.com/maps?q=2488,+Navo+Vas,+Swaminarayan+Mandir,+Kalupur,+Ahmedabad,+Gujarat-24&output=embed" 
+                    width="100%" 
+                    height="100%" 
+                    style={{ border: 0 }} 
+                    allowFullScreen="" 
+                    loading="lazy" 
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="absolute inset-0 z-0 grayscale group-hover:grayscale-0 transition-all duration-500"
+                  ></iframe>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Playful Childish Registration / Contact Form */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.97 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="lg:col-span-7 relative bg-linear-to-br from-[#FFF9F2] via-[#FFF3EA] to-[#FFEBE0] p-8 sm:p-12 rounded-[2.5rem] border-4 border-dashed border-[#FF7A00]/30 shadow-2xl overflow-hidden"
             >
-              <p className="text-[10px] text-slate-500 font-bold mb-1 uppercase tracking-wider">Avg Response</p>
-              <p className="text-lg font-black text-slate-900">&lt; 5 mins</p>
-              <div className="w-full h-1 bg-slate-100 rounded-full mt-2 overflow-hidden">
-                <div className="w-3/4 h-full bg-blue-500 rounded-full"></div>
+              {/* Floating Background SVG Doodles */}
+              <div className="absolute top-4 right-6 pointer-events-none animate-bounce">
+                <SparkleDoodle className="w-8 h-8 text-amber-400" />
               </div>
+              <div className="absolute top-12 left-8 pointer-events-none">
+                <CloudDoodle className="w-14 h-9 text-sky-300" />
+              </div>
+              <div className="absolute bottom-6 right-10 pointer-events-none hidden sm:block">
+                <RocketDoodle className="w-12 h-12 text-[#FF5500]" />
+              </div>
+              <div className="absolute bottom-20 left-4 pointer-events-none opacity-80">
+                <SquiggleDoodle className="w-20 h-5 text-orange-400" />
+              </div>
+              <div className="absolute top-1/2 -right-4 pointer-events-none opacity-40 rotate-45">
+                <SparkleDoodle className="w-12 h-12 text-[#00A3E0]" />
+              </div>
+
+              {/* Form Header with Playful Crown & Smiley */}
+              <div className="mb-8 relative z-10">
+                <div className="inline-flex items-center gap-2 bg-amber-200/70 text-slate-900 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider mb-3 shadow-xs">
+                  <CrownDoodle className="w-4 h-3 text-amber-600" />
+                  <span>Kid-Friendly Fast Support 🚀</span>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <h3 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                    Send Us a Message
+                  </h3>
+                  <SmileyDoodle className="w-9 h-9 shrink-0" />
+                </div>
+
+                <p className="text-sm font-bold text-slate-600 mt-2 flex items-center gap-2">
+                  <span>Fill out this fun form and our activewear team will zoom back to you!</span>
+                  <SparkleDoodle className="w-4 h-4 text-amber-500 inline" />
+                </p>
+              </div>
+
+              {/* Form Input Grid */}
+              <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                      <span>Your Name</span>
+                      <span className="text-[#FF5500] font-black">*</span>
+                    </label>
+                    <Input
+                      variant="playful"
+                      name="name"
+                      placeholder="e.g. Anand Shah"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      error={errors.name}
+                      className="bg-white border-2 border-orange-200/80 rounded-2xl text-slate-900 font-bold placeholder-slate-400 focus:ring-1 focus:ring-orange-500 focus:ring-4 focus:ring-[#FF5500]/15 shadow-sm text-sm py-3.5"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                      <span>Mobile Number</span>
+                      <span className="text-[#FF5500] font-black">*</span>
+                    </label>
+                    <Input
+                      variant="playful"
+                      name="mobile"
+                      placeholder="+91 98765 43210"
+                      required
+                      value={formData.mobile}
+                      onChange={handleChange}
+                      error={errors.mobile}
+                      className="bg-white border-2 border-orange-200/80 rounded-2xl text-slate-900 font-bold placeholder-slate-400 focus:ring-1 focus:ring-orange-500 focus:ring-4 focus:ring-[#FF5500]/15 shadow-sm text-sm py-3.5"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                      <span>E-mail Address</span>
+                      <span className="text-[#FF5500] font-black">*</span>
+                    </label>
+                    <Input
+                      variant="playful"
+                      name="email"
+                      type="email"
+                      placeholder="anand@example.com"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      error={errors.email}
+                      className="bg-white border-2 border-orange-200/80 rounded-2xl text-slate-900 font-bold placeholder-slate-400 focus:ring-1 focus:ring-orange-500 focus:ring-4 focus:ring-[#FF5500]/15 shadow-sm text-sm py-3.5"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                      <span>Inquiry Type</span>
+                    </label>
+                    <CustomDropdown
+                      options={inquiryOptions}
+                      value={formData.inquiryType}
+                      onChange={(val) => setFormData(prev => ({ ...prev, inquiryType: val }))}
+                      className="w-full"
+                      buttonClassName="w-full py-3.5 px-4 bg-white border-2 border-[#FFE0D6] rounded-2xl text-slate-900 font-extrabold text-sm hover:border-[#FF7A59]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-1">
+                    <span>Comment / Inquiry</span>
+                    <span className="text-[#FF5500] font-black">*</span>
+                  </label>
+                  <Textarea
+                    variant="playful"
+                    name="comment"
+                    placeholder="How can we help your store or kids activewear order today?"
+                    required
+                    value={formData.comment}
+                    onChange={handleChange}
+                    error={errors.comment}
+                    className="bg-white border-2 border-orange-200/80 rounded-2xl text-slate-900 font-bold placeholder-slate-400 focus:ring-1 focus:ring-orange-500 focus:ring-4 focus:ring-[#FF5500]/15 shadow-sm text-sm py-3.5"
+                  />
+                </div>
+
+                {/* Submit Button */}
+                <div className="pt-2">
+                  <motion.button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="w-full bg-linear-to-r from-[#FF5500] via-[#FF6B00] to-[#FF4500] text-white font-black text-lg py-4 rounded-2xl shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 transition-all flex items-center justify-center gap-3 cursor-pointer group border-2 border-white/40 disabled:opacity-70"
+                  >
+                    <span>{isSubmitting ? 'Sending...' : 'Submit Message'}</span>
+                    {!isSubmitting && (
+                      <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">
+                        <Send className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </motion.button>
+                </div>
+
+              </form>
             </motion.div>
-          </div>
 
-          {/* Right Column (Stats) */}
-          <div className="lg:col-span-2 flex flex-col justify-center space-y-12 lg:pl-4">
-            <div>
-              <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white mb-4">
-                <User className="w-6 h-6" />
-              </div>
-              <h2 className="text-2xl font-black text-slate-900 leading-tight">
-                World Class<br />Experts
-              </h2>
-            </div>
-
-            <div>
-              <h3 className="text-4xl font-black text-slate-900 mb-2">77k+</h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Happy customers and activewear partners successfully served.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-4xl font-black text-slate-900 mb-2">0%</h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Compromise on the quality of support and our response time.
-              </p>
-            </div>
           </div>
 
         </div>
       </section>
 
-      {/* --- CONTENT SECTION --- */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
 
-        {/* Info Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-black">
-              <Phone className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900">Call Us Directly</h3>
-            <p className="text-sm font-bold text-slate-700">91-79-2213 9665</p>
-            <p className="text-xs text-slate-400 font-medium">Mon - Sat: 10:00 AM - 7:00 PM IST</p>
-          </div>
 
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-black">
-              <Mail className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900">Email Support</h3>
-            <p className="text-sm font-bold text-slate-700">info@jognjoy.com</p>
-            <p className="text-xs text-slate-400 font-medium">Fast response within 24 business hours</p>
-          </div>
 
-          <div className="p-8 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4 hover:shadow-md transition-shadow">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
-              <MapPin className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-black text-slate-900">Head Office</h3>
-            <p className="text-xs sm:text-sm font-bold text-slate-700 leading-snug">
-              488, Navo Vas, Swaminarayan Mandir, Kalupur, Ahmedabad 380001. Gujarat, India.
-            </p>
-          </div>
-        </div>
 
-        {/* Form */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-white border border-slate-200/80 shadow-md max-w-3xl mx-auto">
-          <h3 className="text-2xl font-black text-slate-900 mb-6 flex items-center gap-2">
-            <CheckCircle2 className="text-sky-500 w-6 h-6" /> Send Us a Message
-          </h3>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <Input
-                label="Your Name"
-                name="name"
-                placeholder="Anand Shah"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                error={errors.name}
-              />
-              <Input
-                label="Mobile Number"
-                name="mobile"
-                placeholder="+91 98765 43210"
-                required
-                value={formData.mobile}
-                onChange={handleChange}
-                error={errors.mobile}
-              />
-            </div>
-
-            <Input
-              label="E-mail Address"
-              name="email"
-              type="email"
-              placeholder="anand@example.com"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              error={errors.email}
-            />
-
-            <Textarea
-              label="Comment / Inquiry"
-              name="comment"
-              placeholder="How can we help your store or order today?"
-              required
-              value={formData.comment}
-              onChange={handleChange}
-              error={errors.comment}
-            />
-
-            <Button type="submit" variant="sky" size="lg" icon={Send} className="w-full shadow-lg shadow-sky-500/20">
-              Submit Message
-            </Button>
-          </form>
-        </div>
-
-      </div>
-
+      {/* --- MODALS --- */}
+      {/* 1. Form Success Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
-          setFormData({ name: '', mobile: '', email: '', comment: '' });
+          setFormData({ name: '', mobile: '', email: '', inquiryType: 'general', comment: '' });
         }}
         title="Message Received!"
-        message={`Thank you, ${formData.name}! Your inquiry has been logged with Jog&Joy support. We will get back to you shortly.`}
+        message={`Thank you, ${formData.name}! Your inquiry has been logged with Jog&Joy support. We will get back to you shortly at ${formData.email}.`}
       />
+
+
+
     </div>
   );
 }

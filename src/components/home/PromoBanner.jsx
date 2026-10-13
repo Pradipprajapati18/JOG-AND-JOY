@@ -6,7 +6,7 @@ export default function PromoBanner() {
   return (
     <section className="py-12 bg-[#FFF8EC]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="rounded-[2.5rem] bg-gradient-to-r from-emerald-500 via-teal-500 to-[#00A3E0] p-8 sm:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden">
+        <div className="rounded-[2.5rem] bg-linear-to-r from-emerald-500 via-teal-500 to-[#00A3E0] p-8 sm:p-12 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden">
           
           <div className="space-y-2 text-center md:text-left max-w-2xl relative z-10">
             <span className="px-3.5 py-1 rounded-full bg-white/20 text-white text-[11px] font-black uppercase tracking-wider inline-flex items-center gap-1">

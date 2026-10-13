@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
+
+.env
+
+*.zip
+
+cpanel/
+jogandjoy_website/
+panel_c/
+
+reference/
+ref/

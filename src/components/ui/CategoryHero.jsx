@@ -31,7 +31,7 @@ export default function CategoryHero() {
   }, []);
 
   return (
-    <section className="relative overflow-hidden pt-4 pb-12 lg:pb-16 bg-gradient-to-b from-[#FFF8EC] via-[#FFF8EC] to-white border-b border-amber-100/50 mb-8">
+    <section className="relative overflow-hidden pt-4 pb-12 lg:pb-16 bg-linear-to-b from-[#FFF8EC] via-[#FFF8EC] to-white border-b border-amber-100/50 mb-8">
       {/* Decorative Pastel Bubbles */}
       <div className="absolute top-10 left-10 w-72 h-72 rounded-full bg-[#AEE6FF]/30 blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-[#FFD6BA]/40 blur-3xl pointer-events-none" />
@@ -84,7 +84,7 @@ export default function CategoryHero() {
             >
               <button
                 onClick={() => window.scrollBy({ top: 600, behavior: 'smooth' })}
-                className="w-full sm:w-auto px-8 py-3 rounded-full bg-gradient-to-r from-[#EF4A45] to-orange-500 text-white font-extrabold text-sm shadow-xl shadow-red-500/20 hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-2 group"
+                className="w-full sm:w-auto px-8 py-3 rounded-full bg-linear-to-r from-[#EF4A45] to-orange-500 text-white font-extrabold text-sm shadow-xl shadow-red-500/20 hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center gap-2 group"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Shop Kids Collection</span>
@@ -159,7 +159,7 @@ export default function CategoryHero() {
                 <motion.div
                   animate={{ y: [0, -8, 0] }}
                   transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                  className="absolute bottom-10 -left-6 sm:left-[-1.5rem] bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/60 flex items-center gap-3 z-30"
+                  className="absolute bottom-10 -left-6 sm:-left-6 bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/60 flex items-center gap-3 z-30"
                 >
                   <div className="w-8 h-8 rounded-xl bg-[#FFD6BA] flex items-center justify-center text-slate-900 font-black">
                     🐣
@@ -174,7 +174,7 @@ export default function CategoryHero() {
                 <motion.div
                   animate={{ y: [0, 8, 0] }}
                   transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
-                  className="absolute top-10 -right-6 sm:right-[-1.5rem] bg-white/95 backdrop-blur-md px-3 py-2 rounded-2xl shadow-xl border border-white/60 flex items-center gap-2 z-30"
+                  className="absolute top-10 -right-6 sm:-right-6 bg-white/95 backdrop-blur-md px-3 py-2 rounded-2xl shadow-xl border border-white/60 flex items-center gap-2 z-30"
                 >
                   <div className="flex text-amber-400">
                     <Star className="w-3 h-3 fill-amber-400" />

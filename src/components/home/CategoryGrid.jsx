@@ -2,13 +2,15 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import { Link } from "react-router-dom";
 
 const categories = [
-  { label: 'KIDS T-SHIRTS', href: '/kids/t-shirts', image: 'https://images.unsplash.com/photo-1519241047957-be31d7379a5d?auto=format&fit=crop&w=300&q=80' },
-  { label: 'KIDS JOGGERS & TRACK PANTS', href: '/kids/joggers', image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=300&q=80' },
-  { label: 'KIDS SHORTS & BERMUDAS', href: '/kids/shorts', image: 'https://images.unsplash.com/photo-1622290319146-7b63df48a635?auto=format&fit=crop&w=300&q=80' },
-  { label: 'KIDS NIGHT & PAJAMA SUITS', href: '/kids/nightwear', image: 'https://images.unsplash.com/photo-1522771930-78848d9293e8?auto=format&fit=crop&w=300&q=80' },
-  { label: 'GIRLS\' FROCKS', href: '/girls/frocks', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=300&q=80' }
+  { label: 'KIDS T-SHIRTS', href: '/products?category=Kids&item=Kids+T-Shirt', image: 'https://images.unsplash.com/photo-1519241047957-be31d7379a5d?auto=format&fit=crop&w=300&q=80' },
+  { label: 'KIDS JOGGERS & TRACK PANTS', href: '/products?category=Kids&item=Kids+Joggers+%26+Tracks', image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=300&q=80' },
+  { label: 'KIDS SHORTS & BERMUDAS', href: '/products?category=Kids&item=Kids+Shorts+%26+Bermudas', image: 'https://images.unsplash.com/photo-1622290319146-7b63df48a635?auto=format&fit=crop&w=300&q=80' },
+  { label: 'KIDS NIGHT & PAJAMA SUITS', href: '/products?category=Kids&item=Kids+Night+Suits', image: 'https://images.unsplash.com/photo-1522771930-78848d9293e8?auto=format&fit=crop&w=300&q=80' },
+  { label: 'GIRLS\' FROCKS', href: '/products?category=Female&item=Girl+Frocks', image: 'https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?auto=format&fit=crop&w=300&q=80' },
+  { label: 'MEN\'S COLLECTION', href: '/products?category=Male', image: 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&w=300&q=80', color: '#FEF08A', textColor: '#222222' }
 ];
 
 const categorySection = {
@@ -41,7 +43,7 @@ export default function CategoryGrid() {
       ([entry]) => {
         setIsOpen(entry.isIntersecting);
       },
-      { 
+      {
         threshold: 0.1,
         rootMargin: "-10% 0px -10% 0px" // Trigger slightly before it fully leaves/enters
       }
@@ -141,26 +143,12 @@ export default function CategoryGrid() {
 
   return (
     <>
-      {/* Immersive backdrop blur for the rest of the page (everything except the active category section) */}
-      <div 
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 12, // Sits above standard page content, below category section (15)
-          backdropFilter: "blur(12px)",
-          backgroundColor: "rgba(34, 34, 34, 0.35)", // Subtle dark tint overlay
-          opacity: isOpen ? 1 : 0,
-          visibility: isOpen ? "visible" : "hidden",
-          transition: "opacity 0.6s ease, visibility 0.6s ease",
-          pointerEvents: "none" // Allow users to scroll freely through overlay
-        }}
-      />
 
-      <section 
-        ref={sectionRef} 
-        className="section py-16" 
-        style={{ 
-          backgroundColor: "#faf6f0", 
+      <section
+        ref={sectionRef}
+        className="section py-16"
+        style={{
+          backgroundColor: "#faf6f0",
           borderBottom: "1.5px solid #222222",
           overflow: "hidden",
           position: "relative",
@@ -187,7 +175,7 @@ export default function CategoryGrid() {
           </div>
 
           {/* 1. Purple File Folder (Center Top) */}
-          <div 
+          <div
             ref={folderRef}
             className="folder-graphic"
             style={{
@@ -200,7 +188,7 @@ export default function CategoryGrid() {
             }}
           >
             {/* Folder Back Cover */}
-            <div 
+            <div
               style={{
                 position: "absolute",
                 inset: 0,
@@ -212,7 +200,7 @@ export default function CategoryGrid() {
               }}
             >
               {/* Tab */}
-              <div 
+              <div
                 style={{
                   position: "absolute",
                   top: "-16px",
@@ -229,7 +217,7 @@ export default function CategoryGrid() {
             </div>
 
             {/* Folder Front Cover Flap */}
-            <div 
+            <div
               className="folder-front-flap"
               style={{
                 position: "absolute",
@@ -247,7 +235,7 @@ export default function CategoryGrid() {
               }}
             >
               {/* Slanted cutoff design */}
-              <div 
+              <div
                 style={{
                   position: "absolute",
                   top: "-12px",
@@ -282,24 +270,23 @@ export default function CategoryGrid() {
           </div>
 
           {/* 2. Arranged Category Cards Grid */}
-          <div 
+          <div
             ref={cardsParentRef}
             className="flex flex-wrap justify-center gap-6 relative z-10 w-full max-w-5xl mx-auto"
           >
             {categories.map((cat, idx) => {
-              const cardBg = brandColors[idx % brandColors.length];
-              const isLightBg = cardBg === "var(--color-yellow)" || cardBg === "var(--color-surface)";
-              const textInk = isLightBg ? "#222222" : "#ffffff";
+              const cardBg = cat.color || brandColors[idx % brandColors.length];
+              const textInk = cat.textColor || "#222222";
 
               return (
                 <div
                   key={cat.label}
                   ref={(el) => { cardsRef.current[idx] = el; }}
-                  className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] flex-shrink-0"
+                  className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] shrink-0"
                   style={{ opacity: 0 }} // Pre-hidden to avoid initial flash of unstyled content
                 >
-                  <a
-                    href={cat.href}
+                  <Link
+                    to={cat.href}
                     style={{
                       display: "block",
                       border: "1.5px solid #222222",
@@ -331,24 +318,24 @@ export default function CategoryGrid() {
                       overflow: "hidden",
                       padding: "8px"
                     }}>
-                      <img 
-                        src={cat.image} 
-                        alt={cat.label} 
-                        style={{ 
-                          width: "100%", 
-                          height: "100%", 
-                          objectFit: "cover", 
+                      <img
+                        src={cat.image}
+                        alt={cat.label}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
                           borderRadius: "12px",
                           boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-                        }} 
+                        }}
                       />
                     </div>
-                    
+
                     {/* Tag label */}
-                    <div style={{ 
-                      padding: "16px 12px", 
-                      fontWeight: 800, 
-                      fontSize: "0.85rem", 
+                    <div style={{
+                      padding: "16px 12px",
+                      fontWeight: 800,
+                      fontSize: "0.85rem",
                       textAlign: "center",
                       textTransform: "uppercase",
                       letterSpacing: "0.02em",
@@ -360,7 +347,7 @@ export default function CategoryGrid() {
                     }}>
                       {cat.label}
                     </div>
-                  </a>
+                  </Link>
                 </div>
               );
             })}
