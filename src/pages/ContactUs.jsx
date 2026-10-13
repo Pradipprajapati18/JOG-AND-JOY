@@ -150,15 +150,34 @@ export default function ContactUs() {
           <div className="flex flex-col items-center justify-center">
 
             {/* Headline + CTA */}
-            <div className="space-y-8 flex flex-col items-center">
-              <motion.div 
+            <div className="space-y-6 flex flex-col items-center">
+
+              {/* Unique Dual-Capsule Dock (No Dot) */}
+              <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 bg-white/90 border border-slate-200/80 px-4 py-2 rounded-full shadow-xs"
+                className="mb-3"
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-[#FF5500] animate-pulse"></span>
-                <span className="text-xs font-bold text-slate-700 tracking-wide">New Spring 2026 Collection • 24/7 Support</span>
+                <div className="inline-flex flex-wrap items-center justify-center gap-2 p-1.5 sm:p-2 rounded-full bg-white/90 backdrop-blur-md border border-orange-200/70 shadow-sm hover:shadow-lg hover:border-orange-300 transition-all duration-300 select-none cursor-default group">
+                  
+                  {/* Capsule 1: New Spring 2026 Collection */}
+                  <div className="flex items-center gap-2 bg-linear-to-r from-[#FF5500] via-[#FF6F00] to-[#FFAE19] text-white px-3.5 sm:px-4 py-1.5 rounded-full shadow-xs group-hover:scale-[1.02] transition-transform duration-300">
+                    <Sparkles className="w-3.5 h-3.5 text-yellow-200 shrink-0" />
+                    <span className="text-xs sm:text-[13px] font-black tracking-wide uppercase font-sans">
+                      New Spring 2026 Collection
+                    </span>
+                  </div>
+
+                  {/* Capsule 2: 24/7 Support */}
+                  <div className="flex items-center gap-1.5 bg-[#00A3E0]/10 border border-[#00A3E0]/30 text-[#008BBF] px-3.5 sm:px-4 py-1.5 rounded-full group-hover:bg-[#00A3E0] group-hover:text-white transition-colors duration-300">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-xs sm:text-[13px] font-black tracking-wider uppercase font-mono">
+                      24/7 Support
+                    </span>
+                  </div>
+
+                </div>
               </motion.div>
 
               <motion.h1 
@@ -243,7 +262,7 @@ export default function ContactUs() {
                   <div>
                     <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">Head Office Location</h4>
                     <p className="text-sm font-black text-slate-900 mt-0.5 leading-snug">
-                      49, Kamal House, Pankaj Society, Nr. SBI Bank, Bhattha, Paldi, Ahmedabad - 380007, Gujarat, India.
+                      2488, Navo Vas, Swaminarayan Mandir, Kalupur, Ahmedabad, Gujarat-24
                     </p>
                   </div>
                 </div>
@@ -252,7 +271,7 @@ export default function ContactUs() {
                 <div className="w-full h-48 mt-4 rounded-3xl overflow-hidden border border-slate-200 shadow-sm relative group">
                   <iframe 
                     title="Jog and Joy Location"
-                    src="https://www.google.com/maps?q=Kamal+Clothing,+49,+Kamal+House,+Pankaj+Society,+Nr.+SBI+Bank,+Bhattha,+Paldi,+Ahmedabad+-+380007,+Gujarat,+India&output=embed" 
+                    src="https://www.google.com/maps?q=2488,+Navo+Vas,+Swaminarayan+Mandir,+Kalupur,+Ahmedabad,+Gujarat-24&output=embed" 
                     width="100%" 
                     height="100%" 
                     style={{ border: 0 }} 

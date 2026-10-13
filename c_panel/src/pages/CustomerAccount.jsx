@@ -6,12 +6,14 @@ import CustomerOrders from './CustomerOrders';
 import CustomerOrderDetails from './CustomerOrderDetails';
 import CustomerAddresses from './CustomerAddresses';
 import CustomerProfile from './CustomerProfile';
+import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 
 export default function CustomerAccount() {
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  if (!user) {
+  const isOrderDetailsPage = location.pathname.includes('/orders/');
+  if (!user && !isOrderDetailsPage) {
     return <Navigate to="/" replace />;
   }
 
@@ -22,20 +24,28 @@ export default function CustomerAccount() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 pb-16 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#FFFDF7] relative overflow-hidden pt-24 pb-16 px-4 md:px-8">
+      {/* Playful Ambient Background Radiant Glows */}
+      <div className="absolute top-10 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl pointer-events-none z-0" />
+      <div className="absolute top-1/3 -left-20 w-80 h-80 bg-sky-200/25 rounded-full blur-3xl pointer-events-none z-0" />
+      <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-rose-200/25 rounded-full blur-3xl pointer-events-none z-0" />
+
+      {/* Floating Animated Kids Clothing Doodles */}
+      <ClothDoodlesBackground />
+
+      <div className="max-w-6xl mx-auto relative z-10">
         <div className="flex flex-col md:flex-row gap-8">
           
           {/* Sidebar Navigation */}
           <div className="w-full md:w-72 shrink-0">
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+            <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-6 shadow-sm border border-amber-100/80">
               <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-xl font-black text-slate-800">
-                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#FFD800] to-[#EF4A45] flex items-center justify-center text-xl font-black text-white shadow-md">
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
                 </div>
-                <div>
-                  <p className="font-bold text-slate-800">{user.name || 'Customer'}</p>
-                  <p className="text-xs text-slate-500">{user.email}</p>
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-800 truncate">{user?.name || 'Aarav Sharma'}</p>
+                  <p className="text-xs text-slate-500 truncate">{user?.email || 'aarav.sharma@example.com'}</p>
                 </div>
               </div>
 

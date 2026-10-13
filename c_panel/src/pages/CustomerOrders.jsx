@@ -101,7 +101,7 @@ export default function CustomerOrders() {
               {/* Action */}
               <div className="flex items-center md:items-start justify-end shrink-0">
                 <Link 
-                  to={`/account/orders/${order.id}`}
+                  to={`/account/orders/${order.orderNumber || order.id}`}
                   className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:border-[#EF4A45] hover:text-[#EF4A45] hover:bg-[#EF4A45]/5 font-bold rounded-xl transition-all"
                 >
                   View Details

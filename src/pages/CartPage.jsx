@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, X, ArrowRight, Truck, CreditCard, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { createSlug } from '../utils/helpers';
+import { createSlug, getColorName } from '../utils/helpers';
 
 export default function CartPage() {
   const {
@@ -107,8 +107,12 @@ export default function CartPage() {
                                 <div className="text-xs font-semibold text-slate-500">
                                   Size: {item.size}
                                 </div>
-                                <div className="text-xs font-semibold text-slate-500 flex items-center gap-1 mt-1">
-                                  Color: <span className="w-3 h-3 rounded-full inline-block border border-slate-200" style={{ backgroundColor: item.color }}></span>
+                                <div className="text-xs font-semibold text-slate-500 flex items-center gap-1.5 mt-1">
+                                  <span>Color:</span>
+                                  {item.color && (
+                                    <span className="w-3 h-3 rounded-full inline-block border border-slate-200 shrink-0" style={{ backgroundColor: item.color }}></span>
+                                  )}
+                                  <span className="text-slate-700 font-bold">{item.colorName || getColorName(item.color)}</span>
                                 </div>
                               </div>
                             </div>

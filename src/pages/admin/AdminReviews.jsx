@@ -34,10 +34,10 @@ export default function AdminReviews() {
   if (search) {
     const q = search.toLowerCase();
     reviews = reviews.filter(r => 
-      (r.customerName || '').toLowerCase().includes(q) ||
+      (r.customerName || r.name || '').toLowerCase().includes(q) ||
       (r.customerEmail || '').toLowerCase().includes(q) ||
       (r.title || '').toLowerCase().includes(q) ||
-      (r.body || '').toLowerCase().includes(q)
+      (r.body || r.comment || '').toLowerCase().includes(q)
     );
   }
   
@@ -155,8 +155,8 @@ export default function AdminReviews() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <p className="font-bold text-text-dark line-clamp-1">{review.title || 'Untitled Review'}</p>
-                          <p className="text-xs text-text-muted line-clamp-1 mt-0.5">{review.body}</p>
+                          <p className="font-bold text-text-dark line-clamp-1">{review.title || 'Verified Review'}</p>
+                          <p className="text-xs text-text-muted line-clamp-1 mt-0.5">{review.body || review.comment}</p>
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
@@ -254,7 +254,7 @@ export default function AdminReviews() {
                 </div>
                 <h3 className="text-lg font-bold text-text-dark mb-2">{selectedReview.title || 'Untitled'}</h3>
                 <p className="text-sm text-text-muted leading-relaxed bg-white p-4 rounded-xl border border-slate-100 shadow-sm transition-all">
-                  {selectedReview.body}
+                  {selectedReview.body || selectedReview.comment}
                 </p>
                 {selectedReview.media?.length > 0 && (
                   <div className="flex gap-2 mt-3">

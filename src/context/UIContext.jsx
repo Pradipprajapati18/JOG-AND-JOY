@@ -27,8 +27,15 @@ export function UIProvider({ children }) {
   );
 }
 
+const defaultUIContext = {
+  sidebarOpen: false,
+  setSidebarOpen: () => {},
+  toasts: [],
+  addToast: () => {},
+  removeToast: () => {}
+};
+
 export function useUIContext() {
   const ctx = useContext(UIContext);
-  if (!ctx) throw new Error('useUIContext must be used within UIProvider');
-  return ctx;
+  return ctx || defaultUIContext;
 }

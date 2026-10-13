@@ -16,9 +16,42 @@ export default function ShopByAge() {
         
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16 space-y-3">
-          <span className="px-4 py-1.5 rounded-full bg-[#FFF3EE] text-[#FF7A59] text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 border border-[#FFE0D6]">
-            <Sparkles className="w-3.5 h-3.5" /> Perfect Fit Guarantee
-          </span>
+          {/* Unique Style: Tailor Precision Ruler Tape & Trust Seal */}
+          <div className="inline-flex items-center justify-center gap-2.5 sm:gap-4 select-none cursor-default group mb-3">
+            {/* PERFECT FIT: Tailor Ruler Tape */}
+            <div className="relative inline-flex flex-col items-center">
+              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.3em] bg-linear-to-r from-[#FF6B4A] via-[#FF9E00] to-[#E65100] bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300">
+                PERFECT FIT
+              </span>
+              {/* Playful tailor measuring tape ruler underline with tick marks */}
+              <svg className="w-full h-2.5 text-[#FFB800] mt-0.5" viewBox="0 0 130 9" fill="none">
+                <line x1="2" y1="7" x2="128" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="8" y1="7" x2="8" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="22" y1="7" x2="22" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="36" y1="7" x2="36" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="50" y1="7" x2="50" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="65" y1="7" x2="65" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="80" y1="7" x2="80" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="95" y1="7" x2="95" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <line x1="109" y1="7" x2="109" y2="4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line x1="122" y1="7" x2="122" y2="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* Sparkle star connector */}
+            <span className="text-amber-400 text-xs sm:text-sm -mt-2 animate-pulse">★</span>
+
+            {/* GUARANTEE: Cheerful Trust Seal */}
+            <div className="relative inline-flex flex-col items-center">
+              <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.32em] text-[#5B2E89] rotate-1 group-hover:rotate-2 transition-transform duration-200">
+                GUARANTEE
+              </span>
+              {/* Playful curved cyan smile arc */}
+              <svg className="w-full h-2 text-[#00A3E0] mt-0.5" viewBox="0 0 100 8" fill="none">
+                <path d="M4 2 Q 50 8, 96 2" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+            </div>
+          </div>
           <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
             Shop By <span className="text-[#FF7A59]">Age Group</span>
           </h2>

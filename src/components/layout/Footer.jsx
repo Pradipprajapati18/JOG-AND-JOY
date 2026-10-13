@@ -4,7 +4,7 @@ import { getImageUrl } from '../../utils/getImageUrl';
 
 // Pixel-Perfect Vector Instagram Icon with CSS Gradient Container
 const InstagramGradientIcon = () => (
-  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-tr from-[#fdf497] via-[#fd5949]  to-[#285AEB] flex items-center justify-center shadow-md shrink-0">
+  <div className="w-8 h-8 rounded-lg bg-linear-to-tr from-[#fdf497] via-[#fd5949] to-[#285AEB] flex items-center justify-center shadow-md shrink-0">
     <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
@@ -188,17 +188,35 @@ export default function Footer() {
         </div>
 
         {/* BOTTOM LEGAL & COPYRIGHT BAR */}
-        <div className="pt-2 text-center space-y-4 relative z-10 text-sm sm:text-base font-extrabold text-[#EEE5C2]">
+        <div className="pt-6 pb-2 text-center space-y-4 relative z-10 text-sm sm:text-base font-extrabold text-[#EEE5C2]">
           
-          <div className="flex items-center justify-center gap-4 text-[#EEE5C2]">
-            <Link to="/contact-us" className="hover:text-[#FAD564] transition-colors">Terms & Services</Link>
-            <span className="text-[#EEE5C2]/40">|</span>
-            <Link to="/contact-us" className="hover:text-[#FAD564] transition-colors">Privacy Policy</Link>
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[#EEE5C2] text-xs sm:text-sm font-extrabold">
+            <Link to="/terms-conditions" className="hover:text-[#FAD564] transition-colors">Terms & Services</Link>
+            <span className="text-[#EEE5C2]/40 hidden sm:inline">|</span>
+            <Link to="/privacy-policy" className="hover:text-[#FAD564] transition-colors">Privacy Policy</Link>
+            <span className="text-[#EEE5C2]/40 hidden sm:inline">|</span>
+            <Link to="/refund-policy" className="hover:text-[#FAD564] transition-colors">Refund & Cancellation</Link>
+            <span className="text-[#EEE5C2]/40 hidden sm:inline">|</span>
+            <Link to="/shipping-policy" className="hover:text-[#FAD564] transition-colors">Shipping & Delivery</Link>
           </div>
 
-          <p className="text-xs sm:text-sm text-[#EEE5C2]/80 font-semibold">
-            © {new Date().getFullYear()} JOG&JOY®. All rights reserved. Love is in the wear.
-          </p>
+          <div className="pt-3 border-t border-[#EEE5C2]/15 max-w-2xl mx-auto space-y-2">
+            <p className="text-xs sm:text-sm text-[#EEE5C2]/85 font-semibold tracking-wide">
+              © {new Date().getFullYear()} JOG&JOY®. All rights reserved. Love is in the wear.
+            </p>
+
+            <p className="text-xs text-[#EEE5C2]/70 font-medium tracking-wide">
+              ~ Managed by{' '}
+              <a 
+                href="https://www.sbsquantum.com/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="font-extrabold text-[#FAD564] hover:text-white underline decoration-[#FAD564]/60 hover:decoration-white transition-all inline-block hover:scale-105"
+              >
+                SBS Quantum
+              </a>
+            </p>
+          </div>
 
         </div>
 

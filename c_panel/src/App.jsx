@@ -13,6 +13,7 @@ import CustomerLoginModal from './components/ui/CustomerLoginModal';
 import Footer from './components/layout/Footer';
 import { useAuth } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { UIProvider } from './context/UIContext';
 
 const Home = React.lazy(() => import('./pages/Home'));
 const Products = React.lazy(() => import('./pages/Products'));
@@ -31,6 +32,7 @@ const WhyUs = React.lazy(() => import('./pages/WhyUs'));
 const OrderTracking = React.lazy(() => import('./pages/OrderTracking'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
 const CustomerAccount = React.lazy(() => import('./pages/CustomerAccount'));
+const PoliciesPage = React.lazy(() => import('./pages/PoliciesPage'));
 
 const AdminLayout = React.lazy(() => import('./pages/admin/AdminLayout'));
 const AdminDashboard = React.lazy(() => import('./pages/admin/AdminDashboard'));
@@ -62,7 +64,7 @@ function ScrollToTop() {
           if (url.pathname === window.location.pathname && url.origin === window.location.origin && !url.hash) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }
-        } catch (err) {
+        } catch {
         }
       }
     };
@@ -112,7 +114,8 @@ export default function App() {
       <CartProvider>
         <WishlistProvider>
           <SettingsProvider>
-            <Router>
+            <UIProvider>
+              <Router>
               <ScrollToTop />
               <Suspense fallback={<div className="flex h-[50vh] w-full items-center justify-center text-slate-500">Loading...</div>}>
               <Routes>
@@ -154,12 +157,18 @@ export default function App() {
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/distributor-network" element={<DistributorNetworkPage />} />
                 <Route path="/account/*" element={<CustomerAccount />} />
+                <Route path="/terms-conditions" element={<PoliciesPage />} />
+                <Route path="/terms-services" element={<PoliciesPage />} />
+                <Route path="/privacy-policy" element={<PoliciesPage />} />
+                <Route path="/refund-policy" element={<PoliciesPage />} />
+                <Route path="/shipping-policy" element={<PoliciesPage />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
               </Routes>
               </Suspense>
             </Router>
-          </SettingsProvider>
+          </UIProvider>
+        </SettingsProvider>
         </WishlistProvider>
       </CartProvider>
     </AuthProvider>

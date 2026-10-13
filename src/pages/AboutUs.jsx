@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Palette, TrendingUp, Scissors, User, Building, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
@@ -6,6 +6,8 @@ import AnimatedCounter from '../components/ui/AnimatedCounter';
 import FloatingElements from '../components/ui/FloatingElements';
 import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 import { getImageUrl } from '../utils/getImageUrl';
+import vaishalImage from '../assets/vaishal_shah.png';
+import { useCombinedProducts } from '../queries/useCombinedProducts';
 
 const stats = [
   { value: 30, suffix: '+', label: 'Years Experience', color: 'text-[#EF4A45]' },
@@ -15,7 +17,7 @@ const stats = [
 ];
 
 const teamMembers = [
-  { name: 'Vaishal A Shah', role: 'Managing Director', image: 'https://ui-avatars.com/api/?name=Vaishal+Shah&background=AEE6FF&color=000&size=300' }
+  { name: 'Vaishal A Shah', role: 'Managing Director', image: vaishalImage || '/images/vaishal_shah.png' }
 ];
 
 const CustomClothingSticker = ({ type, style }) => {
@@ -42,6 +44,48 @@ const CustomClothingSticker = ({ type, style }) => {
 };
 
 export default function AboutUs() {
+  const { combinedProducts } = useCombinedProducts();
+
+  const newArrivalGalleryItems = useMemo(() => {
+    // 1. Fetch live new arrivals from useCombinedProducts (what New Arrivals page fetches)
+    const newItems = combinedProducts?.filter((p) => p.isNew && (p.image || p.images?.[0])) || [];
+    if (newItems.length >= 4) {
+      return newItems.slice(0, 10).map((p) => ({
+        src: p.image || p.images?.[0],
+        tag: p.name || '✨ New Drop'
+      }));
+    }
+
+    // 2. Fallback to all live products with images
+    const liveItems = combinedProducts?.filter((p) => p.image || p.images?.[0]) || [];
+    if (liveItems.length >= 4) {
+      return liveItems.slice(0, 10).map((p) => ({
+        src: p.image || p.images?.[0],
+        tag: p.name || '✨ Fresh Kids Style'
+      }));
+    }
+
+    // 3. Fallback to New Arrivals gallery images
+    return [
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50.webp", tag: "☁️ Soft Tees" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (1).webp", tag: "🎨 Fun Colors" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (2).webp", tag: "🏃 Active Play" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (3).webp", tag: "✨ Comfy Shorts" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (4).webp", tag: "🎈 Cute Frocks" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (5).webp", tag: "☁️ Soft Tees" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51.webp", tag: "🎨 Fun Colors" },
+      { src: "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (1).webp", tag: "🏃 Active Play" }
+    ];
+  }, [combinedProducts]);
+
+  const marqueeItems = useMemo(() => {
+    let items = newArrivalGalleryItems || [];
+    if (items.length === 0) return [];
+    while (items.length < 8) {
+      items = [...items, ...newArrivalGalleryItems];
+    }
+    return [...items, ...items];
+  }, [newArrivalGalleryItems]);
   return (
     <div className="bg-[#FFF8EC] min-h-screen font-sans overflow-x-hidden relative">
       <ClothDoodlesBackground />
@@ -55,9 +99,24 @@ export default function AboutUs() {
 
           {/* Top Playful Badge */}
           <div className="flex items-center justify-center mb-4">
-            <span className="px-4 py-1.5 rounded-full bg-[#FFF3EE] text-[#FF7A59] border border-[#FFE0D6] text-xs font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" /> Made For Play & Smiles 🌈
-            </span>
+            <div className="inline-flex flex-col items-center justify-center select-none group cursor-default">
+              {/* Row 1: MADE FOR PLAY */}
+              <div className="inline-flex flex-col items-center">
+                <span className="text-xs sm:text-sm font-black uppercase tracking-[0.34em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                  MADE FOR PLAY
+                </span>
+                <div className="w-full min-w-[150px] sm:min-w-[180px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1.5 shadow-2xs" />
+              </div>
+
+              {/* Row 2: & SMILES */}
+              <div className="inline-flex flex-col items-center mt-2">
+                <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.42em] text-[#0F172A] transition-colors duration-300 group-hover:text-[#5B2E89]">
+                  & SMILES
+                </span>
+                <div className="w-full min-w-[95px] sm:min-w-[120px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1.5 shadow-2xs" />
+              </div>
+            </div>
+
           </div>
 
           {/* Center Text Content */}
@@ -77,16 +136,7 @@ export default function AboutUs() {
               animate={{ x: ["0%", "-50%"] }}
               transition={{ ease: "linear", duration: 25, repeat: Infinity }}
             >
-              {[
-                { src: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=600&auto=format&fit=crop", tag: "☁️ Soft Tees" },
-                { src: "https://images.unsplash.com/photo-1519457431-44ccd64a579b?q=80&w=600&auto=format&fit=crop", tag: "🎨 Fun Colors" },
-                { src: "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?q=80&w=600&auto=format&fit=crop", tag: "🏃 Active Play" },
-                { src: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=600&auto=format&fit=crop", tag: "✨ Comfy Shorts" },
-                { src: "https://images.unsplash.com/photo-1471286174574-e9627710ee7e?q=80&w=600&auto=format&fit=crop", tag: "🎈 Cute Frocks" },
-                { src: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=600&auto=format&fit=crop", tag: "☁️ Soft Tees" },
-                { src: "https://images.unsplash.com/photo-1519457431-44ccd64a579b?q=80&w=600&auto=format&fit=crop", tag: "🎨 Fun Colors" },
-                { src: "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?q=80&w=600&auto=format&fit=crop", tag: "🏃 Active Play" }
-              ].map((item, idx) => (
+              {marqueeItems.map((item, idx) => (
                 <div key={idx} className="relative h-[180px] w-[140px] md:h-[230px] md:w-[180px] rounded-3xl overflow-hidden shrink-0 group shadow-md border-4 border-white bg-[#FFF8EC] transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
                   <img
                     src={item.src}
@@ -94,11 +144,11 @@ export default function AboutUs() {
                     alt={`Kids Outfit ${idx}`}
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=600&auto=format&fit=crop";
+                      e.target.src = "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50.webp";
                     }}
                   />
                   <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-full text-center">
-                    <span className="text-[11px] font-extrabold text-slate-800 tracking-wide">{item.tag}</span>
+                    <span className="text-[11px] font-extrabold text-slate-800 tracking-wide line-clamp-1">{item.tag}</span>
                   </div>
                 </div>
               ))}
@@ -181,9 +231,25 @@ export default function AboutUs() {
       <section className="relative py-32 md:py-48 mt-12 bg-[url('https://images.unsplash.com/photo-1556905055-8f358a7a47b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80')] bg-fixed bg-cover bg-center rounded-3xl mx-4 overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-r from-[#EF4A45]/90 via-[#D32F2F]/80 to-[#00A3E0]/90" />
         <div className="relative z-10 max-w-4xl mx-auto text-center px-4 text-white space-y-6">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-white/20 border border-white/30 text-white text-xs font-extrabold uppercase tracking-widest backdrop-blur-sm shadow-sm font-poppins">
-            Partner With Us
-          </span>
+          {/* Partner With Us: Sleek Dual Underline Header for Vibrant Background */}
+          <div className="inline-flex flex-col items-center justify-center select-none group cursor-default mb-2">
+            {/* Row 1: PARTNER */}
+            <div className="inline-flex flex-col items-center">
+              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.36em] bg-linear-to-r from-[#FFD800] via-[#FFE57F] to-[#FFF9C4] bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300 drop-shadow-xs">
+                PARTNER
+              </span>
+              <div className="w-full min-w-[110px] sm:min-w-[130px] h-[3px] rounded-full bg-linear-to-r from-[#FFD800] via-[#FFAE19] to-[#AEE6FF] mt-1.5 shadow-sm" />
+            </div>
+
+            {/* Row 2: WITH US */}
+            <div className="inline-flex flex-col items-center mt-2">
+              <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.44em] text-white/95 group-hover:text-white transition-colors duration-300 drop-shadow-xs">
+                WITH US
+              </span>
+              <div className="w-full min-w-[95px] sm:min-w-[115px] h-[2.5px] rounded-full bg-linear-to-r from-[#AEE6FF] via-[#00A3E0] to-[#FFFFFF] mt-1.5 shadow-sm" />
+            </div>
+          </div>
+
           <h2 className="text-4xl md:text-6xl font-black leading-tight tracking-tight font-heading-primary">
             Grow your retail business with our high-demand apparel
           </h2>
@@ -233,28 +299,73 @@ export default function AboutUs() {
       <section className="py-24 px-4 relative z-10">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 space-y-4">
-            <span className="px-3 py-1 bg-[#00A3E0]/15 text-[#00A3E0] rounded-lg text-xs font-black uppercase tracking-widest font-poppins">Meet Our Founders</span>
+            {/* Meet Our Founders: Style 4 Premium Stacked Typography */}
+            <div className="flex items-center justify-center">
+              <div className="inline-flex flex-col items-center justify-center select-none group cursor-default">
+                {/* Row 1: MEET OUR */}
+                <div className="inline-flex flex-col items-center">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-[0.34em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                    MEET OUR
+                  </span>
+                  <div className="w-full min-w-[125px] sm:min-w-[145px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1.5 shadow-2xs" />
+                </div>
+
+                {/* Row 2: FOUNDERS */}
+                <div className="inline-flex flex-col items-center mt-2">
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.44em] text-[#0F172A] transition-colors duration-300 group-hover:text-[#5B2E89]">
+                    FOUNDERS
+                  </span>
+                  <div className="w-full min-w-[110px] sm:min-w-[130px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1.5 shadow-2xs" />
+                </div>
+              </div>
+            </div>
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight font-heading-primary">
               We serve uniqueness because <br />you are unique to us
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 max-w-3xl mx-auto">
+          <div className="w-full flex justify-center items-center">
             {teamMembers.map((member, idx) => (
-              <div key={idx} className="bg-white rounded-[2.5rem] shadow-lg hover:shadow-xl transition-all group overflow-hidden border border-slate-100 p-4">
-                <div className="aspect-square bg-slate-100 rounded-4xl overflow-hidden">
-                  <img src={member.image} alt={member.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div key={idx} className="w-full max-w-sm sm:max-w-md bg-white rounded-[2.5rem] shadow-xl hover:shadow-2xl transition-all duration-300 group overflow-hidden border-2 border-orange-100/80 p-5 mx-auto">
+                <div className="aspect-square bg-slate-100 rounded-4xl overflow-hidden shadow-inner">
+                  <img
+                    src={member.image || '/images/vaishal_shah.png'}
+                    alt={member.name}
+                    className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/images/vaishal_shah.png';
+                    }}
+                  />
                 </div>
                 <div className="p-6 text-center">
-                  <h4 className="text-xl font-black text-slate-900 font-heading-primary">{member.name}</h4>
+                  <h4 className="text-2xl font-black text-slate-900 font-heading-primary">{member.name}</h4>
                   <p className="text-xs font-bold uppercase tracking-widest text-[#EF4A45] mt-2 mb-4">{member.role}</p>
 
                   <div className="flex items-center justify-center gap-3">
-                    <a href="#" className="w-10 h-10 rounded-full bg-[#FFF8EC] text-[#EF4A45] flex items-center justify-center hover:bg-[#EF4A45] hover:text-white transition-colors">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z" /></svg>
+                    <a 
+                      href="https://www.facebook.com/profile.php?id=61594924757967" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      aria-label="Facebook" 
+                      title="Facebook (@jognjoyofficial)"
+                      className="w-10 h-10 rounded-full bg-[#FFF8EC] text-[#3B5998] flex items-center justify-center hover:bg-[#3B5998] hover:text-white transition-all hover:scale-110 shadow-xs"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z" /></svg>
                     </a>
-                    <a href="#" className="w-10 h-10 rounded-full bg-[#FFF8EC] text-[#00A3E0] flex items-center justify-center hover:bg-[#00A3E0] hover:text-white transition-colors">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.52 8.52 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z" /></svg>
+                    <a 
+                      href="https://www.instagram.com/jognjoy_official?mdxt=MXdncjk4NDlqczFxcA==" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      aria-label="Instagram" 
+                      title="Instagram (@jognjoy_official)"
+                      className="w-10 h-10 rounded-full bg-[#FFF8EC] text-[#E1306C] flex items-center justify-center hover:bg-linear-to-tr hover:from-[#fdf497] hover:via-[#fd5949] hover:to-[#285AEB] hover:text-white transition-all hover:scale-110 shadow-xs"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                      </svg>
                     </a>
                   </div>
                 </div>

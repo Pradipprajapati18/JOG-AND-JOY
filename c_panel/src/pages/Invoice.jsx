@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { useOrdersList } from '../queries/useOrders';
 import { useSettingsContext } from '../context/SettingsContext';
+import { getColorName } from '../utils/helpers';
 
 export default function Invoice() {
   const { orderId } = useParams();
@@ -48,12 +49,13 @@ export default function Invoice() {
         {/* Invoice Header */}
         <div className="mb-12">
           <h1 className="text-3xl font-black mb-1">JOG & JOY</h1>
-          <p className="text-xl text-gray-700">{isPackingSlip ? 'Packing Slip' : 'Invoice'}</p>
+          <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Jainam Products</p>
+          <p className="text-xl text-gray-700 mt-1">{isPackingSlip ? 'Packing Slip' : 'Invoice'}</p>
           
           <div className="mt-8 text-lg">
-            <p>49, Kamal House, Pankaj Society, Paldi,</p>
-            <p>Ahmedabad - 380007, Gujarat, India.</p>
-            <p className="mt-6">+91 94299 05118</p>
+            <p>2488, Navo Vas, Swaminarayan Mandir, Kalupur,</p>
+            <p>Ahmedabad, Gujarat-24, India.</p>
+            <p className="mt-4">+91 94299 05118</p>
           </div>
         </div>
 
@@ -105,7 +107,12 @@ export default function Invoice() {
                     {item.titleSnapshot || item.name || 'Product'}
                   </td>
                   <td className="py-3 px-2 border-[3px] border-black text-sm whitespace-pre-line text-center">
-                    {item.color && <div>colour: {item.color}</div>}
+                    {item.color && (() => {
+                      const colName = item.colorName || getColorName(item.color);
+                      return (
+                        <div>colour: {colName} {item.color?.startsWith('#') && colName !== item.color ? `(${item.color})` : ''}</div>
+                      );
+                    })()}
                     {item.size && <div>size: {item.size}</div>}
                   </td>
                   <td className="py-3 px-2 border-[3px] border-black text-sm">{item.price || 0} rs</td>

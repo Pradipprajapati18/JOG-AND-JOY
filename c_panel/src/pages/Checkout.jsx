@@ -21,6 +21,7 @@ import { useUpsertCustomerByEmail } from '../queries/useCustomers';
 import { productsApi } from '../api/endpoints/products';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { getColorName } from '../utils/helpers';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -212,6 +213,7 @@ export default function Checkout() {
         quantity: item.quantity,
         size: item.size,
         color: item.color,
+        colorName: item.colorName || getColorName(item.color),
         image: item.image
       })),
       shippingAddress: {
@@ -757,7 +759,13 @@ export default function Checkout() {
                       <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shrink-0 shadow-sm" />
                       <div className="flex flex-col truncate">
                         <span className="truncate text-slate-900">{item.name}</span>
-                        <span className="text-[10px] text-slate-500 mt-0.5">Qty: {item.quantity} • {item.size} • {item.color}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                          <span>Qty: {item.quantity} • {item.size} •</span>
+                          {item.color && (
+                            <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: item.color }} />
+                          )}
+                          <span className="font-semibold text-slate-700">{item.colorName || getColorName(item.color)}</span>
+                        </span>
                       </div>
                     </div>
                     <span className="font-black text-slate-900 shrink-0">₹{item.numericPrice * item.quantity}</span>

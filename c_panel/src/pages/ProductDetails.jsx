@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useReviewsList, useCreateReview } from '../queries/useReviews';
 import { ordersApi } from '../api/endpoints/orders';
-import { createSlug } from '../utils/helpers';
+import { createSlug, getColorName } from '../utils/helpers';
 
 import ProductCard from '../components/ui/ProductCard';
 import SizeGuideModal from '../components/ui/SizeGuideModal';
@@ -112,11 +112,18 @@ export default function ProductDetails() {
       }
       
       // Verified! Submit review.
+      const commentText = reviewForm.body || '';
+      const titleText = reviewForm.title || '';
+      const combinedComment = titleText && !commentText.startsWith(titleText)
+        ? `${titleText} - ${commentText}`
+        : commentText;
+
       await createReviewMut.mutateAsync({
         productId: String(product.id),
-        rating: reviewForm.rating,
-        title: reviewForm.title,
-        body: reviewForm.body,
+        rating: Number(reviewForm.rating || 5),
+        title: titleText,
+        comment: combinedComment,
+        name: customerName,
         customerName,
         customerEmail: reviewForm.email,
         orderId: isAdmin ? 'ADMIN-OVERRIDE' : reviewForm.orderId,
@@ -208,14 +215,17 @@ export default function ProductDetails() {
   const globalColors = [];
   siblingProducts.forEach(sibling => {
     sibling.colors?.forEach(color => {
-      if (!globalColors.some(c => c.hex === color.hex)) {
+      const hex = typeof color === 'string' ? color : color.hex;
+      const name = (typeof color === 'object' && color.name) ? color.name : getColorName(hex);
+      if (hex && !globalColors.some(c => c.hex?.toLowerCase() === hex?.toLowerCase())) {
         const variantWithImage = sibling.variants?.find(
-          (v) => v.colorHex?.toLowerCase() === color.hex?.toLowerCase() && v.image
+          (v) => v.colorHex?.toLowerCase() === hex?.toLowerCase() && v.image
         );
         globalColors.push({ 
-          ...color, 
+          hex,
+          name,
           productId: sibling.id,
-          image: variantWithImage?.image || color.image || sibling.image || product.image,
+          image: variantWithImage?.image || (typeof color === 'object' ? color.image : null) || sibling.image || product.image,
           price: sibling.price || product.price,
           originalPrice: sibling.originalPrice || product.originalPrice
         });
@@ -259,7 +269,9 @@ export default function ProductDetails() {
       setTimeout(() => setSizeError(false), 2000);
       return;
     }
-    addToCart(product, selectedSize, selectedColor, null, quantity, false, displayStock);
+    const colorObj = globalColors.find(c => c.hex?.toLowerCase() === selectedColor?.toLowerCase());
+    const colorName = colorObj?.name || getColorName(selectedColor);
+    addToCart(product, selectedSize, selectedColor, null, quantity, false, displayStock, colorName);
     navigate('/checkout');
   };
 
@@ -270,7 +282,9 @@ export default function ProductDetails() {
       setTimeout(() => setSizeError(false), 2000);
       return;
     }
-    addToCart(product, selectedSize, selectedColor, e, quantity, isBuyNow, displayStock);
+    const colorObj = globalColors.find(c => c.hex?.toLowerCase() === selectedColor?.toLowerCase());
+    const colorName = colorObj?.name || getColorName(selectedColor);
+    addToCart(product, selectedSize, selectedColor, e, quantity, isBuyNow, displayStock, colorName);
   };
 
   const galleryImages = product.gallery || [product.image];
@@ -394,8 +408,13 @@ export default function ProductDetails() {
 
             {/* Color Swatch Selector */}
             <div className="space-y-3 mt-6">
-              <label className="text-[15px] font-semibold text-black">
-                Colour
+              <label className="text-[15px] font-semibold text-black flex items-center gap-2">
+                <span>Colour</span>
+                {selectedColor && (
+                  <span className="font-bold text-[#5B2E89]">
+                    ({globalColors.find(c => c.hex?.toLowerCase() === selectedColor?.toLowerCase())?.name || getColorName(selectedColor)})
+                  </span>
+                )}
               </label>
               {globalColors && globalColors.length > 0 ? (
                 <div className="relative group">
@@ -766,6 +785,23 @@ export default function ProductDetails() {
                         </div>
                         {r.title && <h5 className="font-bold text-slate-900 text-sm mb-1">{r.title}</h5>}
                         <p className="text-sm font-medium text-slate-700">{r.body || r.comment}</p>
+
+                        {r.merchantReply?.body && (
+                          <div className="mt-3 p-3.5 bg-white rounded-xl border border-slate-200 shadow-xs text-sm">
+                            <div className="font-bold text-slate-900 mb-1 flex items-center gap-1.5 text-xs">
+                              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span className="font-extrabold text-slate-900">Jog & Joy Official Response</span>
+                              {r.merchantReply.repliedAt && (
+                                <span className="text-[10px] text-slate-400 font-normal ml-auto">
+                                  {new Date(r.merchantReply.repliedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed pl-5">
+                              {r.merchantReply.body}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (

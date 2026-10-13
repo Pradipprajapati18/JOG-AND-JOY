@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import ImageTrail from './ImageTrail';
 import heroBgDesktop from "../../assets/hero-bg-desktop.webp";
 import heroBgMobile from "../../assets/hero-bg-mobile.webp";
@@ -18,16 +18,37 @@ const cutouts = [
   { src: star, className: "top-[38%] sm:top-[44%] right-[4%] w-12 sm:w-14 md:w-24 z-2", rotDeg: 18, fromX: "100px", fromY: "0px", delay: "0.60s", label: "Cheerful star" },
 ];
 
-const trailImages = [
-  "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=400&h=400&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1519457431-44ccd64a579b?w=400&h=400&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=400&h=400&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1471286174574-e9627710ee7e?w=400&h=400&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1502224562085-639556652f33?w=400&h=400&fit=crop&q=80",
+const galleryImages = [
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50.webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (1).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (2).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (3).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (4).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.50 (5).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51.webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (1).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (2).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (3).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (4).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (5).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (6).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (7).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (8).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (9).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (10).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (11).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (12).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (13).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (14).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (15).webp",
+  "/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (16).webp"
 ];
 
 export default function HeroSection() {
+  const randomizedTrailImages = useMemo(() => {
+    return [...galleryImages].sort(() => 0.5 - Math.random());
+  }, []);
+
   return (
     <section className="relative w-full text-slate-900 flex flex-col md:block items-center justify-center cursor-crosshair h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] bg-white overflow-hidden">
       {/* Preload critical background images */}
@@ -58,14 +79,14 @@ export default function HeroSection() {
         pointerEvents: "none"
       }} />
 
-      {/* Image Trail interactive overlay */}
-      <div className="max-md:hidden" style={{
+      {/* Image Trail interactive overlay (Desktop mouse trail & Mobile floating cards) */}
+      <div style={{
         position: "absolute",
         inset: 0,
         zIndex: 1,
         pointerEvents: "auto"
       }}>
-        <ImageTrail items={trailImages} variant={1} />
+        <ImageTrail items={randomizedTrailImages} variant={1} />
       </div>
 
       {/* Floating Animated Cutouts */}

@@ -3,6 +3,7 @@ import { Search, Edit2, Trash2, CheckCircle2, Image as ImageIcon, Plus, X, Chevr
 import { useProductsList, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../../queries/useProducts';
 import { useCategoriesList } from '../../queries/useCategories';
 import { useSizesList } from '../../queries/useSizes';
+import { getColorName } from '../../utils/helpers';
 
 export default function AdminProducts() {
   const [search, setSearch] = useState('');
@@ -37,6 +38,19 @@ export default function AdminProducts() {
   
   const [customColorName, setCustomColorName] = useState('');
   const [customColorHex, setCustomColorHex] = useState('#000000');
+
+  // Auto-sync color name whenever customColorHex matches an already added color and customColorName is empty
+  useEffect(() => {
+    if (customColorHex && (!customColorName || customColorName.trim() === '')) {
+      const normalized = customColorHex.startsWith('#') ? customColorHex : `#${customColorHex}`;
+      const found = formData.colors.find(c => 
+        (typeof c === 'string' ? c : c.hex)?.toLowerCase() === normalized.toLowerCase()
+      );
+      if (found) {
+        setCustomColorName(typeof found === 'object' && found.name ? found.name : getColorName(normalized));
+      }
+    }
+  }, [customColorHex, formData.colors]);
 
   
   const AVAILABLE_COLORS = [
@@ -130,14 +144,18 @@ export default function AdminProducts() {
   useEffect(() => {
     const newVariants = [];
     const sizes = formData.sizes.length > 0 ? formData.sizes : ['Standard'];
-    const colors = formData.colors.length > 0 ? formData.colors : [{ hex: '#000000', name: 'Standard' }];
+    const rawColors = formData.colors.length > 0 ? formData.colors : [{ hex: '#000000', name: 'Standard' }];
+    const colors = rawColors.map(c => 
+      typeof c === 'string' ? { hex: c, name: getColorName(c) } : { hex: c.hex, name: c.name || getColorName(c.hex) }
+    );
 
     colors.forEach(color => {
       sizes.forEach(size => {
-        const existing = formData.variants.find(v => v.colorHex === color.hex && v.size === size);
+        const existing = formData.variants.find(v => v.colorHex?.toLowerCase() === color.hex?.toLowerCase() && v.size === size);
+        const colorPrefix = (color.name || 'STD').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() || 'COL';
         newVariants.push({
           id: existing?.id || Date.now().toString() + Math.random().toString(36).substr(2, 5),
-          sku: existing?.sku || `SKU-${Date.now().toString().slice(-4)}-${color.name.slice(0,3).toUpperCase()}-${size.replace(/[^a-zA-Z0-9]/g, '')}`,
+          sku: existing?.sku || `SKU-${Date.now().toString().slice(-4)}-${colorPrefix}-${size.replace(/[^a-zA-Z0-9]/g, '')}`,
           colorHex: color.hex,
           colorName: color.name,
           size: size,
@@ -149,7 +167,12 @@ export default function AdminProducts() {
       });
     });
 
-    const variantsChanged = newVariants.length !== formData.variants.length || newVariants.some((nv, i) => nv.colorHex !== formData.variants[i]?.colorHex || nv.size !== formData.variants[i]?.size || nv.isHidden !== formData.variants[i]?.isHidden);
+    const variantsChanged = newVariants.length !== formData.variants.length || newVariants.some((nv, i) => 
+      nv.colorHex?.toLowerCase() !== formData.variants[i]?.colorHex?.toLowerCase() || 
+      nv.colorName !== formData.variants[i]?.colorName ||
+      nv.size !== formData.variants[i]?.size || 
+      nv.isHidden !== formData.variants[i]?.isHidden
+    );
     
     if (variantsChanged) {
       setFormData(prev => ({ ...prev, variants: newVariants }));
@@ -244,7 +267,9 @@ export default function AdminProducts() {
       care: p.care || '',
       shipping: p.shipping || '',
       sizes: p.sizes || [],
-      colors: p.colors || [],
+      colors: (p.colors || []).map(c => 
+        typeof c === 'string' ? { hex: c, name: getColorName(c) } : { hex: c.hex, name: c.name || getColorName(c.hex) }
+      ),
       variants: p.variants || [],
       collections: p.collections || [],
       isNewArrival: p.isNewArrival || false,
@@ -759,46 +784,87 @@ export default function AdminProducts() {
                   {(() => {
                     const displayedColors = [...AVAILABLE_COLORS];
                     formData.colors.forEach(c => {
-                      if (!displayedColors.some(dc => dc.hex === c.hex)) {
-                        displayedColors.push(c);
+                      const cHex = typeof c === 'string' ? c : c.hex;
+                      if (!displayedColors.some(dc => dc.hex?.toLowerCase() === cHex?.toLowerCase())) {
+                        displayedColors.push(typeof c === 'string' ? { hex: c, name: getColorName(c) } : c);
                       }
                     });
-                    return displayedColors.map(color => (
-                      <button
-                        type="button"
-                        key={color.hex}
-                        onClick={() => {
-                          const hasColor = formData.colors.some(c => c.hex === color.hex);
-                          const newColors = hasColor
-                            ? formData.colors.filter(c => c.hex !== color.hex)
-                            : [...formData.colors, color];
-                          setFormData({ ...formData, colors: newColors });
-                        }}
-                        className={`w-10 h-10 rounded-full border-2 shadow-sm transition-transform ${formData.colors.some(c => c.hex === color.hex)
-                            ? 'scale-125 ring-2 ring-slate-900 border-white'
-                            : 'border-slate-200 hover:scale-110'
+                    return displayedColors.map(color => {
+                      const isSelected = formData.colors.some(c => 
+                        (typeof c === 'string' ? c : c.hex)?.toLowerCase() === color.hex?.toLowerCase()
+                      );
+                      return (
+                        <button
+                          type="button"
+                          key={color.hex}
+                          onClick={() => {
+                            const existing = formData.colors.find(c => 
+                              (typeof c === 'string' ? c : c.hex)?.toLowerCase() === color.hex?.toLowerCase()
+                            );
+                            if (existing) {
+                              setCustomColorHex(color.hex);
+                              setCustomColorName(typeof existing === 'object' && existing.name ? existing.name : (color.name || getColorName(color.hex)));
+                            } else {
+                              const newColor = { hex: color.hex, name: color.name || getColorName(color.hex) };
+                              setFormData({ ...formData, colors: [...formData.colors, newColor] });
+                              setCustomColorHex(color.hex);
+                              setCustomColorName(color.name || getColorName(color.hex));
+                            }
+                          }}
+                          className={`w-10 h-10 rounded-full border-2 shadow-sm transition-transform relative group ${
+                            isSelected
+                              ? 'scale-125 ring-2 ring-slate-900 border-white'
+                              : 'border-slate-200 hover:scale-110'
                           }`}
-                        style={{ backgroundColor: color.hex }}
-                        title={color.name}
-                      />
-                    ));
+                          style={{ backgroundColor: color.hex }}
+                          title={`${color.name} (${color.hex})`}
+                        />
+                      );
+                    });
                   })()}
                 </div>
                 
-                {/* Custom Color Input */}
-                <div className="flex items-center gap-2 mt-4 p-3 bg-white border border-slate-200 rounded-lg shadow-sm w-full md:w-max">
+                {/* Custom Color & Name Input */}
+                <div className="flex flex-wrap items-center gap-2 mt-4 p-3 bg-white border border-slate-200 rounded-lg shadow-sm w-full md:w-max">
                   <input 
                     type="color" 
-                    value={customColorHex} 
-                    onChange={e => setCustomColorHex(e.target.value)}
+                    value={customColorHex.startsWith('#') && customColorHex.length === 7 ? customColorHex : '#000000'} 
+                    onChange={e => {
+                      const newHex = e.target.value;
+                      setCustomColorHex(newHex);
+                      const found = formData.colors.find(c => (typeof c === 'string' ? c : c.hex)?.toLowerCase() === newHex.toLowerCase());
+                      if (found && typeof found === 'object' && found.name) {
+                        setCustomColorName(found.name);
+                      } else if (!customColorName || customColorName.trim() === '') {
+                        const detected = getColorName(newHex);
+                        if (detected && !detected.startsWith('#')) {
+                          setCustomColorName(detected);
+                        }
+                      }
+                    }}
                     className="w-8 h-8 rounded cursor-pointer border-0 p-0"
                     title="Choose custom color"
                   />
                   <input 
                     type="text" 
-                    placeholder="Hex Code (e.g. #FF0000)" 
+                    placeholder="Hex Code (e.g. #000000)" 
                     value={customColorHex}
-                    onChange={e => setCustomColorHex(e.target.value)}
+                    onChange={e => {
+                      const newHex = e.target.value;
+                      setCustomColorHex(newHex);
+                      const normalizedHex = newHex.startsWith('#') ? newHex : `#${newHex}`;
+                      const found = formData.colors.find(c => (typeof c === 'string' ? c : c.hex)?.toLowerCase() === normalizedHex.toLowerCase());
+                      if (found && typeof found === 'object' && found.name) {
+                        setCustomColorName(found.name);
+                      } else if (!customColorName || customColorName.trim() === '') {
+                        if (normalizedHex.length === 7) {
+                          const detected = getColorName(normalizedHex);
+                          if (detected && !detected.startsWith('#')) {
+                            setCustomColorName(detected);
+                          }
+                        }
+                      }
+                    }}
                     className="text-sm font-mono uppercase border border-slate-200 rounded-md px-2 py-1.5 w-28 focus:border-blue-600 outline-none"
                   />
                   <input 
@@ -806,25 +872,105 @@ export default function AdminProducts() {
                     placeholder="Color Name (e.g. Mint)" 
                     value={customColorName}
                     onChange={e => setCustomColorName(e.target.value)}
-                    className="text-sm border border-slate-200 rounded-md px-2 py-1.5 w-32 focus:border-blue-600 outline-none"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        let finalHex = customColorHex ? customColorHex.trim() : '';
+                        if (!finalHex.startsWith('#') && /^[0-9A-Fa-f]{3,8}$/.test(finalHex)) {
+                          finalHex = `#${finalHex}`;
+                        }
+                        if (finalHex && finalHex.startsWith('#')) {
+                          const finalName = customColorName.trim() || getColorName(finalHex) || finalHex.toUpperCase();
+                          const newColor = { name: finalName, hex: finalHex };
+                          const existingIdx = formData.colors.findIndex(c => 
+                            (typeof c === 'string' ? c : c.hex)?.toLowerCase() === finalHex.toLowerCase()
+                          );
+                          if (existingIdx > -1) {
+                            const updated = [...formData.colors];
+                            updated[existingIdx] = newColor;
+                            setFormData({ ...formData, colors: updated });
+                          } else {
+                            setFormData({ ...formData, colors: [...formData.colors, newColor] });
+                          }
+                          setCustomColorName(finalName);
+                        }
+                      }
+                    }}
+                    className="text-sm border border-slate-200 rounded-md px-2 py-1.5 w-36 focus:border-blue-600 outline-none"
                   />
                   <button 
                     type="button"
                     onClick={() => {
-                      if(customColorHex && customColorHex.startsWith('#')) {
-                        const finalName = customColorName.trim() || customColorHex.toUpperCase();
-                        const newColor = { name: finalName, hex: customColorHex };
-                        if (!formData.colors.some(c => c.hex === customColorHex)) {
+                      let finalHex = customColorHex ? customColorHex.trim() : '';
+                      if (!finalHex.startsWith('#') && /^[0-9A-Fa-f]{3,8}$/.test(finalHex)) {
+                        finalHex = `#${finalHex}`;
+                      }
+                      if (finalHex && finalHex.startsWith('#')) {
+                        const finalName = customColorName.trim() || getColorName(finalHex) || finalHex.toUpperCase();
+                        const newColor = { name: finalName, hex: finalHex };
+                        const existingIdx = formData.colors.findIndex(c => 
+                          (typeof c === 'string' ? c : c.hex)?.toLowerCase() === finalHex.toLowerCase()
+                        );
+                        if (existingIdx > -1) {
+                          const updated = [...formData.colors];
+                          updated[existingIdx] = newColor;
+                          setFormData({ ...formData, colors: updated });
+                        } else {
                           setFormData({ ...formData, colors: [...formData.colors, newColor] });
                         }
-                        setCustomColorName('');
+                        setCustomColorName(finalName);
                       }
                     }}
-                    className="text-xs font-bold bg-white border border-slate-200 text-[#003366] px-3 py-1.5 rounded-md hover:bg-slate-50 transition-colors shadow-sm"
+                    className="text-xs font-bold bg-white border border-slate-200 text-[#003366] px-3 py-1.5 rounded-md hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                   >
-                    Add
+                    {formData.colors.some(c => (typeof c === 'string' ? c : c.hex)?.toLowerCase() === (customColorHex?.trim().startsWith('#') ? customColorHex.trim() : `#${customColorHex?.trim()}`).toLowerCase()) ? 'Update Color' : 'Add Color'}
                   </button>
                 </div>
+
+                {/* Selected Colors List with Names */}
+                {formData.colors.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                      Selected Colors & Names ({formData.colors.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.colors.map((c, idx) => {
+                        const hex = typeof c === 'string' ? c : c.hex;
+                        const name = (typeof c === 'object' && c.name) ? c.name : getColorName(hex);
+                        return (
+                          <div 
+                            key={hex + idx} 
+                            onClick={() => {
+                              setCustomColorHex(hex);
+                              setCustomColorName(name);
+                            }}
+                            className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm hover:border-slate-300 transition-colors cursor-pointer"
+                            title="Click to edit color or name"
+                          >
+                            <span 
+                              className="w-4 h-4 rounded-full border border-slate-300 shrink-0 shadow-xs" 
+                              style={{ backgroundColor: hex }} 
+                            />
+                            <span className="text-xs font-bold text-slate-800">{name}</span>
+                            <span className="text-[10px] font-mono text-slate-400 uppercase">({hex})</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newColors = formData.colors.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, colors: newColors });
+                              }}
+                              className="ml-1 text-slate-400 hover:text-red-500 font-bold text-xs"
+                              title="Remove color"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

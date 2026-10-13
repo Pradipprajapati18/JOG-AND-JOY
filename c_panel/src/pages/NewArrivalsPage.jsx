@@ -44,6 +44,8 @@ export default function NewArrivalsPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+
+
   const productsPerPage = 16;
   const totalPages = Math.ceil(newProducts.length / productsPerPage) || 1;
   const currentProducts = newProducts.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage);
@@ -59,6 +61,8 @@ export default function NewArrivalsPage() {
       }, 50);
     }
   };
+
+
 
   return (
     <div className="min-h-screen bg-white pb-24 font-sans">
@@ -99,9 +103,23 @@ export default function NewArrivalsPage() {
 
           {/* Center Headline */}
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-linear-to-r from-[#FFF3EE] via-[#FFF9E6] to-[#EBF7FF] border border-[#FFE0D6] text-[#FF7A59] font-black text-xs uppercase tracking-wider mb-5 shadow-xs">
-              <Sparkles className="w-4 h-4 text-[#FF7A59] animate-pulse" />
-              <span>Just Dropped • Season 2026 🌈</span>
+            {/* Style 4: Sleek Stacked Gradient Typography */}
+            <div className="inline-flex flex-col items-center justify-center mb-6 select-none group cursor-default">
+              {/* Row 1: JUST DROPPED */}
+              <div className="inline-flex flex-col items-center">
+                <span className="text-sm sm:text-base font-black uppercase tracking-[0.34em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                  JUST DROPPED
+                </span>
+                <div className="w-full min-w-[160px] sm:min-w-[190px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1.5 shadow-2xs" />
+              </div>
+
+              {/* Row 2: SEASON 2026 */}
+              <div className="inline-flex flex-col items-center mt-2.5">
+                <span className="text-xs sm:text-sm font-black uppercase tracking-[0.44em] text-[#0F172A] transition-colors duration-300 group-hover:text-[#5B2E89]">
+                  SEASON 2026
+                </span>
+                <div className="w-full min-w-[125px] sm:min-w-[150px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1.5 shadow-2xs" />
+              </div>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 tracking-tight leading-[1.08] font-heading-primary">
               Elevate Your <span className="font-serif italic font-normal text-slate-800 underline decoration-[#FFD800] decoration-wavy decoration-2">Style</span> With <br />
@@ -192,10 +210,25 @@ export default function NewArrivalsPage() {
         <div className="mb-24">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8">
             <div>
-              <span className="text-xs font-black uppercase tracking-widest text-[#FF7A59] bg-[#FFF3EE] px-3.5 py-1 rounded-full border border-[#FFE0D6]">
-                Explore Collections
-              </span>
-              <h2 className="text-3xl font-black text-slate-900 tracking-tight mt-2">
+              {/* Style 4: Sleek Gradient Typography (Matching Top Style 4) */}
+              <div className="inline-flex flex-wrap items-center gap-x-3.5 gap-y-2 select-none group cursor-default mb-2">
+                {/* EXPLORE: Coral to Yellow Gradient with Horizontal Underline */}
+                <div className="relative inline-flex flex-col items-center">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-[0.32em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent group-hover:scale-105 transition-transform duration-300">
+                    EXPLORE
+                  </span>
+                  <div className="w-full min-w-[95px] sm:min-w-[115px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1 shadow-2xs" />
+                </div>
+
+                {/* COLLECTION: Deep Slate with Cyan to Royal Purple Gradient Underline */}
+                <div className="relative inline-flex flex-col items-center">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-[0.38em] text-[#0F172A] group-hover:text-[#5B2E89] transition-colors duration-300">
+                    COLLECTION
+                  </span>
+                  <div className="w-full min-w-[125px] sm:min-w-[145px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1 shadow-2xs" />
+                </div>
+              </div>
+              <h2 className="text-3xl font-black text-slate-900 tracking-tight mt-1">
                 Shop By Department
               </h2>
             </div>

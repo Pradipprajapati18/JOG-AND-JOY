@@ -35,3 +35,48 @@ export const exportToCSV = (data, filename) => {
   link.click();
   document.body.removeChild(link);
 };
+
+export const STANDARD_COLOR_NAMES = {
+  '#000000': 'Black',
+  '#ffffff': 'White',
+  '#ff0000': 'Red',
+  '#0000ff': 'Blue',
+  '#000080': 'Navy',
+  '#ffff00': 'Yellow',
+  '#ffc0cb': 'Pink',
+  '#808000': 'Olive',
+  '#aee6ff': 'Sky Blue',
+  '#a7d8ff': 'Baby Blue',
+  '#ff7a59': 'Coral Orange',
+  '#22c55e': 'Green',
+  '#16a34a': 'Emerald Green',
+  '#a855f7': 'Purple',
+  '#f97316': 'Orange',
+  '#6b7280': 'Grey',
+  '#4b5563': 'Charcoal',
+  '#92400e': 'Brown',
+  '#fef08a': 'Cream',
+  '#1e293b': 'Dark Slate',
+  '#3b82f6': 'Royal Blue',
+  '#ec4899': 'Hot Pink',
+  '#14b8a6': 'Teal',
+  '#84cc16': 'Lime Green',
+  '#d97706': 'Amber'
+};
+
+export const getColorName = (hexOrName, fallbackName = '') => {
+  if (!hexOrName) return fallbackName || 'Standard';
+  if (fallbackName && fallbackName !== hexOrName && !fallbackName.startsWith('#')) {
+    return fallbackName;
+  }
+  const clean = String(hexOrName).trim().toLowerCase();
+  if (STANDARD_COLOR_NAMES[clean]) return STANDARD_COLOR_NAMES[clean];
+  if (clean.startsWith('#')) {
+    if (clean.length === 4) {
+      const expanded = '#' + clean[1] + clean[1] + clean[2] + clean[2] + clean[3] + clean[3];
+      if (STANDARD_COLOR_NAMES[expanded]) return STANDARD_COLOR_NAMES[expanded];
+    }
+    return fallbackName || clean.toUpperCase();
+  }
+  return hexOrName;
+};

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, X, MapPin, Calendar, CreditCard, Package, AlertCircle, ArrowLeft, MoreHorizontal, ShieldAlert, FileText, CheckCircle2, Check } from 'lucide-react';
+import { Search, X, CreditCard, Package, AlertCircle, ArrowLeft, MoreHorizontal, ShieldAlert, FileText, CheckCircle2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useOrdersList, useUpdateOrder } from '../../queries/useOrders';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { useUIContext } from '../../context/UIContext';
 
 import { useSearchParams, Link } from 'react-router-dom';
+import { getColorName } from '../../utils/helpers';
 
 export default function AdminOrders() {
   const { addToast } = useUIContext();
@@ -150,6 +151,53 @@ export default function AdminOrders() {
     }
   };
 
+  const handleQuickStatusChange = (orderToUpdate, newStatus) => {
+    if (!orderToUpdate) return;
+    if (newStatus === 'SHIPPED' && !orderToUpdate.shippingAddress?.trackingNumber) {
+      addToast('Please open order details and add a tracking number first', 'error');
+      return;
+    }
+
+    const isApproval = newStatus.includes('APPROVED');
+    const isRejection = newStatus === 'RETURN_REJECTED';
+    const note = isApproval 
+      ? `Request approved by admin via orders table (${newStatus})` 
+      : isRejection 
+      ? 'Return/Exchange request rejected by admin' 
+      : `Status changed to ${newStatus} by admin via orders table`;
+
+    const historyEntry = {
+      status: newStatus,
+      timestamp: new Date().toISOString(),
+      note: note
+    };
+
+    const patchData = {
+      status: newStatus,
+      statusHistory: [...(orderToUpdate.statusHistory || []), historyEntry]
+    };
+
+    if (newStatus === 'DELIVERED') {
+      patchData.paymentStatus = 'paid';
+    } else if (newStatus === 'RETURN_APPROVED' || newStatus === 'REFUNDED') {
+      patchData.paymentStatus = 'refunded';
+    } else if (newStatus === 'CANCELLED') {
+      patchData.paymentStatus = orderToUpdate.paymentStatus === 'paid' ? 'refunded' : 'cancelled';
+    }
+
+    updateMut.mutate({
+      id: orderToUpdate.id,
+      patch: patchData
+    }, {
+      onSuccess: (updated) => {
+        if (selectedOrder && (selectedOrder.id === orderToUpdate.id || selectedOrder.orderNumber === orderToUpdate.orderNumber)) {
+          setSelectedOrder(updated);
+        }
+        addToast(`Order ${orderToUpdate.orderNumber || orderToUpdate.id.slice(0, 8)} updated to ${newStatus.replace('_', ' ')}!`, 'success');
+      }
+    });
+  };
+
   const handlePrintPackingSlip = () => {
     if (!selectedOrder) return;
     window.open(`/invoice/${selectedOrder.id}?type=packing_slip`, '_blank');
@@ -266,7 +314,7 @@ export default function AdminOrders() {
                 <FileText className="w-4 h-4" />
                 Print Packing Slip
               </button>
-              {!['DELIVERED', 'CANCELLED', 'REFUNDED', 'RETURN_APPROVED', 'EXCHANGE_APPROVED', 'RETURN_REJECTED'].includes(o.status) && (
+              {!['CANCELLED', 'REFUNDED', 'RETURN_REJECTED'].includes(o.status) && (
                 <div className="relative">
                   <button 
                     onClick={() => setIsMenuOpen(!isMenuOpen)} 
@@ -277,13 +325,19 @@ export default function AdminOrders() {
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)}></div>
-                      <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-20">
+                      <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-20">
                         <div className="p-1">
-                          {['PROCESSING', 'SHIPPED', 'DELIVERED', 'ON_HOLD', 'CANCELLED'].filter(st => {
-                            if (o.status === 'PROCESSING') return ['SHIPPED', 'ON_HOLD', 'CANCELLED'].includes(st);
-                            if (o.status === 'ON_HOLD') return ['PROCESSING', 'SHIPPED', 'CANCELLED'].includes(st);
+                          {['PROCESSING', 'SHIPPED', 'DELIVERED', 'ON_HOLD', 'EXCHANGE_APPROVED', 'RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED', 'REFUNDED'].filter(st => {
+                            if (st === o.status) return false;
+                            if (o.status === 'PROCESSING') return ['SHIPPED', 'DELIVERED', 'ON_HOLD', 'CANCELLED'].includes(st);
+                            if (o.status === 'ON_HOLD') return ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(st);
                             if (o.status === 'SHIPPED') return ['DELIVERED', 'CANCELLED'].includes(st);
-                            return false;
+                            if (o.status === 'EXCHANGE_REQUESTED') return ['EXCHANGE_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
+                            if (o.status === 'RETURN_REQUESTED') return ['RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
+                            if (o.status === 'EXCHANGE_APPROVED') return ['SHIPPED', 'DELIVERED'].includes(st);
+                            if (o.status === 'RETURN_APPROVED') return ['REFUNDED'].includes(st);
+                            if (o.status === 'DELIVERED') return ['SHIPPED', 'EXCHANGE_APPROVED', 'RETURN_APPROVED', 'CANCELLED'].includes(st);
+                            return true;
                           }).map(st => (
                             <button 
                               key={st} 
@@ -312,31 +366,81 @@ export default function AdminOrders() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            {/* Return Request Banner */}
+            {/* Return / Exchange Request Banner */}
             {o.returnRequest && (
               <div className={`border rounded-2xl p-5 ${
                 o.status === 'RETURN_REQUESTED' || o.status === 'EXCHANGE_REQUESTED' 
                   ? 'bg-amber-50 border-amber-200'
+                  : o.status.includes('APPROVED')
+                  ? 'bg-emerald-50 border-emerald-200'
                   : 'bg-slate-50 border-slate-200'
               }`}>
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="space-y-2 flex-1">
                     <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 mb-1">
-                      <ShieldAlert className={`w-5 h-5 ${o.status.includes('REQUESTED') ? 'text-amber-600' : 'text-slate-500'}`} />
-                      {o.returnRequest.type === 'RETURN' ? 'Refund' : 'Exchange'} Request
+                      <ShieldAlert className={`w-5 h-5 ${o.status.includes('REQUESTED') ? 'text-amber-600' : o.status.includes('APPROVED') ? 'text-emerald-600' : 'text-slate-500'}`} />
+                      {o.returnRequest.type === 'RETURN' ? 'Return & Refund' : 'Product Exchange'} Request
+                      <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
+                        o.status.includes('REQUESTED') ? 'bg-amber-200 text-amber-800' :
+                        o.status.includes('APPROVED') ? 'bg-emerald-200 text-emerald-800' :
+                        'bg-slate-200 text-slate-700'
+                      }`}>
+                        {o.status.replace('_', ' ')}
+                      </span>
                     </h2>
+
                     <p className="text-sm font-bold text-slate-700">Reason: <span className="text-slate-900 font-medium">{o.returnRequest.reason}</span></p>
+                    
                     {o.returnRequest.comments && (
-                      <p className="text-sm text-slate-600 mt-2 italic">"{o.returnRequest.comments}"</p>
+                      <p className="text-sm text-slate-600 italic">"{o.returnRequest.comments}"</p>
+                    )}
+
+                    {/* Exchange Item Details */}
+                    {o.returnRequest.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (
+                      <div className="mt-3 p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-4">
+                        {o.returnRequest.exchangeItem.image && (
+                          <img src={o.returnRequest.exchangeItem.image} alt={o.returnRequest.exchangeItem.title} className="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
+                        )}
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-amber-700">Requested Replacement</p>
+                          <p className="font-bold text-slate-800 text-sm">{o.returnRequest.exchangeItem.title}</p>
+                          <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
+                            <span>Size: <span className="font-semibold text-slate-700">{o.returnRequest.exchangeItem.size || 'N/A'}</span></span>
+                            {o.returnRequest.exchangeItem.color && (
+                              <span className="inline-flex items-center gap-1">
+                                • Color:
+                                <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: o.returnRequest.exchangeItem.color }} />
+                                <span className="font-semibold text-slate-700">{o.returnRequest.exchangeItem.colorName || getColorName(o.returnRequest.exchangeItem.color)}</span>
+                              </span>
+                            )}
+                            {o.returnRequest.exchangeItem.price ? ` • Price: ₹${o.returnRequest.exchangeItem.price}` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Return Details */}
+                    {o.returnRequest.type === 'RETURN' && (
+                      <div className="mt-2 text-xs text-slate-600 space-y-1">
+                        {o.returnRequest.refundMode && (
+                          <p><span className="font-bold">Refund Method:</span> <span className="uppercase">{o.returnRequest.refundMode}</span></p>
+                        )}
+                        {o.returnRequest.refundAmount && (
+                          <p><span className="font-bold">Refund Amount:</span> ₹{o.returnRequest.refundAmount}</p>
+                        )}
+                        {o.returnRequest.bankDetails?.accountNumber && (
+                          <p><span className="font-bold">Bank Account:</span> {o.returnRequest.bankDetails.accountNumber} (IFSC: {o.returnRequest.bankDetails.ifsc})</p>
+                        )}
+                      </div>
                     )}
                   </div>
                   
                   {/* Action Buttons for Pending Requests */}
                   {(o.status === 'RETURN_REQUESTED' || o.status === 'EXCHANGE_REQUESTED') && (
-                    <div className="flex flex-col gap-2 shrink-0 ml-4">
+                    <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
                       <button 
                         onClick={() => handleStatusChange(o.returnRequest.type === 'RETURN' ? 'RETURN_APPROVED' : 'EXCHANGE_APPROVED')}
-                        className="px-4 py-2 bg-green-600 text-white font-bold rounded-xl text-sm hover:bg-green-700 transition-colors"
+                        className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-700 transition-colors shadow-sm"
                       >
                         Approve {o.returnRequest.type}
                       </button>
@@ -367,7 +471,22 @@ export default function AdminOrders() {
                     )}
                     <div className="flex-1">
                       <p className="font-bold text-text-dark">{item.titleSnapshot}</p>
-                      <p className="text-xs text-text-muted mt-0.5">Size: {item.size || 'N/A'} | Color: {item.color || 'N/A'}</p>
+                      <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <span>Size: <span className="font-medium text-slate-700">{item.size || 'N/A'}</span></span>
+                        <span>|</span>
+                        <span className="inline-flex items-center gap-1">
+                          Color:
+                          {item.color && (
+                            <span 
+                              className="inline-block w-3 h-3 rounded-full border border-slate-300 shrink-0" 
+                              style={{ backgroundColor: item.color }} 
+                            />
+                          )}
+                          <span className="font-semibold text-slate-800">
+                            {item.colorName || getColorName(item.color)}
+                          </span>
+                        </span>
+                      </p>
                       <p className="text-xs text-text-muted font-mono mt-0.5">{formatCurrency(item.unitPrice)}</p>
                     </div>
                     <div className="text-right">
@@ -742,46 +861,118 @@ export default function AdminOrders() {
                         <p className="text-xs text-text-muted">{order.shippingAddress?.city || order.shippingAddress?.line1 || order.shippingAddress?.address || 'Unknown'}</p>
                       </td>
                       <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                        {['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status) ? (
+                        {/* 1. Return Requested: badge + Approve Return + Reject */}
+                        {order.status === 'RETURN_REQUESTED' && (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-300">
+                              <RotateCcw className="w-3 h-3 text-amber-600" />
+                              Return Req.
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleQuickStatusChange(order, 'RETURN_APPROVED')}
+                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
+                                title="Approve Return Request"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleQuickStatusChange(order, 'RETURN_REJECTED')}
+                                className="px-1.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded border border-rose-200 transition-colors"
+                                title="Reject Request"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2. Exchange Requested: badge + Approve Exchange + Reject */}
+                        {order.status === 'EXCHANGE_REQUESTED' && (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-300">
+                              <RefreshCw className="w-3 h-3 text-amber-600" />
+                              Exchange Req.
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleQuickStatusChange(order, 'EXCHANGE_APPROVED')}
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
+                                title="Approve Exchange Request"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleQuickStatusChange(order, 'RETURN_REJECTED')}
+                                className="px-1.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded border border-rose-200 transition-colors"
+                                title="Reject Request"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. Return Approved */}
+                        {order.status === 'RETURN_APPROVED' && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/15 text-emerald-800 border border-emerald-300">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Return Approved
+                            </span>
+                          </div>
+                        )}
+
+                        {/* 4. Exchange Approved: badge + Ship Replacement */}
+                        {order.status === 'EXCHANGE_APPROVED' && (
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-purple-500/15 text-purple-800 border border-purple-300">
+                              <CheckCircle2 className="w-3 h-3 text-purple-600" />
+                              Exchange Approved
+                            </span>
+                            <button
+                              onClick={() => handleQuickStatusChange(order, 'SHIPPED')}
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
+                              title="Mark Replacement Package Shipped"
+                            >
+                              Ship Replacement
+                            </button>
+                          </div>
+                        )}
+
+                        {/* 5. Return / Exchange Rejected */}
+                        {order.status === 'RETURN_REJECTED' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-rose-500/10 text-rose-700 border border-rose-200">
+                            <X className="w-3 h-3" />
+                            Rejected
+                          </span>
+                        )}
+
+                        {/* 6. Delivered, Cancelled, Refunded */}
+                        {['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status) && (
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
                             order.status === 'DELIVERED' ? 'bg-green-500/15 text-green-700' : 'bg-red-500/10 text-red-700'
                           }`}>
                             {order.status === 'DELIVERED' && <CheckCircle2 className="w-3 h-3" />}
                             {order.status}
                           </span>
-                        ) : (
+                        )}
+
+                        {/* 7. In-flight Standard statuses (PROCESSING, ON_HOLD, SHIPPED) */}
+                        {['PROCESSING', 'ON_HOLD', 'SHIPPED'].includes(order.status) && (
                           <div className="relative inline-block">
                             <select
                               value={order.status || 'PROCESSING'}
-                              onChange={(e) => {
-                                const newStatus = e.target.value;
-                                if (newStatus === 'SHIPPED' && !order.shippingAddress?.trackingNumber) {
-                                  addToast('Please open the order details and add a tracking number first', 'error');
-                                  return;
-                                }
-                                const historyEntry = { status: newStatus, timestamp: new Date().toISOString(), note: 'Status updated by admin via table' };
-                                updateMut.mutate({ 
-                                  id: order.id, 
-                                  patch: { 
-                                    status: newStatus,
-                                    statusHistory: [...(order.statusHistory || []), historyEntry]
-                                  } 
-                                }, {
-                                  onSuccess: () => addToast(`Order ${order.id} marked as ${newStatus}`, 'success')
-                                });
-                              }}
+                              onChange={(e) => handleQuickStatusChange(order, e.target.value)}
                               className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider cursor-pointer border-none outline-none focus:ring-2 focus:ring-blue-600/50 pr-6 ${
                                 order.status === 'SHIPPED' ? 'bg-blue-500/15 text-blue-700' : 'bg-orange-500/15 text-orange-700'
                               }`}
                             >
-                              {(order.status === 'PROCESSING' || order.status === 'ON_HOLD') && <option value="PROCESSING">Processing</option>}
-                              {(order.status === 'PROCESSING' || order.status === 'ON_HOLD') && <option value="ON_HOLD">On Hold</option>}
-                              
-                              {(order.status === 'PROCESSING' || order.status === 'ON_HOLD' || order.status === 'SHIPPED') && <option value="SHIPPED">Shipped</option>}
-                              {(order.status === 'SHIPPED') && <option value="DELIVERED">Delivered</option>}
-                              
+                              <option value="PROCESSING">Processing</option>
+                              <option value="ON_HOLD">On Hold</option>
+                              <option value="SHIPPED">Shipped</option>
+                              <option value="DELIVERED">Delivered</option>
                               <option value="CANCELLED">Cancelled</option>
-                              {order.status === 'SHIPPED' && <option value="REFUNDED">Refunded</option>}
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1.5">
                               <svg className="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>

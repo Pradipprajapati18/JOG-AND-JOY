@@ -4,6 +4,7 @@ import { useSettings } from '../queries/useSettings';
 import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import ToastContainer from '../components/ui/ToastContainer';
+import { getColorName } from '../utils/helpers';
 
 const CartContext = createContext();
 
@@ -98,11 +99,13 @@ export function CartProvider({ children }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const addToCart = (product, selectedSize = '4Y-5Y', selectedColor = '#AEE6FF', e = null, quantity = 1, fromDetails = false, availableStock = Infinity) => {
+  const addToCart = (product, selectedSize = '4Y-5Y', selectedColor = '#AEE6FF', e = null, quantity = 1, fromDetails = false, availableStock = Infinity, colorName = null) => {
     const rawPrice = product.price ?? 499;
     const numericPrice = typeof rawPrice === 'number'
       ? rawPrice
       : parseInt(String(rawPrice).replace(/[^0-9]/g, ''), 10) || 499;
+
+    const resolvedColorName = colorName || (product.colors?.find(c => (c.hex || c) === selectedColor)?.name) || getColorName(selectedColor);
 
     const existingIdx = cart.findIndex(
       (item) => item.id === product.id && item.size === selectedSize && item.color === selectedColor
@@ -116,6 +119,9 @@ export function CartProvider({ children }) {
       }
       const updated = [...cart];
       updated[existingIdx].quantity += quantity;
+      if (!updated[existingIdx].colorName && resolvedColorName) {
+        updated[existingIdx].colorName = resolvedColorName;
+      }
       setCart(updated);
     } else {
       if (quantity > availableStock) {
@@ -133,6 +139,7 @@ export function CartProvider({ children }) {
           image: product.image,
           size: selectedSize,
           color: selectedColor,
+          colorName: resolvedColorName,
           quantity: quantity,
           stock: availableStock
         }

@@ -288,22 +288,24 @@ export default function KidsPage() {
           padding: '0 20px',
           maxWidth: '800px'
         }}>
-          <span style={{
-            display: 'inline-block',
-            backgroundColor: '#FFD800',
-            color: '#1a1a1a',
-            fontWeight: 800,
-            fontSize: '0.78rem',
-            letterSpacing: '2px',
-            textTransform: 'uppercase',
-            padding: '6px 18px',
-            borderRadius: '30px',
-            border: '1.5px solid #222222',
-            boxShadow: '0 3px 0 #222222',
-            marginBottom: '20px'
-          }}>
-            🎨 Kids Collection
-          </span>
+          {/* Style 4: Sleek Stacked Gradient Typography (Matching New Arrivals Style 4) */}
+          <div className="inline-flex flex-col items-center justify-center mb-6 select-none group cursor-default">
+            {/* Row 1: KIDS */}
+            <div className="inline-flex flex-col items-center">
+              <span className="text-sm sm:text-base font-black uppercase tracking-[0.34em] bg-linear-to-r from-[#FF6B4A] via-[#FFAE19] to-[#FFD800] bg-clip-text text-transparent transition-transform duration-300 group-hover:scale-105">
+                KIDS
+              </span>
+              <div className="w-full min-w-[95px] sm:min-w-[115px] h-[3px] rounded-full bg-linear-to-r from-[#FF6B4A] via-[#FFD800] to-[#00A3E0] mt-1.5 shadow-2xs" />
+            </div>
+
+            {/* Row 2: COLLECTION */}
+            <div className="inline-flex flex-col items-center mt-2.5">
+              <span className="text-xs sm:text-sm font-black uppercase tracking-[0.44em] text-[#0F172A] transition-colors duration-300 group-hover:text-[#5B2E89]">
+                COLLECTION
+              </span>
+              <div className="w-full min-w-[130px] sm:min-w-[155px] h-[2.5px] rounded-full bg-linear-to-r from-[#00A3E0] via-[#4F46E5] to-[#5B2E89] mt-1.5 shadow-2xs" />
+            </div>
+          </div>
 
           <h1 style={{
             fontSize: 'clamp(2.2rem, 5vw, 4rem)',

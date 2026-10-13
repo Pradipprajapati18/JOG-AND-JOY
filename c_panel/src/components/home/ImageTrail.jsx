@@ -71,8 +71,7 @@ class TrailController {
 
     window.addEventListener('mousemove', this.handlePointer);
     window.addEventListener('touchmove', this.handlePointer);
-    window.addEventListener('mousemove', this.initRender);
-    window.addEventListener('touchmove', this.initRender);
+    requestAnimationFrame(() => this.render());
   }
 
   handlePointer = (ev) => {
@@ -101,25 +100,6 @@ class TrailController {
         this.autoDriftTime = Math.random() * 100;
       }, 3000);
     }
-  };
-
-  initRender = (ev) => {
-    if (!this.active) return;
-    const rect = this.container.getBoundingClientRect();
-    const clientX = 'touches' in ev && ev.touches.length > 0 ? ev.touches[0].clientX : ev.clientX;
-    const clientY = 'touches' in ev && ev.touches.length > 0 ? ev.touches[0].clientY : ev.clientY;
-
-    this.isAutoDrifting = false;
-    this.mousePos = {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
-    this.cacheMousePos = { ...this.mousePos };
-
-    requestAnimationFrame(() => this.render());
-
-    window.removeEventListener('mousemove', this.initRender);
-    window.removeEventListener('touchmove', this.initRender);
   };
 
   render() {
@@ -471,32 +451,44 @@ class TrailController {
           .to(img.el, { duration: 0.4, ease: 'power2', opacity: 0, z: -800 }, 0.3);
         break;
 
-      default:
+      default: {
+        const imgW = (img.rect && img.rect.width > 0) ? img.rect.width : 185;
+        const imgH = (img.rect && img.rect.height > 0) ? img.rect.height : 243;
         gsap
           .timeline({ onStart, onComplete })
           .fromTo(
             img.el,
             {
               opacity: 1,
-              scale: 1,
+              scale: 0.85,
               zIndex: this.zIndexVal,
-              x: this.cacheMousePos.x - img.rect.width / 2,
-              y: this.cacheMousePos.y - img.rect.height / 2
+              x: this.cacheMousePos.x - imgW / 2,
+              y: this.cacheMousePos.y - imgH / 2,
+              rotation: gsap.utils.random(-6, 6)
             },
             {
-              duration: 0.4,
-              ease: 'power1',
-              x: this.mousePos.x - img.rect.width / 2,
-              y: this.mousePos.y - img.rect.height / 2
+              duration: 0.45,
+              ease: 'power2.out',
+              scale: 1,
+              x: this.mousePos.x - imgW / 2,
+              y: this.mousePos.y - imgH / 2,
+              rotation: gsap.utils.random(-2, 2)
             },
             0
           )
           .to(
             img.el,
-            { duration: 0.4, ease: 'power3', opacity: 0, scale: 0.2 },
-            0.4
+            { 
+              duration: 0.65, 
+              ease: 'power2.inOut', 
+              opacity: 0, 
+              scale: 0.35, 
+              y: '+=25' 
+            },
+            0.55
           );
         break;
+      }
     }
   }
 
@@ -504,8 +496,6 @@ class TrailController {
     this.active = false;
     window.removeEventListener('mousemove', this.handlePointer);
     window.removeEventListener('touchmove', this.handlePointer);
-    window.removeEventListener('mousemove', this.initRender);
-    window.removeEventListener('touchmove', this.initRender);
     this.images.forEach(img => img.destroy());
     if (this.idleTimeout) clearTimeout(this.idleTimeout);
   }
@@ -536,6 +526,16 @@ export default function ImageTrail({ items = [], variant = 1 }) {
   const [isMobile, setIsMobile] = useState(false);
   const [activeCard, setActiveCard] = useState(null);
   const timeoutsRef = useRef({});
+
+  // Preload trail images to eliminate loading delay
+  useEffect(() => {
+    if (!items || items.length === 0) return;
+    const preloadCount = Math.min(items.length, 12);
+    for (let i = 0; i < preloadCount; i++) {
+      const img = new Image();
+      img.src = encodeURI(items[i]);
+    }
+  }, [items]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -589,6 +589,7 @@ export default function ImageTrail({ items = [], variant = 1 }) {
         {collageItems.map((url, i) => {
           const coords = mobileCoordinates[i] || { top: "20%", left: "20%" };
           const isActive = activeCard === i;
+          const safeUrl = encodeURI(url);
 
           return (
             <div
@@ -598,28 +599,36 @@ export default function ImageTrail({ items = [], variant = 1 }) {
                 position: "absolute",
                 ...coords,
                 width: "110px",
-                aspectRatio: "1.1",
-                borderRadius: "12px",
+                aspectRatio: "3.5 / 4.6",
+                borderRadius: "16px",
                 overflow: "hidden",
-                border: isActive ? "2.5px solid #C83B2B" : "1px solid #e0e0e0",
-                boxShadow: isActive ? "0 8px 24px rgba(200, 59, 43, 0.25)" : "none",
-                opacity: isActive ? 1 : 0.15,
-                filter: isActive ? "grayscale(0%) blur(0px)" : "grayscale(100%) blur(2px)",
+                border: isActive ? "2.5px solid #ED6B21" : "1.5px solid rgba(255, 255, 255, 0.9)",
+                boxShadow: isActive ? "0 14px 30px rgba(0, 0, 0, 0.45), 0 0 0 2px rgba(255,255,255,0.9)" : "0 6px 16px rgba(0, 0, 0, 0.22)",
+                opacity: isActive ? 1 : 0.9,
+                filter: "none",
                 transform: isActive ? "scale(1.15) rotate(0deg)" : `scale(1) rotate(${(i % 2 === 0 ? 3 : -3)}deg)`,
                 transition: "all 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
                 cursor: "pointer",
-                zIndex: isActive ? 100 : 5
+                zIndex: isActive ? 100 : 5,
+                backgroundColor: "#ffffff"
               }}
             >
               <div 
                 style={{
                   width: "100%",
                   height: "100%",
-                  backgroundImage: `url(${url})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center"
+                  position: "relative",
+                  overflow: "hidden"
                 }}
-              />
+              >
+                <img 
+                  src={safeUrl} 
+                  alt="Jog & Joy activewear" 
+                  className="w-full h-full object-cover select-none pointer-events-none block"
+                  style={{ objectPosition: 'center 20%' }}
+                  loading="eager"
+                />
+              </div>
 
               {isActive && (
                 <div 
@@ -628,15 +637,14 @@ export default function ImageTrail({ items = [], variant = 1 }) {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    background: "rgba(200, 59, 43, 0.95)",
+                    background: "rgba(237, 107, 33, 0.95)",
                     color: "#ffffff",
                     fontSize: "0.62rem",
                     fontWeight: 700,
                     textAlign: "center",
                     padding: "4px 2px",
                     textTransform: "uppercase",
-                    letterSpacing: "0.03em",
-                    animation: "pulse-gentle 1s infinite"
+                    letterSpacing: "0.03em"
                   }}
                 >
                   {productLabels[i] || "Jog & Joy"}
@@ -651,11 +659,30 @@ export default function ImageTrail({ items = [], variant = 1 }) {
 
   return (
     <div className="content" ref={containerRef}>
-      {items.map((url, i) => (
-        <div className="content__img" key={i}>
-          <div className="content__img-inner" style={{ backgroundImage: `url(${url})` }} />
-        </div>
-      ))}
+      {items.map((url, i) => {
+        const safeUrl = encodeURI(url);
+        return (
+          <div className="content__img" key={i}>
+            <div 
+              className="content__img-inner" 
+              style={{ 
+                backgroundImage: `url("${safeUrl}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center 20%'
+              }}
+            >
+              <img 
+                src={safeUrl} 
+                alt="Jog & Joy activewear" 
+                className="w-full h-full object-cover select-none pointer-events-none block"
+                style={{ objectPosition: 'center 20%' }}
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

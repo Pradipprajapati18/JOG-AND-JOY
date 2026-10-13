@@ -26,7 +26,7 @@ export default function BrandIntro() {
                   </div>
                   <div>
                     <h4 className="text-base font-extrabold text-white">Legacy Since 1996</h4>
-                    <p className="text-xs text-slate-400">Under Dharmnath Products & Kamal Clothing tradition.</p>
+                    <p className="text-xs text-slate-400">Crafted by Jog & Joy under Jainam Products.</p>
                   </div>
                 </div>
               </div>
