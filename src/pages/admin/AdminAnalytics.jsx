@@ -247,17 +247,17 @@ export default function AdminAnalytics() {
 
   return (
     <div className="w-full animate-in fade-in duration-300 pb-12">
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 sm:mb-8">
         <div>
           <span className="text-[10px] text-blue-600 font-bold uppercase tracking-widest font-mono">Reporting</span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-text-dark mt-0.5">Analytics</h1>
           <p className="text-xs text-text-muted mt-1">Data driven insights and custom reports</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <select
             value={period}
             onChange={e => setPeriod(e.target.value)}
-            className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:ring-1 focus:ring-green-500 shadow-sm"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold focus:outline-none focus:ring-1 focus:ring-green-500 shadow-sm"
           >
             <option value="today">Today</option>
             <option value="7d">Last 7 Days</option>
@@ -265,7 +265,7 @@ export default function AdminAnalytics() {
             <option value="year">This Year</option>
             <option value="all">All Time</option>
           </select>
-          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-text-dark rounded-xl font-bold text-sm hover:bg-bg-base transition-colors shadow-sm transition-all">
+          <button onClick={handleExport} className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-white border border-slate-200 text-text-dark rounded-xl font-bold text-xs sm:text-sm hover:bg-bg-base transition-colors shadow-sm transition-all">
             <Download className="w-4 h-4" />
             Export
           </button>
@@ -273,42 +273,42 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Global KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <button onClick={() => setActiveTab('sales')} className="text-left p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
-          <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2 group-hover:text-blue-600 transition-colors">Total Sales</p>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <button onClick={() => setActiveTab('sales')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
+          <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-1 sm:mb-2 group-hover:text-blue-600 transition-colors truncate">Total Sales</p>
           <div className="flex items-end gap-3">
-            <p className="text-2xl font-black text-text-dark">{isLoading ? '...' : formatCurrency(summary?.totalRevenue || 0)}</p>
+            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{isLoading ? '...' : formatCurrency(summary?.totalRevenue || 0)}</p>
           </div>
         </button>
-        <button onClick={() => setActiveTab('sales')} className="text-left p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
-          <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2 group-hover:text-blue-600 transition-colors">Avg Order Value</p>
+        <button onClick={() => setActiveTab('sales')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
+          <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-1 sm:mb-2 group-hover:text-blue-600 transition-colors truncate">Avg Order Value</p>
           <div className="flex items-end gap-3">
-            <p className="text-2xl font-black text-text-dark">{isLoading ? '...' : formatCurrency(summary?.totalRevenue / (summary?.totalOrders || 1) || 0)}</p>
+            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{isLoading ? '...' : formatCurrency(summary?.totalRevenue / (summary?.totalOrders || 1) || 0)}</p>
           </div>
         </button>
-        <button onClick={() => setActiveTab('orders')} className="text-left p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
-          <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2 group-hover:text-blue-600 transition-colors">Total Orders</p>
+        <button onClick={() => setActiveTab('orders')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
+          <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-1 sm:mb-2 group-hover:text-blue-600 transition-colors truncate">Total Orders</p>
           <div className="flex items-end gap-3">
-            <p className="text-2xl font-black text-text-dark">{totalOrdersCount}</p>
+            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{totalOrdersCount}</p>
           </div>
         </button>
-        <button onClick={() => setActiveTab('sales')} className="text-left p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group flex flex-col justify-between">
-          <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2 group-hover:text-blue-600 transition-colors">Net Sales</p>
+        <button onClick={() => setActiveTab('sales')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group flex flex-col justify-between">
+          <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-1 sm:mb-2 group-hover:text-blue-600 transition-colors truncate">Net Sales</p>
           <div className="flex items-end gap-3">
-            <p className="text-2xl font-black text-blue-600">{isLoading ? '...' : formatCurrency(netSales)}</p>
+            <p className="text-lg sm:text-2xl font-black text-blue-600 truncate">{isLoading ? '...' : formatCurrency(netSales)}</p>
           </div>
-          <p className="text-[10px] font-bold text-zinc-400 mt-2">GROSS: {formatCurrency(grossSales)}</p>
+          <p className="text-[9px] sm:text-[10px] font-bold text-zinc-400 mt-1 sm:mt-2 truncate">GROSS: {formatCurrency(grossSales)}</p>
         </button>
       </div>
 
       <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all overflow-hidden flex flex-col md:flex-row min-h-125">
         {/* Sidebar Tabs */}
-        <div className="w-full md:w-64 shrink-0 bg-zinc-50/50 border-r border-slate-200 p-4 space-y-1">
+        <div className="w-full md:w-64 shrink-0 bg-zinc-50/50 border-b md:border-b-0 md:border-r border-slate-200 p-3 sm:p-4 flex md:flex-col gap-1.5 overflow-x-auto custom-scrollbar">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-bold transition-colors flex items-center gap-3 ${activeTab === tab.id ? 'bg-white border border-slate-200 shadow-sm text-text-dark' : 'text-text-muted hover:bg-zinc-100/50 hover:text-text-primary'
+              className={`whitespace-nowrap px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-colors flex items-center gap-2 sm:gap-3 shrink-0 md:shrink md:w-full ${activeTab === tab.id ? 'bg-white border border-slate-200 shadow-sm text-text-dark' : 'text-text-muted hover:bg-zinc-100/50 hover:text-text-primary'
                 }`}
             >
               <span className={activeTab === tab.id ? 'text-blue-600' : ''}>{tab.icon}</span>
@@ -320,15 +320,15 @@ export default function AdminAnalytics() {
         {/* Content Area */}
         <div className="flex-1 flex flex-col min-w-0">
           <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
-            <h2 className="text-lg font-bold text-text-dark">{tabs.find(t => t.id === activeTab)?.label} Overview</h2>
+            <h2 className="text-base sm:text-lg font-bold text-text-dark">{tabs.find(t => t.id === activeTab)?.label} Overview</h2>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {activeTab === 'sales' ? (
               <div className="space-y-6">
-                <div className="h-72 bg-white border border-slate-200 rounded-xl p-4">
+                <div className="h-64 sm:h-72 bg-white border border-slate-200 rounded-xl p-2 sm:p-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
@@ -336,13 +336,13 @@ export default function AdminAnalytics() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} minTickGap={15} dy={10} />
                       <YAxis 
                         axisLine={false} 
                         tickLine={false} 
-                        tick={{ fontSize: 12, fill: '#64748b' }}
+                        tick={{ fontSize: 11, fill: '#64748b' }}
                         tickFormatter={(value) => `₹${value >= 1000 ? (value/1000).toFixed(1) + 'k' : value}`}
-                        dx={-10}
+                        dx={-5}
                       />
                       <Tooltip 
                         formatter={(value) => [formatCurrency(value), "Sales"]}
@@ -353,15 +353,15 @@ export default function AdminAnalytics() {
                   </ResponsiveContainer>
                 </div>
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="p-4 border border-slate-200 rounded-xl bg-white h-80 flex flex-col">
-                    <h3 className="font-bold text-sm mb-4 text-text-dark">Top Categories by Units Sold</h3>
+                  <div className="p-3 sm:p-4 border border-slate-200 rounded-xl bg-white h-72 sm:h-80 flex flex-col">
+                    <h3 className="font-bold text-xs sm:text-sm mb-4 text-text-dark">Top Categories by Units Sold</h3>
                     <div className="flex-1 min-h-0">
                       {topCategories.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={topCategories} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                          <BarChart data={topCategories} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} allowDecimals={false} />
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} minTickGap={10} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-5} allowDecimals={false} />
                             <Tooltip 
                               cursor={{ fill: '#f1f5f9' }}
                               formatter={(value) => [value, "Units Sold"]}
@@ -380,14 +380,14 @@ export default function AdminAnalytics() {
             ) : activeTab === 'orders' ? (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 h-80 bg-white border border-slate-200 rounded-xl p-4 flex flex-col">
-                    <h3 className="font-bold text-text-dark mb-4 text-sm">Orders Over Time</h3>
+                  <div className="lg:col-span-2 h-72 sm:h-80 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex flex-col">
+                    <h3 className="font-bold text-text-dark mb-4 text-xs sm:text-sm">Orders Over Time</h3>
                     <div className="flex-1 min-h-0">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={ordersChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <BarChart data={ordersChartData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} allowDecimals={false} />
+                          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} minTickGap={15} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dx={-5} allowDecimals={false} />
                           <Tooltip 
                             cursor={{ fill: '#f1f5f9' }}
                             formatter={(value) => [value, "Orders"]}
@@ -399,8 +399,8 @@ export default function AdminAnalytics() {
                     </div>
                   </div>
                   
-                  <div className="h-80 bg-white border border-slate-200 rounded-xl p-4 flex flex-col">
-                    <h3 className="font-bold text-text-dark mb-2 text-sm">Order Status</h3>
+                  <div className="h-72 sm:h-80 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex flex-col">
+                    <h3 className="font-bold text-text-dark mb-2 text-xs sm:text-sm">Order Status</h3>
                     <div className="flex-1 min-h-0">
                       {pieData.length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
@@ -434,20 +434,24 @@ export default function AdminAnalytics() {
               </div>
             ) : activeTab === 'products' ? (
               <div className="space-y-4">
-                <h3 className="font-bold text-text-dark mb-4">Top Products by Units Sold</h3>
-                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500">
-                      <tr><th className="px-5 py-3 font-medium">Product</th><th className="px-5 py-3 font-medium text-right">Units</th><th className="px-5 py-3 font-medium text-right">Revenue</th></tr>
+                <h3 className="font-bold text-text-dark mb-4 text-base sm:text-lg">Top Products by Units Sold</h3>
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden overflow-x-auto custom-scrollbar">
+                  <table className="w-full min-w-[360px] text-left text-sm">
+                    <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500 bg-slate-50/50">
+                      <tr>
+                        <th className="px-4 sm:px-5 py-3 font-medium min-w-[160px]">Product</th>
+                        <th className="px-4 sm:px-5 py-3 font-medium text-right whitespace-nowrap">Units</th>
+                        <th className="px-4 sm:px-5 py-3 font-medium text-right whitespace-nowrap">Revenue</th>
+                      </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {topProducts.length === 0 ? (
-                        <tr><td colSpan="3" className="px-4 py-3 text-center text-text-muted">No product data available.</td></tr>
+                        <tr><td colSpan="3" className="px-4 py-8 text-center text-text-muted">No product data available.</td></tr>
                       ) : topProducts.map((p, idx) => (
                         <tr key={idx} className="hover:bg-zinc-50/50 transition-colors">
-                          <td className="px-4 py-3 font-bold text-text-dark line-clamp-1">{p.name || 'Unknown Product'}</td>
-                          <td className="px-4 py-3 text-right">{p.units}</td>
-                          <td className="px-4 py-3 text-right">{formatCurrency(p.revenue)}</td>
+                          <td className="px-4 py-3 font-bold text-text-dark">{p.name || 'Unknown Product'}</td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">{p.units}</td>
+                          <td className="px-4 py-3 text-right font-extrabold whitespace-nowrap">{formatCurrency(p.revenue)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -455,18 +459,18 @@ export default function AdminAnalytics() {
                 </div>
               </div>
             ) : activeTab === 'customers' ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 border border-slate-200 rounded-xl bg-white text-center">
-                  <Users className="w-8 h-8 text-text-dark mx-auto mb-2" />
-                  <p className="text-3xl font-black text-text-dark">{filteredCustomers.length}</p>
-                  <p className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Total Customers</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-4 sm:p-6 border border-slate-200 rounded-xl bg-white text-center">
+                  <Users className="w-7 h-7 sm:w-8 sm:h-8 text-text-dark mx-auto mb-2" />
+                  <p className="text-2xl sm:text-3xl font-black text-text-dark">{filteredCustomers.length}</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Total Customers</p>
                 </div>
-                <div className="p-4 border border-slate-200 rounded-xl bg-white text-center">
-                  <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-3xl font-black text-text-dark">
+                <div className="p-4 sm:p-6 border border-slate-200 rounded-xl bg-white text-center">
+                  <TrendingUp className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-2xl sm:text-3xl font-black text-text-dark">
                     {filteredCustomers.length > 0 ? (filteredOrders.length / filteredCustomers.length).toFixed(1) : '0'}
                   </p>
-                  <p className="text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Avg Orders / Customer</p>
+                  <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mt-1">Avg Orders / Customer</p>
                 </div>
               </div>
             ) : null}

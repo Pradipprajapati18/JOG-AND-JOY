@@ -137,6 +137,10 @@ export default function App() {
                 </Route>
               </Route>
 
+              {/* Standalone Receipt / Invoice Route */}
+              <Route path="/invoice/:orderId" element={<Invoice />} />
+              <Route path="/invoice" element={<Invoice />} />
+
               {/* Storefront Routes */}
               <Route element={<StoreLayout isLiveChatOpen={isLiveChatOpen} setIsLiveChatOpen={setIsLiveChatOpen} isProfileOpen={isProfileOpen} setIsProfileOpen={setIsProfileOpen} />}>
                 <Route path="/" element={<Home />} />
@@ -152,7 +156,6 @@ export default function App() {
                 <Route path="/about-us" element={<AboutUs />} />
                 <Route path="/why-us" element={<WhyUs />} />
                 <Route path="/contact-us" element={<ContactUs />} />
-                <Route path="/invoice/:orderId" element={<Invoice />} />
                 <Route path="/track-order" element={<OrderTracking />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/distributor-network" element={<DistributorNetworkPage />} />

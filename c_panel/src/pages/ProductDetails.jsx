@@ -598,7 +598,7 @@ export default function ProductDetails() {
               </div>
               <div className="flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Easy 15-Day Returns</span>
+                <span>3-Day Returns</span>
               </div>
             </div>
 
@@ -639,7 +639,7 @@ export default function ProductDetails() {
             )}
             {activeTab === 'shipping' && (
               <div className="animate-in fade-in duration-300">
-                <p>{product.shipping || 'Standard delivery takes 3-5 business days across India. Free shipping applies on all orders above ₹999. Hassle-free 15-day return policy.'}</p>
+                <p>{product.shipping || 'Standard delivery takes 3-5 business days across India. Free shipping applies on all orders above ₹999. Hassle-free 3-day return policy.'}</p>
               </div>
             )}
             {activeTab === 'reviews' && (

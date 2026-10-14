@@ -187,8 +187,8 @@ export default function AdminDashboard() {
   const TrendBadge = ({ value }) => {
     const isPositive = value >= 0;
     return (
-      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${isPositive ? 'bg-success/15 text-success-dark' : 'bg-error/15 text-error'}`}>
-        {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold shrink-0 ${isPositive ? 'bg-success/15 text-success-dark' : 'bg-error/15 text-error'}`}>
+        {isPositive ? <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3" /> : <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3" />}
         {Math.abs(value)}%
       </span>
     );
@@ -205,15 +205,15 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="w-full animate-in fade-in duration-300 pb-12 text-sm">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+    <div className="w-full animate-in fade-in duration-300 pb-8 sm:pb-12 text-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 sm:mb-8 gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-text-dark">Overview</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-text-dark">Overview</h1>
         </div>
         <select 
           value={period} 
           onChange={e => setPeriod(e.target.value)}
-          className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm cursor-pointer"
+          className="w-full sm:w-auto px-3.5 py-2 border border-slate-200 bg-white rounded-lg text-xs sm:text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm cursor-pointer"
         >
           <option value="all">All Time</option>
           <option value="today">Today</option>
@@ -224,66 +224,74 @@ export default function AdminDashboard() {
         </select>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Link to="/admin/financials" className="block p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all group">
-          <div className="flex justify-between items-start mb-4">
-            <p className="font-bold text-zinc-500 group-hover:text-blue-600 transition-colors">Total Sales</p>
+      {/* Stats Grid - 2 cols on mobile, 4 on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-5 sm:mb-6">
+        <Link to="/admin/financials" className="block p-3.5 sm:p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all group flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <p className="font-bold text-xs sm:text-sm text-zinc-500 group-hover:text-blue-600 transition-colors truncate">Total Sales</p>
             <TrendBadge value={salesTrend} />
           </div>
-          <p className="text-2xl font-black text-text-dark">{formatCompactCurrency(totalSales)}</p>
+          <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{formatCompactCurrency(totalSales)}</p>
         </Link>
-        <Link to="/admin/orders" className="block p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all group">
-          <div className="flex justify-between items-start mb-4">
-            <p className="font-bold text-zinc-500 group-hover:text-blue-600 transition-colors">Total Orders</p>
+        <Link to="/admin/orders" className="block p-3.5 sm:p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all group flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <p className="font-bold text-xs sm:text-sm text-zinc-500 group-hover:text-blue-600 transition-colors truncate">Total Orders</p>
             <TrendBadge value={ordersTrend} />
           </div>
-          <p className="text-2xl font-black text-text-dark">{totalOrdersCount}</p>
+          <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{totalOrdersCount}</p>
         </Link>
-        <Link to="/admin/analytics" className="block p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all group">
-          <div className="flex justify-between items-start mb-4">
-            <p className="font-bold text-zinc-500 group-hover:text-blue-600 transition-colors">Avg Order Value</p>
+        <Link to="/admin/analytics" className="block p-3.5 sm:p-5 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 hover:shadow-md transition-all group flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2 sm:mb-4 gap-1">
+            <p className="font-bold text-xs sm:text-sm text-zinc-500 group-hover:text-blue-600 transition-colors truncate">Avg Order Value</p>
             <TrendBadge value={aovTrend} />
           </div>
-          <p className="text-2xl font-black text-text-dark">{formatCompactCurrency(avgOrderValue)}</p>
+          <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{formatCompactCurrency(avgOrderValue)}</p>
         </Link>
-        <Link to="/admin/customers" className="block p-5 bg-white border border-slate-100 rounded-xl shadow-sm flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all group">
-          <p className="font-bold text-zinc-500 mb-4 group-hover:text-blue-600 transition-colors">Customers</p>
-          <div className="flex justify-between items-end">
-            <div><p className="text-xl font-black text-text-dark">{newCustomers}</p><p className="text-[10px] font-bold text-zinc-400 uppercase">New</p></div>
-            <div className="text-right"><p className="text-xl font-black text-text-dark">{returningCustomers}</p><p className="text-[10px] font-bold text-zinc-400 uppercase">Returning</p></div>
+        <Link to="/admin/customers" className="block p-3.5 sm:p-5 bg-white border border-slate-100 rounded-xl shadow-sm flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all group">
+          <p className="font-bold text-xs sm:text-sm text-zinc-500 mb-2 sm:mb-4 group-hover:text-blue-600 transition-colors">Customers</p>
+          <div className="flex justify-between items-end gap-1">
+            <div>
+              <p className="text-base sm:text-xl font-black text-text-dark">{newCustomers}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">New</p>
+            </div>
+            <div className="text-right">
+              <p className="text-base sm:text-xl font-black text-text-dark">{returningCustomers}</p>
+              <p className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase">Returning</p>
+            </div>
           </div>
         </Link>
       </div>
 
-      {/* Row 2: Sales Chart & Order Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-6 flex flex-col">
-          <h2 className="font-bold text-text-dark mb-6">Sales Overview</h2>
-          <div className="h-64 w-full mt-auto">
+      {/* Row 2: Sales Chart & Top Products */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-5 sm:mb-6">
+        <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 sm:p-6 flex flex-col">
+          <h2 className="font-bold text-sm sm:text-base text-text-dark mb-4 sm:mb-6">Sales Overview</h2>
+          <div className="h-56 sm:h-64 w-full mt-auto">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
+              <LineChart data={chartData} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dx={-10} tickFormatter={(val) => `₹${val}`} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} dy={8} minTickGap={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} dx={-5} tickFormatter={(val) => `₹${val}`} />
                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                <Line type="monotone" dataKey="sales" stroke="#334155" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Line type="monotone" dataKey="sales" stroke="#334155" strokeWidth={3} dot={false} activeDot={{ r: 5, strokeWidth: 0 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="bg-white border border-slate-100 rounded-xl shadow-sm flex flex-col justify-between">
-          <div className="p-4 border-b border-slate-100 bg-zinc-50/50">
-            <h2 className="font-bold text-text-dark flex items-center gap-2"><Package className="w-4 h-4 text-zinc-400"/> Top Products</h2>
+          <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-zinc-50/50">
+            <h2 className="font-bold text-sm sm:text-base text-text-dark flex items-center gap-2">
+              <Package className="w-4 h-4 text-zinc-400"/> Top Products
+            </h2>
           </div>
-          <div className="divide-y divide-slate-50 px-4 py-2 flex-1">
-            {topProducts.length === 0 ? <p className="text-zinc-400 py-4 text-center">No data.</p> : 
+          <div className="divide-y divide-slate-50 px-3.5 sm:px-4 py-1 sm:py-2 flex-1">
+            {topProducts.length === 0 ? <p className="text-zinc-400 py-4 text-center text-xs sm:text-sm">No data.</p> : 
               topProducts.map((p, i) => (
-                <div key={i} className="flex justify-between items-center py-3">
-                  <p className="font-medium text-text-dark truncate mr-2">{p.name}</p>
+                <div key={i} className="flex justify-between items-center py-2.5 sm:py-3 gap-2">
+                  <p className="font-medium text-xs sm:text-sm text-text-dark truncate mr-2">{p.name}</p>
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-text-dark">{formatCurrency(p.rev)}</p>
+                    <p className="font-bold text-xs sm:text-sm text-text-dark">{formatCurrency(p.rev)}</p>
                   </div>
                 </div>
               ))
@@ -292,42 +300,50 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Row 3: Recent Orders & Payment Modes / Top Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Row 3: Recent Orders & Payment Modes / Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Recent Orders */}
         <div className="lg:col-span-2 bg-white border border-slate-100 rounded-xl shadow-sm p-0 overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-zinc-50/50">
-            <h2 className="font-bold text-text-dark">Recent Orders</h2>
-            <Link to="/admin/orders" className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">View All <ArrowRight className="w-3 h-3" /></Link>
+          <div className="p-3.5 sm:p-5 border-b border-slate-100 flex justify-between items-center bg-zinc-50/50">
+            <h2 className="font-bold text-sm sm:text-base text-text-dark">Recent Orders</h2>
+            <Link to="/admin/orders" className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+              View All <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left">
-              <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500">
+          <div className="overflow-x-auto flex-1 custom-scrollbar">
+            <table className="w-full text-left min-w-[480px]">
+              <thead className="border-b border-slate-100 text-[11px] sm:text-xs font-bold text-zinc-500 bg-zinc-50/30">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Order</th>
-                  <th className="px-5 py-3 font-medium">Date</th>
-                  <th className="px-5 py-3 font-medium">Customer</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium text-right">Total</th>
+                  <th className="px-3.5 sm:px-5 py-2.5 sm:py-3 font-medium">Order</th>
+                  <th className="px-3.5 sm:px-5 py-2.5 sm:py-3 font-medium">Date</th>
+                  <th className="px-3.5 sm:px-5 py-2.5 sm:py-3 font-medium">Customer</th>
+                  <th className="px-3.5 sm:px-5 py-2.5 sm:py-3 font-medium">Status</th>
+                  <th className="px-3.5 sm:px-5 py-2.5 sm:py-3 font-medium text-right">Total</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-50 text-xs sm:text-sm">
                 {recentOrders.length === 0 ? (
                   <tr><td colSpan="5" className="px-5 py-8 text-center text-zinc-400">No recent orders.</td></tr>
                 ) : (
                   recentOrders.map(order => (
                     <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-3 font-bold text-text-dark">
-                        <Link to="/admin/orders" className="hover:text-blue-600 hover:underline">#{order.orderNumber || (order.id ? order.id.slice(0, 8) : 'N/A')}</Link>
+                      <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 font-bold text-text-dark whitespace-nowrap">
+                        <Link to="/admin/orders" className="hover:text-blue-600 hover:underline">
+                          #{order.orderNumber || (order.id ? order.id.slice(0, 8) : 'N/A')}
+                        </Link>
                       </td>
-                      <td className="px-5 py-3 text-zinc-500">{formatDate(order.createdAt, true)}</td>
-                      <td className="px-5 py-3 text-text-dark font-medium">{order.shippingAddress?.name || order.shippingAddress?.fullName || 'Guest'}</td>
-                      <td className="px-5 py-3">
+                      <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 text-zinc-500 whitespace-nowrap">{formatDate(order.createdAt, true)}</td>
+                      <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 text-text-dark font-medium truncate max-w-[130px] sm:max-w-none">
+                        {order.shippingAddress?.name || order.shippingAddress?.fullName || 'Guest'}
+                      </td>
+                      <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${getStatusColor(order.status)}`}>
                           {order.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right font-bold text-text-dark">{formatCurrency(order.total)}</td>
+                      <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 text-right font-bold text-text-dark whitespace-nowrap">
+                        {formatCurrency(order.total)}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -336,25 +352,25 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Right Column: Payment Modes & Top Products */}
-        <div className="flex flex-col gap-6">
-          <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-5">
-            <h2 className="font-bold text-text-dark mb-4">Payment Modes</h2>
+        {/* Right Column: Payment Modes & Order Status */}
+        <div className="flex flex-col gap-4 sm:gap-6">
+          <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 sm:p-5">
+            <h2 className="font-bold text-sm sm:text-base text-text-dark mb-3 sm:mb-4">Payment Modes</h2>
             {paymentData.length > 0 ? (
-              <div className="h-32 w-full relative">
+              <div className="h-32 sm:h-36 w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={paymentData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value">
+                    <Pie data={paymentData} cx="50%" cy="50%" innerRadius={35} outerRadius={50} paddingAngle={2} dataKey="value">
                       {paymentData.map((entry, index) => <Cell key={`cell-${index}`} fill={PAYMENT_COLORS[index % PAYMENT_COLORS.length]} stroke="transparent" />)}
                     </Pie>
                     <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            ) : <p className="text-sm text-zinc-400 text-center py-4">No data</p>}
-            <div className="flex flex-wrap justify-center gap-3 mt-2">
+            ) : <p className="text-xs sm:text-sm text-zinc-400 text-center py-4">No data</p>}
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-2">
                {paymentData.map((s, i) => (
-                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                  <div key={s.name} className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-medium text-zinc-500">
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PAYMENT_COLORS[i % PAYMENT_COLORS.length] }}></span>
                     {s.name} <span className="font-bold text-text-dark ml-0.5">{s.value}</span>
                   </div>
@@ -362,33 +378,33 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-6 flex flex-col flex-1 justify-between">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-text-dark">Order Status</h2>
+          <div className="bg-white border border-slate-100 rounded-xl shadow-sm p-4 sm:p-6 flex flex-col flex-1 justify-between">
+            <div className="flex justify-between items-center mb-3 sm:mb-4">
+              <h2 className="font-bold text-sm sm:text-base text-text-dark">Order Status</h2>
               <div className="text-right">
-                <span className="text-sm font-black text-text-dark">{filteredOrders.length}</span>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">Orders</span>
+                <span className="text-xs sm:text-sm font-black text-text-dark">{filteredOrders.length}</span>
+                <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 uppercase tracking-wider ml-1">Orders</span>
               </div>
             </div>
             {statusData.length > 0 ? (
-              <div className="h-32 w-full">
+              <div className="h-32 sm:h-36 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statusData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <BarChart data={statusData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} dy={5} />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b' }} dy={4} interval={0} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} allowDecimals={false} />
                     <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }} />
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={36}>
                       {statusData.map((entry, index) => <Cell key={`cell-${index}`} fill={STATUS_COLORS[index % STATUS_COLORS.length]} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            ) : <p className="text-sm text-zinc-400 text-center py-8">No data</p>}
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
+            ) : <p className="text-xs sm:text-sm text-zinc-400 text-center py-8">No data</p>}
+            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-3 sm:mt-4">
                {statusData.map((s, i) => (
-                  <div key={s.name} className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length] }}></span>
+                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-zinc-500">
+                    <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length] }}></span>
                     {s.name} <span className="font-bold text-text-dark ml-0.5">{s.value}</span>
                   </div>
                 ))}

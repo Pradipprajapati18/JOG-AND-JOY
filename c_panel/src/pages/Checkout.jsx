@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import {
   MapPin,
@@ -25,12 +25,16 @@ import { getColorName } from '../utils/helpers';
 
 export default function Checkout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const buyNowItem = location.state?.buyNowItem || null;
   const { 
     cart, 
     cartSubtotal, 
     discountAmount, 
     shippingFee, 
     expressShippingRate, 
+    baseShippingRate,
+    freeShippingThreshold,
     cartGrandTotal, 
     clearCart,
     appliedCoupon,
@@ -39,6 +43,34 @@ export default function Checkout() {
     removeCoupon,
     recordCouponUsage
   } = useCart();
+
+  const checkoutItems = buyNowItem ? [buyNowItem] : cart;
+
+  const activeSubtotal = buyNowItem 
+    ? (buyNowItem.numericPrice * buyNowItem.quantity) 
+    : cartSubtotal;
+
+  let activeDiscountAmount = discountAmount;
+  if (buyNowItem) {
+    if (activeDiscount) {
+      if (activeDiscount.minOrderValue && activeSubtotal < activeDiscount.minOrderValue) {
+        activeDiscountAmount = 0;
+      } else if (activeDiscount.discountPercent) {
+        activeDiscountAmount = activeSubtotal * (activeDiscount.discountPercent / 100);
+      } else if (activeDiscount.discountFixed) {
+        activeDiscountAmount = Math.min(activeSubtotal, activeDiscount.discountFixed);
+      }
+    } else {
+      activeDiscountAmount = 0;
+    }
+  }
+
+  const hasFreeShipping = (freeShippingThreshold > 0 && activeSubtotal >= freeShippingThreshold) || Boolean(activeDiscount?.freeShipping);
+  const activeShippingFee = hasFreeShipping ? 0 : (activeSubtotal > 0 ? (baseShippingRate ?? 99) : 0);
+
+  const activeGrandTotal = buyNowItem
+    ? Math.max(0, activeSubtotal - activeDiscountAmount + activeShippingFee)
+    : cartGrandTotal;
   const createOrder = useCreateOrder();
   const upsertCustomer = useUpsertCustomerByEmail();
   const { user, isAuthenticated } = useAuth();
@@ -57,7 +89,7 @@ export default function Checkout() {
     city: '',
     state: '',
     pincode: '',
-    shippingMethod: 'express', // 'standard' | 'express'
+    shippingMethod: 'standard', // 'standard' | 'express'
     paymentMethod: 'upi' // 'upi' | 'card' | 'cod'
   });
 
@@ -74,7 +106,7 @@ export default function Checkout() {
   const handleApplyCoupon = (e) => {
     e.preventDefault();
     if (!couponCode.trim()) return;
-    const result = applyCoupon(couponCode);
+    const result = applyCoupon(couponCode, buyNowItem ? activeSubtotal : null);
     if (!result.success) {
       setCouponError(result.message);
     } else {
@@ -167,7 +199,7 @@ export default function Checkout() {
 
     // Upsert customer profile first
     try {
-      const orderTotal = formData.shippingMethod === 'express' ? cartGrandTotal + expressShippingRate : cartGrandTotal;
+      const orderTotal = formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal;
       const cust = await upsertCustomer.mutateAsync({
         email: formData.email,
         data: {
@@ -198,14 +230,14 @@ export default function Checkout() {
       paymentMethod: formData.paymentMethod,
       fulfillmentStatus: 'unfulfilled',
       channel: 'Web Storefront',
-      subtotal: cartSubtotal,
-      discountAmount: discountAmount,
+      subtotal: activeSubtotal,
+      discountAmount: activeDiscountAmount,
       promotionCodeApplied: activeDiscount?.code || null,
-      shippingCost: formData.shippingMethod === 'express' ? shippingFee + expressShippingRate : shippingFee,
+      shippingCost: formData.shippingMethod === 'express' ? activeShippingFee + expressShippingRate : activeShippingFee,
       tax: 0,
-      total: formData.shippingMethod === 'express' ? cartGrandTotal + expressShippingRate : cartGrandTotal,
+      total: formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal,
       shippingMethod: formData.shippingMethod,
-      items: cart.map(item => ({
+      items: checkoutItems.map(item => ({
         id: item.id,
         productId: item.id,
         titleSnapshot: item.name,
@@ -255,7 +287,7 @@ export default function Checkout() {
       const match = friendlyMessage.match(/Product ([a-f0-9\-]+) not found/i);
       if (match && match[1]) {
         const missingProductId = match[1];
-        const missingItem = cart.find(item => item.id === missingProductId);
+        const missingItem = checkoutItems.find(item => item.id === missingProductId);
         if (missingItem) {
           friendlyMessage = `The product "${missingItem.name}" is no longer available (it may have been deleted). Please remove it from your cart.`;
         } else {
@@ -274,10 +306,11 @@ export default function Checkout() {
     setCreatedOrderId(orderId);
 
     const localOrder = {
-      id: `#${orderId}`,
+      id: orderId,
+      orderNumber: orderId,
       date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      items: cart.map(item => `${item.name} (x${item.quantity})`).join(', '),
-      total: `₹${cartGrandTotal}`,
+      items: checkoutItems.map(item => `${item.name} (x${item.quantity})`).join(', '),
+      total: `₹${formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal}`,
       status: 'Placed 📦'
     };
 
@@ -288,7 +321,9 @@ export default function Checkout() {
     queryClient.invalidateQueries({ queryKey: ['orders'] });
 
     setIsOrderPlaced(true);
-    clearCart();
+    if (!buyNowItem) {
+      clearCart();
+    }
   };
 
   if (!isAuthenticated) {
@@ -313,7 +348,7 @@ export default function Checkout() {
     );
   }
 
-  if (!isOrderPlaced && cart.length === 0) {
+  if (!isOrderPlaced && checkoutItems.length === 0) {
     return (
       <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95">
@@ -625,7 +660,7 @@ export default function Checkout() {
                             <p className="text-xs text-slate-500 font-semibold mt-0.5">Delivery in 4-6 business days</p>
                           </div>
                         </div>
-                        <span className="font-black text-slate-900 text-sm">{shippingFee === 0 ? 'FREE' : `₹${shippingFee}`}</span>
+                        <span className="font-black text-slate-900 text-sm">{activeShippingFee === 0 ? 'FREE' : `₹${activeShippingFee}`}</span>
                       </label>
 
                       <label
@@ -672,7 +707,9 @@ export default function Checkout() {
                       {formData.shippingMethod === 'express' ? 'Priority Express' : 'Standard Delivery'}
                     </h5>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">
-                      {formData.shippingMethod === 'express' ? '+₹' + expressShippingRate : 'FREE'}
+                      {formData.shippingMethod === 'express' 
+                        ? '+₹' + expressShippingRate 
+                        : (activeShippingFee === 0 ? 'FREE' : '₹' + activeShippingFee)}
                     </p>
                   </div>
                 </div>
@@ -749,11 +786,11 @@ export default function Checkout() {
           <div className="lg:col-span-5 relative">
             <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100/50 space-y-5 sticky top-24">
               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-4">
-                <ShoppingBag className="w-5 h-5 text-[#EF4A45]" /> Order Summary ({cart.length} items)
+                <ShoppingBag className="w-5 h-5 text-[#EF4A45]" /> Order Summary ({checkoutItems.length} items)
               </h3>
 
               <div className="space-y-4 max-h-[35vh] overflow-y-auto pr-2 custom-scrollbar">
-                {cart.map((item, idx) => (
+                {checkoutItems.map((item, idx) => (
                   <div key={idx} className="flex items-center justify-between text-sm font-bold text-slate-700">
                     <div className="flex items-center gap-3 min-w-0">
                       <img src={item.image} alt={item.name} className="w-12 h-12 rounded-xl object-cover border border-slate-100 shrink-0 shadow-sm" />
@@ -807,17 +844,17 @@ export default function Checkout() {
               <div className="pt-4 border-t border-slate-100 space-y-3 text-xs font-bold text-slate-600">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span className="text-slate-900 font-black text-sm">₹{cartSubtotal}</span>
+                  <span className="text-slate-900 font-black text-sm">₹{activeSubtotal}</span>
                 </div>
-                {discountAmount > 0 && (
+                {activeDiscountAmount > 0 && (
                   <div className="flex justify-between text-emerald-600 font-extrabold">
                     <span>Discount Applied</span>
-                    <span className="text-sm">-₹{discountAmount}</span>
+                    <span className="text-sm">-₹{activeDiscountAmount}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span>Standard Shipping</span>
-                  <span className="text-slate-900 font-black text-sm">{shippingFee === 0 ? 'FREE' : `₹${shippingFee}`}</span>
+                  <span className="text-slate-900 font-black text-sm">{activeShippingFee === 0 ? 'FREE' : `₹${activeShippingFee}`}</span>
                 </div>
                 {formData.shippingMethod === 'express' && (
                   <div className="flex justify-between">
@@ -827,7 +864,7 @@ export default function Checkout() {
                 )}
                 <div className="flex justify-between pt-4 mt-2 border-t border-slate-100 text-lg font-black text-slate-900 items-end">
                   <span>Total Payable</span>
-                  <span className="text-[#EF4A45] text-2xl leading-none">₹{formData.shippingMethod === 'express' ? cartGrandTotal + expressShippingRate : cartGrandTotal}</span>
+                  <span className="text-[#EF4A45] text-2xl leading-none">₹{formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal}</span>
                 </div>
               </div>
 

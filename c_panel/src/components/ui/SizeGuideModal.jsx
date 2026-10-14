@@ -260,7 +260,7 @@ export default function SizeGuideModal({ isOpen, onClose }) {
           <div className="mt-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs font-semibold flex items-start gap-2.5">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <span>
-              <strong>Fit Guarantee:</strong> If the apparel doesn't fit your little one perfectly, enjoy easy 15-day hassle-free size exchanges!
+              <strong>Fit Guarantee:</strong> If the apparel doesn't fit your little one perfectly, enjoy easy 3-day hassle-free size exchanges!
             </span>
           </div>
         </motion.div>

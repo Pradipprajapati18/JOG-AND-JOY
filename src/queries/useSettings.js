@@ -5,6 +5,9 @@ export function useSettings() {
   return useQuery({
     queryKey: ['settings'],
     queryFn: settingsApi.get,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 }
 
