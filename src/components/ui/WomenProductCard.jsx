@@ -4,8 +4,6 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { flyToCart } from '../../utils/animations';
-import { Link } from 'react-router-dom';
-import { Heart } from 'lucide-react';
 import { createSlug } from '../../utils/helpers';
 
 export default function WomenProductCard({ product }) {

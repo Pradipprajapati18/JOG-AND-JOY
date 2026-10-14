@@ -607,14 +607,10 @@ export default function ProductDetails() {
             </div>
 
             {/* Guarantees Box */}
-            <div className="pt-4 border-t border-slate-100 grid grid-cols-3 gap-2 text-[11px] font-bold text-slate-600">
-              <div className="flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>100% Bio Cotton</span>
-              </div>
+            <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 text-[11px] font-bold text-slate-600">
               <div className="flex items-center gap-1.5">
                 <Truck className="w-4 h-4 text-sky-600 shrink-0" />
-                <span>Free Express Delivery</span>
+                <span>Express Delivery</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />

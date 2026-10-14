@@ -7,7 +7,7 @@ import { useUIContext } from '../../context/UIContext';
 import { restockOrderItems } from '../../utils/inventory';
 
 import { useSearchParams, Link } from 'react-router-dom';
-import { getColorName } from '../../utils/helpers';
+import { getColorName, formatColorName, formatColorHex } from '../../utils/helpers';
 
 export default function AdminOrders() {
   const { addToast } = useUIContext();
@@ -155,7 +155,7 @@ export default function AdminOrders() {
         patch: patchData 
       }, {
         onSuccess: (updated) => {
-          setSelectedOrder(updated);
+          setSelectedOrder(prev => (prev ? { ...prev, ...updated } : updated));
           setIsMenuOpen(false);
           const restockMsg = didRestock ? ' & items restocked into inventory' : '';
           addToast(`Order marked as ${newStatus.replace('_', ' ')}${restockMsg}!`, 'success');
@@ -213,7 +213,7 @@ export default function AdminOrders() {
     }, {
       onSuccess: (updated) => {
         if (selectedOrder && (selectedOrder.id === orderToUpdate.id || selectedOrder.orderNumber === orderToUpdate.orderNumber)) {
-          setSelectedOrder(updated);
+          setSelectedOrder(prev => (prev ? { ...prev, ...updated } : updated));
         }
         const restockMsg = didRestock ? ' & items restocked' : '';
         addToast(`Order ${orderToUpdate.orderNumber || orderToUpdate.id.slice(0, 8)} updated to ${newStatus.replace('_', ' ')}${restockMsg}!`, 'success');
@@ -244,7 +244,7 @@ export default function AdminOrders() {
         patch: patchData
       }, {
         onSuccess: (updated) => {
-          setSelectedOrder(updated);
+          setSelectedOrder(prev => (prev ? { ...prev, ...updated } : updated));
           setShowRefundModal(false);
           addToast('Order refunded and items restocked successfully', 'success');
         }
@@ -434,16 +434,47 @@ export default function AdminOrders() {
                           <p className="text-[10px] font-black uppercase text-amber-700">Requested Replacement</p>
                           <p className="font-bold text-slate-800 text-sm">{o.returnRequest.exchangeItem.title}</p>
                           <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
-                            <span>Size: <span className="font-semibold text-slate-700">{o.returnRequest.exchangeItem.size || 'N/A'}</span></span>
+                            <span>Size: <span className="font-semibold text-slate-700">{typeof o.returnRequest.exchangeItem.size === 'object' ? (o.returnRequest.exchangeItem.size.name || o.returnRequest.exchangeItem.size.label || 'N/A') : String(o.returnRequest.exchangeItem.size || 'N/A')}</span></span>
                             {o.returnRequest.exchangeItem.color && (
                               <span className="inline-flex items-center gap-1">
                                 • Color:
-                                <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: o.returnRequest.exchangeItem.color }} />
-                                <span className="font-semibold text-slate-700">{o.returnRequest.exchangeItem.colorName || getColorName(o.returnRequest.exchangeItem.color)}</span>
+                                <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(o.returnRequest.exchangeItem.color) }} />
+                                <span className="font-semibold text-slate-700">{formatColorName(o.returnRequest.exchangeItem.colorName, o.returnRequest.exchangeItem.color)}</span>
                               </span>
                             )}
                             {o.returnRequest.exchangeItem.price ? ` • Price: ₹${o.returnRequest.exchangeItem.price}` : ''}
                           </p>
+
+                          {/* Dynamic Price Difference Breakdown */}
+                          {(() => {
+                            const origP = Number(o.returnRequest.originalPrice || o.returnRequest.originalItem?.unitPrice || 0);
+                            const repP = Number(o.returnRequest.replacementPrice || o.returnRequest.exchangeItem?.price || origP);
+                            const diff = typeof o.returnRequest.priceDifference === 'number' 
+                              ? o.returnRequest.priceDifference 
+                              : (repP - origP);
+
+                            if (diff === 0) {
+                              return (
+                                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                                  <span>Equal Value Exchange (Price Difference: ₹0)</span>
+                                </div>
+                              );
+                            } else if (diff > 0) {
+                              return (
+                                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold">
+                                  <span>Balance Due from Customer: +₹{diff}</span>
+                                  <span className="text-[10px] text-amber-700 font-normal">(Collect via COD / Payment Link)</span>
+                                </div>
+                              );
+                            } else {
+                              return (
+                                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">
+                                  <span>Refund Due to Customer: ₹{Math.abs(diff)}</span>
+                                  <span className="text-[10px] text-blue-700 font-normal">(Credit / UPI Refund)</span>
+                                </div>
+                              );
+                            }
+                          })()}
                         </div>
                       </div>
                     )}
@@ -452,13 +483,16 @@ export default function AdminOrders() {
                     {o.returnRequest.type === 'RETURN' && (
                       <div className="mt-2 text-xs text-slate-600 space-y-1">
                         {o.returnRequest.refundMode && (
-                          <p><span className="font-bold">Refund Method:</span> <span className="uppercase">{o.returnRequest.refundMode}</span></p>
+                          <p><span className="font-bold">Refund Method:</span> <span className="uppercase">{String(o.returnRequest.refundMode)}</span></p>
                         )}
                         {o.returnRequest.refundAmount && (
-                          <p><span className="font-bold">Refund Amount:</span> ₹{o.returnRequest.refundAmount}</p>
+                          <p><span className="font-bold">Refund Amount:</span> ₹{String(o.returnRequest.refundAmount)}</p>
+                        )}
+                        {o.returnRequest.bankDetails?.accountName && (
+                          <p><span className="font-bold">Beneficiary:</span> {String(o.returnRequest.bankDetails.accountName)}</p>
                         )}
                         {o.returnRequest.bankDetails?.accountNumber && (
-                          <p><span className="font-bold">Bank Account:</span> {o.returnRequest.bankDetails.accountNumber} (IFSC: {o.returnRequest.bankDetails.ifsc})</p>
+                          <p><span className="font-bold">Bank Account:</span> {String(o.returnRequest.bankDetails.accountNumber)} (IFSC: {String(o.returnRequest.bankDetails.ifsc || '')})</p>
                         )}
                       </div>
                     )}
@@ -499,20 +533,27 @@ export default function AdminOrders() {
                       <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex shrink-0 items-center justify-center text-xs font-bold text-zinc-300">IMG</div>
                     )}
                     <div className="flex-1">
-                      <p className="font-bold text-text-dark">{item.titleSnapshot}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-bold text-text-dark">{item.titleSnapshot}</p>
+                        {o.returnRequest?.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (o.returnRequest.originalItem?.id === item.id || o.returnRequest.originalItem?.productId === item.productId || o.returnRequest.originalItem?.title === item.titleSnapshot) && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                            ⇄ Exchanged for {o.returnRequest.exchangeItem.title} ({o.returnRequest.exchangeItem.size})
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
-                        <span>Size: <span className="font-medium text-slate-700">{item.size || 'N/A'}</span></span>
+                        <span>Size: <span className="font-medium text-slate-700">{typeof item.size === 'object' ? (item.size?.name || item.size?.label || 'N/A') : String(item.size || 'N/A')}</span></span>
                         <span>|</span>
                         <span className="inline-flex items-center gap-1">
                           Color:
                           {item.color && (
                             <span 
                               className="inline-block w-3 h-3 rounded-full border border-slate-300 shrink-0" 
-                              style={{ backgroundColor: item.color }} 
+                              style={{ backgroundColor: formatColorHex(item.color) }} 
                             />
                           )}
                           <span className="font-semibold text-slate-800">
-                            {item.colorName || getColorName(item.color)}
+                            {formatColorName(item.colorName, item.color)}
                           </span>
                         </span>
                       </p>

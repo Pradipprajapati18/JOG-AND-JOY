@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, Check, X, Search, MessageSquare, AlertTriangle, ShieldBan, Image as ImageIcon } from 'lucide-react';
 import { useReviewsList, useUpdateReview } from '../../queries/useReviews';
 import { useOrder } from '../../queries/useOrders';
+import { formatColorName } from '../../utils/helpers';
 
 export default function AdminReviews() {
   const [activeTab, setActiveTab] = useState('all');
@@ -235,7 +236,7 @@ export default function AdminReviews() {
                           {orderData.items.map((item, idx) => (
                             <li key={idx} className="flex items-start gap-1.5 font-medium">
                               <span className="w-1 h-1 rounded-full bg-blue-400 mt-1.5 shrink-0" />
-                              <span className="line-clamp-2 flex-1 leading-tight">{item.name || item.title} <span className="opacity-75 block text-[10px]">({item.size}, {item.colorName || item.color}) x{item.quantity}</span></span>
+                              <span className="line-clamp-2 flex-1 leading-tight">{item.name || item.title} <span className="opacity-75 block text-[10px]">({typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')}, {formatColorName(item.colorName, item.color)}) x{item.quantity}</span></span>
                             </li>
                           ))}
                         </ul>

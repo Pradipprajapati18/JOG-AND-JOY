@@ -379,6 +379,10 @@ export async function update(table, id, patch) {
   if (table === 'sizes') {
     delete updateData.updatedAt;
   }
+  if (table === 'orders') {
+    delete updateData.isRestocked;
+    delete updateData.restockedAt;
+  }
 
   let query = supabase.from(table).update(updateData);
   if (table === 'orders' && id && String(id).startsWith('JJ-')) {
@@ -394,7 +398,10 @@ export async function update(table, id, patch) {
   }
   
   // Return the first item or a fallback if RLS blocked the select return
-  const result = data && data.length > 0 ? data[0] : { id, ...cleanPatch };
+  const cachedOrder = (table === 'orders' && typeof window !== 'undefined' && window.localStorage)
+    ? (JSON.parse(localStorage.getItem('jj_order_overrides') || '{}')[id] || {})
+    : {};
+  const result = data && data.length > 0 ? { ...cachedOrder, ...data[0] } : { ...cachedOrder, id, ...cleanPatch };
   if (returnRequestObj) {
     result.returnRequest = returnRequestObj;
   }

@@ -21,7 +21,7 @@ import { useUpsertCustomerByEmail } from '../queries/useCustomers';
 import { productsApi } from '../api/endpoints/products';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { getColorName } from '../utils/helpers';
+import { getColorName, formatColorName, formatColorHex } from '../utils/helpers';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -245,7 +245,7 @@ export default function Checkout() {
         quantity: item.quantity,
         size: item.size,
         color: item.color,
-        colorName: item.colorName || getColorName(item.color),
+        colorName: formatColorName(item.colorName, item.color),
         image: item.image
       })),
       shippingAddress: {
@@ -797,11 +797,11 @@ export default function Checkout() {
                       <div className="flex flex-col truncate">
                         <span className="truncate text-slate-900">{item.name}</span>
                         <span className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                          <span>Qty: {item.quantity} • {item.size} •</span>
+                          <span>Qty: {item.quantity} • {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')} •</span>
                           {item.color && (
-                            <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: item.color }} />
+                            <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: formatColorHex(item.color) }} />
                           )}
-                          <span className="font-semibold text-slate-700">{item.colorName || getColorName(item.color)}</span>
+                          <span className="font-semibold text-slate-700">{formatColorName(item.colorName, item.color)}</span>
                         </span>
                       </div>
                     </div>

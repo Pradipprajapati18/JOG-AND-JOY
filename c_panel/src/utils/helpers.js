@@ -66,6 +66,9 @@ export const STANDARD_COLOR_NAMES = {
 
 export const getColorName = (hexOrName, fallbackName = '') => {
   if (!hexOrName) return fallbackName || 'Standard';
+  if (typeof hexOrName === 'object') {
+    return hexOrName.name || hexOrName.colorName || hexOrName.label || hexOrName.hex || fallbackName || 'Standard';
+  }
   if (fallbackName && fallbackName !== hexOrName && !fallbackName.startsWith('#')) {
     return fallbackName;
   }
@@ -78,5 +81,22 @@ export const getColorName = (hexOrName, fallbackName = '') => {
     }
     return fallbackName || clean.toUpperCase();
   }
-  return hexOrName;
+  return String(hexOrName);
+};
+
+export const formatColorName = (colorName, colorHex = null) => {
+  if (colorName) {
+    if (typeof colorName === 'string') return colorName;
+    if (typeof colorName === 'object') {
+      return colorName.name || colorName.colorName || colorName.label || getColorName(colorName.hex || colorHex);
+    }
+  }
+  return getColorName(colorHex);
+};
+
+export const formatColorHex = (color) => {
+  if (!color) return '#1E293B';
+  if (typeof color === 'string') return color.startsWith('#') ? color : '#1E293B';
+  if (typeof color === 'object') return color.hex || color.color || '#1E293B';
+  return '#1E293B';
 };
