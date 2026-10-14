@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, CreditCard, Package, AlertCircle, ArrowLeft, MoreHorizontal, ShieldAlert, FileText, CheckCircle2, RefreshCw, RotateCcw } from 'lucide-react';
+import { Search, X, CreditCard, Package, AlertCircle, ArrowLeft, MoreHorizontal, ShieldAlert, FileText, CheckCircle2, RefreshCw, RotateCcw, ChevronRight } from 'lucide-react';
 import { useOrdersList, useUpdateOrder } from '../../queries/useOrders';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSettingsContext } from '../../context/SettingsContext';
@@ -252,8 +252,6 @@ export default function AdminOrders() {
     }
   };
 
-
-
   const handleEditSubmit = (e) => {
     e.preventDefault();
     if (selectedOrder) {
@@ -275,7 +273,6 @@ export default function AdminOrders() {
     }
   };
 
-
   const handleTagAdd = (e) => {
     if (e.key === 'Enter' && e.target.value.trim() !== '') {
       const newTag = e.target.value.trim();
@@ -292,112 +289,255 @@ export default function AdminOrders() {
     }
   };
 
+  // Reusable Status & Quick Action Controls for Table and Mobile Cards
+  const renderStatusControls = (order, isMobile = false) => {
+    return (
+      <div onClick={(e) => e.stopPropagation()} className={isMobile ? "flex flex-wrap items-center gap-2" : "flex items-center"}>
+        {/* 1. Return Requested */}
+        {order.status === 'RETURN_REQUESTED' && (
+          <div className={`flex items-center gap-1.5 ${isMobile ? 'flex-wrap' : 'flex-col sm:flex-row items-start sm:items-center'}`}>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-300">
+              <RotateCcw className="w-3 h-3 text-amber-600 shrink-0" />
+              Return Req.
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleQuickStatusChange(order, 'RETURN_APPROVED')}
+                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
+                title="Approve Return Request"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => handleQuickStatusChange(order, 'RETURN_REJECTED')}
+                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded border border-rose-200 transition-colors"
+                title="Reject Request"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 2. Exchange Requested */}
+        {order.status === 'EXCHANGE_REQUESTED' && (
+          <div className={`flex items-center gap-1.5 ${isMobile ? 'flex-wrap' : 'flex-col sm:flex-row items-start sm:items-center'}`}>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-300">
+              <RefreshCw className="w-3 h-3 text-amber-600 shrink-0" />
+              Exchange Req.
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleQuickStatusChange(order, 'EXCHANGE_APPROVED')}
+                className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
+                title="Approve Exchange Request"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => handleQuickStatusChange(order, 'RETURN_REJECTED')}
+                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded border border-rose-200 transition-colors"
+                title="Reject Request"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 3. Return Approved */}
+        {order.status === 'RETURN_APPROVED' && (
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/15 text-emerald-800 border border-emerald-300">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+              Return Approved
+            </span>
+          </div>
+        )}
+
+        {/* 4. Exchange Approved */}
+        {order.status === 'EXCHANGE_APPROVED' && (
+          <div className={`flex items-center gap-1.5 ${isMobile ? 'flex-wrap' : 'flex-col sm:flex-row items-start sm:items-center'}`}>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-purple-500/15 text-purple-800 border border-purple-300">
+              <CheckCircle2 className="w-3 h-3 text-purple-600 shrink-0" />
+              Exchange Approved
+            </span>
+            <button
+              onClick={() => handleQuickStatusChange(order, 'SHIPPED')}
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
+              title="Mark Replacement Package Shipped"
+            >
+              Ship Replacement
+            </button>
+          </div>
+        )}
+
+        {/* 5. Return / Exchange Rejected */}
+        {order.status === 'RETURN_REJECTED' && (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-rose-500/10 text-rose-700 border border-rose-200">
+            <X className="w-3 h-3 shrink-0" />
+            Rejected
+          </span>
+        )}
+
+        {/* 6. Delivered, Cancelled, Refunded */}
+        {['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status) && (
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
+            order.status === 'DELIVERED' ? 'bg-green-500/15 text-green-700' : 'bg-red-500/10 text-red-700'
+          }`}>
+            {order.status === 'DELIVERED' && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+            {order.status}
+          </span>
+        )}
+
+        {/* 7. Standard In-flight statuses */}
+        {['PROCESSING', 'ON_HOLD', 'SHIPPED'].includes(order.status) && (
+          <div className="relative inline-block">
+            <select
+              value={order.status || 'PROCESSING'}
+              onChange={(e) => handleQuickStatusChange(order, e.target.value)}
+              className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider cursor-pointer border-none outline-none focus:ring-2 focus:ring-blue-600/50 pr-6 ${
+                order.status === 'SHIPPED' ? 'bg-blue-500/15 text-blue-700' : 'bg-orange-500/15 text-orange-700'
+              }`}
+            >
+              <option value="PROCESSING">Processing</option>
+              <option value="ON_HOLD">On Hold</option>
+              <option value="SHIPPED">Shipped</option>
+              <option value="DELIVERED">Delivered</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1.5">
+              <svg className="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // DETAIL VIEW
   if (view === 'detail' && selectedOrder) {
     const o = selectedOrder;
     return (
       <div className="w-full max-w-5xl mx-auto pb-12 animate-in fade-in duration-300">
-        <div className="flex items-center gap-4 mb-6">
-          <button onClick={() => {
-            if (searchParams.has('orderId')) {
-              searchParams.delete('orderId');
-              setSearchParams(searchParams);
-            }
-            setView('list');
-          }} className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-zinc-50 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-zinc-500" />
-          </button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-extrabold text-text-dark">{o.orderNumber || o.id}</h1>
-              <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-md ${
-                o.status === 'DELIVERED' ? 'bg-green-500/15 text-green-700' : 
-                o.status === 'SHIPPED' ? 'bg-blue-500/15 text-blue-700' : 
-                ['CANCELLED', 'RETURN_REJECTED'].includes(o.status) ? 'bg-red-500/10 text-red-700' : 
-                ['ON_HOLD', 'RETURN_REQUESTED', 'EXCHANGE_REQUESTED'].includes(o.status) ? 'bg-orange-500/15 text-orange-700' : 
-                ['RETURN_APPROVED', 'EXCHANGE_APPROVED'].includes(o.status) ? 'bg-purple-100 text-purple-700' :
-                'bg-zinc-200 text-zinc-600'
-              }`}>
-                {o.status.replace('_', ' ')}
-              </span>
-              <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-md ${
-                o.paymentStatus === 'paid' ? 'bg-green-500/15 text-green-700' : 'bg-orange-500/15 text-orange-700'
-              }`}>
-                {o.paymentStatus}
-              </span>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-start sm:items-center gap-3 min-w-0">
+            <button 
+              onClick={() => {
+                if (searchParams.has('orderId')) {
+                  searchParams.delete('orderId');
+                  setSearchParams(searchParams);
+                }
+                setView('list');
+              }} 
+              className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-zinc-50 transition-colors shrink-0 mt-0.5 sm:mt-0"
+              title="Back to Orders"
+            >
+              <ArrowLeft className="w-5 h-5 text-zinc-500" />
+            </button>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-extrabold text-text-dark break-all sm:break-normal">{o.orderNumber || o.id}</h1>
+                <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-md ${
+                  o.status === 'DELIVERED' ? 'bg-green-500/15 text-green-700' : 
+                  o.status === 'SHIPPED' ? 'bg-blue-500/15 text-blue-700' : 
+                  ['CANCELLED', 'RETURN_REJECTED'].includes(o.status) ? 'bg-red-500/10 text-red-700' : 
+                  ['ON_HOLD', 'RETURN_REQUESTED', 'EXCHANGE_REQUESTED'].includes(o.status) ? 'bg-orange-500/15 text-orange-700' : 
+                  ['RETURN_APPROVED', 'EXCHANGE_APPROVED'].includes(o.status) ? 'bg-purple-100 text-purple-700' :
+                  'bg-zinc-200 text-zinc-600'
+                }`}>
+                  {o.status.replace('_', ' ')}
+                </span>
+                <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-md ${
+                  o.paymentStatus === 'paid' ? 'bg-green-500/15 text-green-700' : 'bg-orange-500/15 text-orange-700'
+                }`}>
+                  {o.paymentStatus}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-text-muted mt-1">{formatDate(o.createdAt, true)} from {o.channel?.replace('_', ' ')}</p>
             </div>
-            <p className="text-sm text-text-muted mt-1">{formatDate(o.createdAt, true)} from {o.channel?.replace('_', ' ')}</p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <button onClick={() => setShowRefundModal(true)} className="px-4 py-2 text-sm font-bold bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-zinc-50">Refund</button>
+
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button 
+              onClick={() => setShowRefundModal(true)} 
+              className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-zinc-50 text-center"
+            >
+              Refund
+            </button>
             <button 
               onClick={() => {
                 setEditFormData(o.shippingAddress || {});
                 setShowEditModal(true);
               }} 
-              className="px-4 py-2 text-sm font-bold bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-zinc-50"
+              className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-zinc-50 text-center"
             >
               Edit
             </button>
-            <div className="flex gap-2">
-              <button onClick={handlePrintPackingSlip} className="px-4 py-2 bg-white border border-slate-200 text-text-dark font-bold rounded-xl shadow-sm hover:bg-zinc-50 transition-colors flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Print Packing Slip
-              </button>
-              {!['CANCELLED', 'REFUNDED', 'RETURN_REJECTED'].includes(o.status) && (
-                <div className="relative">
-                  <button 
-                    onClick={() => setIsMenuOpen(!isMenuOpen)} 
-                    className="p-2 bg-primary-dark text-white rounded-xl shadow-sm hover:bg-primary-hover"
-                  >
-                    <MoreHorizontal className="w-5 h-5" />
-                  </button>
-                  {isMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)}></div>
-                      <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-20">
-                        <div className="p-1">
-                          {['PROCESSING', 'SHIPPED', 'DELIVERED', 'ON_HOLD', 'EXCHANGE_APPROVED', 'RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED', 'REFUNDED'].filter(st => {
-                            if (st === o.status) return false;
-                            if (o.status === 'PROCESSING') return ['SHIPPED', 'DELIVERED', 'ON_HOLD', 'CANCELLED'].includes(st);
-                            if (o.status === 'ON_HOLD') return ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(st);
-                            if (o.status === 'SHIPPED') return ['DELIVERED', 'CANCELLED'].includes(st);
-                            if (o.status === 'EXCHANGE_REQUESTED') return ['EXCHANGE_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
-                            if (o.status === 'RETURN_REQUESTED') return ['RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
-                            if (o.status === 'EXCHANGE_APPROVED') return ['SHIPPED', 'DELIVERED'].includes(st);
-                            if (o.status === 'RETURN_APPROVED') return ['REFUNDED'].includes(st);
-                            if (o.status === 'DELIVERED') return ['SHIPPED', 'EXCHANGE_APPROVED', 'RETURN_APPROVED', 'CANCELLED'].includes(st);
-                            return true;
-                          }).map(st => (
-                            <button 
-                              key={st} 
-                              onClick={() => {
-                                if (st === 'SHIPPED' && !o.shippingAddress?.trackingNumber) {
-                                  addToast('Please enter and save a tracking number first', 'error');
-                                  setIsMenuOpen(false);
-                                  return;
-                                }
-                                handleStatusChange(st);
-                              }} 
-                              className="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-zinc-50 rounded-lg"
-                            >
-                              Mark as {st.replace('_', ' ')}
-                            </button>
-                          ))}
-                        </div>
+            <button 
+              onClick={handlePrintPackingSlip} 
+              className="flex-1 sm:flex-none px-3.5 py-2 bg-white border border-slate-200 text-text-dark font-bold rounded-xl shadow-sm hover:bg-zinc-50 transition-colors flex items-center justify-center gap-2 text-xs sm:text-sm whitespace-nowrap"
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              <span>Packing Slip</span>
+            </button>
+            {!['CANCELLED', 'REFUNDED', 'RETURN_REJECTED'].includes(o.status) && (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                  className="p-2 bg-primary-dark text-white rounded-xl shadow-sm hover:bg-primary-hover flex items-center justify-center"
+                  title="More Status Options"
+                >
+                  <MoreHorizontal className="w-5 h-5" />
+                </button>
+                {isMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)}></div>
+                    <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg z-20">
+                      <div className="p-1">
+                        {['PROCESSING', 'SHIPPED', 'DELIVERED', 'ON_HOLD', 'EXCHANGE_APPROVED', 'RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED', 'REFUNDED'].filter(st => {
+                          if (st === o.status) return false;
+                          if (o.status === 'PROCESSING') return ['SHIPPED', 'DELIVERED', 'ON_HOLD', 'CANCELLED'].includes(st);
+                          if (o.status === 'ON_HOLD') return ['PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].includes(st);
+                          if (o.status === 'SHIPPED') return ['DELIVERED', 'CANCELLED'].includes(st);
+                          if (o.status === 'EXCHANGE_REQUESTED') return ['EXCHANGE_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
+                          if (o.status === 'RETURN_REQUESTED') return ['RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
+                          if (o.status === 'EXCHANGE_APPROVED') return ['SHIPPED', 'DELIVERED'].includes(st);
+                          if (o.status === 'RETURN_APPROVED') return ['REFUNDED'].includes(st);
+                          if (o.status === 'DELIVERED') return ['SHIPPED', 'EXCHANGE_APPROVED', 'RETURN_APPROVED', 'CANCELLED'].includes(st);
+                          return true;
+                        }).map(st => (
+                          <button 
+                            key={st} 
+                            onClick={() => {
+                              if (st === 'SHIPPED' && !o.shippingAddress?.trackingNumber) {
+                                addToast('Please enter and save a tracking number first', 'error');
+                                setIsMenuOpen(false);
+                                return;
+                              }
+                              handleStatusChange(st);
+                            }} 
+                            className="w-full text-left px-4 py-2 text-sm font-semibold hover:bg-zinc-50 rounded-lg"
+                          >
+                            Mark as {st.replace('_', ' ')}
+                          </button>
+                        ))}
                       </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
+        {/* Content Grid: 2-column on desktop (lg:grid-cols-3), stacked on tablet/mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Return / Exchange Request Banner */}
             {o.returnRequest && (
-              <div className={`border rounded-2xl p-5 ${
+              <div className={`border rounded-2xl p-4 sm:p-5 ${
                 o.status === 'RETURN_REQUESTED' || o.status === 'EXCHANGE_REQUESTED' 
                   ? 'bg-amber-50 border-amber-200'
                   : o.status.includes('APPROVED')
@@ -405,10 +545,10 @@ export default function AdminOrders() {
                   : 'bg-slate-50 border-slate-200'
               }`}>
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  <div className="space-y-2 flex-1">
-                    <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 mb-1">
-                      <ShieldAlert className={`w-5 h-5 ${o.status.includes('REQUESTED') ? 'text-amber-600' : o.status.includes('APPROVED') ? 'text-emerald-600' : 'text-slate-500'}`} />
-                      {o.returnRequest.type === 'RETURN' ? 'Return & Refund' : 'Product Exchange'} Request
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2 mb-1 flex-wrap">
+                      <ShieldAlert className={`w-5 h-5 shrink-0 ${o.status.includes('REQUESTED') ? 'text-amber-600' : o.status.includes('APPROVED') ? 'text-emerald-600' : 'text-slate-500'}`} />
+                      <span>{o.returnRequest.type === 'RETURN' ? 'Return & Refund' : 'Product Exchange'} Request</span>
                       <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full ${
                         o.status.includes('REQUESTED') ? 'bg-amber-200 text-amber-800' :
                         o.status.includes('APPROVED') ? 'bg-emerald-200 text-emerald-800' :
@@ -426,13 +566,13 @@ export default function AdminOrders() {
 
                     {/* Exchange Item Details */}
                     {o.returnRequest.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (
-                      <div className="mt-3 p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-4">
+                      <div className="mt-3 p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 sm:gap-4">
                         {o.returnRequest.exchangeItem.image && (
-                          <img src={o.returnRequest.exchangeItem.image} alt={o.returnRequest.exchangeItem.title} className="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
+                          <img src={o.returnRequest.exchangeItem.image} alt={o.returnRequest.exchangeItem.title} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
                         )}
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-black uppercase text-amber-700">Requested Replacement</p>
-                          <p className="font-bold text-slate-800 text-sm">{o.returnRequest.exchangeItem.title}</p>
+                          <p className="font-bold text-slate-800 text-sm truncate">{o.returnRequest.exchangeItem.title}</p>
                           <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
                             <span>Size: <span className="font-semibold text-slate-700">{typeof o.returnRequest.exchangeItem.size === 'object' ? (o.returnRequest.exchangeItem.size.name || o.returnRequest.exchangeItem.size.label || 'N/A') : String(o.returnRequest.exchangeItem.size || 'N/A')}</span></span>
                             {o.returnRequest.exchangeItem.color && (
@@ -500,16 +640,16 @@ export default function AdminOrders() {
                   
                   {/* Action Buttons for Pending Requests */}
                   {(o.status === 'RETURN_REQUESTED' || o.status === 'EXCHANGE_REQUESTED') && (
-                    <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
+                    <div className="flex flex-row md:flex-col gap-2 shrink-0 w-full md:w-auto">
                       <button 
                         onClick={() => handleStatusChange(o.returnRequest.type === 'RETURN' ? 'RETURN_APPROVED' : 'EXCHANGE_APPROVED')}
-                        className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-700 transition-colors shadow-sm"
+                        className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-sm hover:bg-emerald-700 transition-colors shadow-sm text-center"
                       >
                         Approve {o.returnRequest.type}
                       </button>
                       <button 
                         onClick={() => handleStatusChange('RETURN_REJECTED')}
-                        className="px-4 py-2 bg-white border border-red-200 text-red-600 font-bold rounded-xl text-sm hover:bg-red-50 transition-colors"
+                        className="flex-1 md:flex-none px-4 py-2 bg-white border border-red-200 text-red-600 font-bold rounded-xl text-sm hover:bg-red-50 transition-colors text-center"
                       >
                         Reject Request
                       </button>
@@ -520,48 +660,50 @@ export default function AdminOrders() {
             )}
 
             {/* Line Items */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all overflow-hidden p-6">
-              <h2 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all overflow-hidden p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5 text-blue-600" /> Ordered Items ({o.items?.length || 0})
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {o.items?.map((item, i) => (
-                  <div key={i} className="flex gap-4 p-4 bg-zinc-50 border border-slate-200 rounded-xl items-center">
-                    {item.image ? (
-                      <img src={item.image} alt={item.titleSnapshot} className="w-12 h-12 rounded-lg border border-slate-200 object-cover shrink-0" />
-                    ) : (
-                      <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex shrink-0 items-center justify-center text-xs font-bold text-zinc-300">IMG</div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-bold text-text-dark">{item.titleSnapshot}</p>
-                        {o.returnRequest?.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (o.returnRequest.originalItem?.id === item.id || o.returnRequest.originalItem?.productId === item.productId || o.returnRequest.originalItem?.title === item.titleSnapshot) && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
-                            ⇄ Exchanged for {o.returnRequest.exchangeItem.title} ({o.returnRequest.exchangeItem.size})
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
-                        <span>Size: <span className="font-medium text-slate-700">{typeof item.size === 'object' ? (item.size?.name || item.size?.label || 'N/A') : String(item.size || 'N/A')}</span></span>
-                        <span>|</span>
-                        <span className="inline-flex items-center gap-1">
-                          Color:
-                          {item.color && (
-                            <span 
-                              className="inline-block w-3 h-3 rounded-full border border-slate-300 shrink-0" 
-                              style={{ backgroundColor: formatColorHex(item.color) }} 
-                            />
+                  <div key={i} className="flex flex-col sm:flex-row gap-3 sm:gap-4 p-3.5 sm:p-4 bg-zinc-50 border border-slate-200 rounded-xl sm:items-center">
+                    <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
+                      {item.image ? (
+                        <img src={item.image} alt={item.titleSnapshot} className="w-12 h-12 rounded-lg border border-slate-200 object-cover shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 bg-white rounded-lg border border-slate-200 flex shrink-0 items-center justify-center text-xs font-bold text-zinc-300">IMG</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-text-dark text-sm sm:text-base">{item.titleSnapshot}</p>
+                          {o.returnRequest?.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (o.returnRequest.originalItem?.id === item.id || o.returnRequest.originalItem?.productId === item.productId || o.returnRequest.originalItem?.title === item.titleSnapshot) && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                              ⇄ Exchanged for {o.returnRequest.exchangeItem.title} ({o.returnRequest.exchangeItem.size})
+                            </span>
                           )}
-                          <span className="font-semibold text-slate-800">
-                            {formatColorName(item.colorName, item.color)}
+                        </div>
+                        <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span>Size: <span className="font-medium text-slate-700">{typeof item.size === 'object' ? (item.size?.name || item.size?.label || 'N/A') : String(item.size || 'N/A')}</span></span>
+                          <span>|</span>
+                          <span className="inline-flex items-center gap-1">
+                            Color:
+                            {item.color && (
+                              <span 
+                                className="inline-block w-3 h-3 rounded-full border border-slate-300 shrink-0" 
+                                style={{ backgroundColor: formatColorHex(item.color) }} 
+                              />
+                            )}
+                            <span className="font-semibold text-slate-800">
+                              {formatColorName(item.colorName, item.color)}
+                            </span>
                           </span>
-                        </span>
-                      </p>
-                      <p className="text-xs text-text-muted font-mono mt-0.5">{formatCurrency(item.unitPrice)}</p>
+                        </p>
+                        <p className="text-xs text-text-muted font-mono mt-0.5">{formatCurrency(item.unitPrice)} each</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-text-dark">x{item.quantity}</p>
-                      <p className="text-sm font-bold mt-0.5">{formatCurrency(item.unitPrice * item.quantity)}</p>
+                    <div className="flex sm:flex-col justify-between sm:text-right items-center sm:items-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60">
+                      <p className="font-bold text-text-dark text-sm">Qty: {item.quantity}</p>
+                      <p className="text-sm font-bold text-primary-dark sm:mt-0.5">{formatCurrency(item.unitPrice * item.quantity)}</p>
                     </div>
                   </div>
                 ))}
@@ -569,8 +711,8 @@ export default function AdminOrders() {
             </div>
 
             {/* Payment Summary */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-6">
-              <h2 className="text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold text-text-dark mb-4 flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-blue-600" /> Payment
               </h2>
               <div className="space-y-2 text-sm">
@@ -579,24 +721,24 @@ export default function AdminOrders() {
                 {o.discountAmount > 0 && <div className="flex justify-between text-text-muted"><p>Discount ({o.promotionCodeApplied})</p><p>-{formatCurrency(o.discountAmount)}</p></div>}
                 <div className="flex justify-between text-text-muted"><p>Shipping</p><p>{formatCurrency(o.shippingCost)}</p></div>
                 <div className="flex justify-between text-text-muted"><p>Tax</p><p>{formatCurrency(o.tax)}</p></div>
-                <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between font-bold text-lg text-text-dark">
+                <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between font-bold text-base sm:text-lg text-text-dark">
                   <p>Total</p><p>{formatCurrency(o.total)}</p>
                 </div>
               </div>
             </div>
 
             {/* Timeline */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-6">
-              <h2 className="text-lg font-bold text-text-dark mb-4">Timeline</h2>
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold text-text-dark mb-4">Timeline</h2>
               <div className="space-y-4">
                 {o.statusHistory?.map((evt, i) => (
-                  <div key={i} className="flex gap-4">
+                  <div key={i} className="flex gap-3 sm:gap-4">
                     <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center shrink-0 border border-slate-200">
                       <CheckCircle2 className="w-4 h-4 text-zinc-400" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold text-text-dark">{evt.note || `Status changed to ${evt.status}`}</p>
-                      <p className="text-xs text-text-muted">{formatDate(evt.timestamp, true)}</p>
+                      <p className="text-xs text-text-muted mt-0.5">{formatDate(evt.timestamp, true)}</p>
                     </div>
                   </div>
                 ))}
@@ -606,14 +748,14 @@ export default function AdminOrders() {
 
           <div className="space-y-6">
             {/* Customer */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-6">
-              <h2 className="text-lg font-bold text-text-dark mb-4">Customer</h2>
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold text-text-dark mb-4">Customer</h2>
               <p className="font-bold text-text-dark">{o.shippingAddress?.name || 'Customer'}</p>
               <p className="text-sm text-text-muted">0 orders</p>
               
               <hr className="border-slate-200 my-4" />
               <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Contact</h3>
-              <p className="text-sm text-text-dark font-medium cursor-pointer hover:underline">{o.shippingAddress?.email || 'No Email Provided'}</p>
+              <p className="text-sm text-text-dark font-medium cursor-pointer hover:underline break-all">{o.shippingAddress?.email || 'No Email Provided'}</p>
               <p className="text-sm text-text-dark font-medium mt-1">{o.shippingAddress?.phone || 'No Phone Number'}</p>
               
               <hr className="border-slate-200 my-4" />
@@ -634,8 +776,8 @@ export default function AdminOrders() {
               
               <hr className="border-slate-200 my-4" />
               <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 flex justify-between items-center">
-                Tracking Information
-                {o.shippingAddress?.trackingNumber && <CheckCircle2 className="w-3 h-3 text-blue-600" />}
+                <span>Tracking Information</span>
+                {o.shippingAddress?.trackingNumber && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
               </h3>
               <div className="flex gap-2 mt-2">
                 <input 
@@ -643,7 +785,7 @@ export default function AdminOrders() {
                   type="text" 
                   placeholder="Enter tracking number..."
                   defaultValue={o.shippingAddress?.trackingNumber || ''}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                  className="flex-1 min-w-0 px-3 py-2 bg-zinc-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                 />
                 <button 
                   onClick={() => {
@@ -666,7 +808,7 @@ export default function AdminOrders() {
                       });
                     }
                   }}
-                  className="px-3 py-2 bg-primary-dark text-white text-sm font-bold rounded-lg hover:bg-primary-hover whitespace-nowrap"
+                  className="px-3.5 py-2 bg-primary-dark text-white text-sm font-bold rounded-lg hover:bg-primary-hover whitespace-nowrap shrink-0"
                 >
                   Save
                 </button>
@@ -684,60 +826,57 @@ export default function AdminOrders() {
                   }}
                   className="w-full mt-3 px-3 py-2 bg-green-500/15 text-green-700 text-sm font-bold rounded-lg hover:bg-green-500/25 transition-colors flex items-center justify-center gap-2"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                   Mark as Delivered
                 </button>
               )}
             </div>
 
-            {/* Tags & Risk */}
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-6">
+            {/* Tags */}
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all p-4 sm:p-6">
               <h2 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3">Tags</h2>
               <input type="text" placeholder="Add a tag and press Enter..." onKeyDown={handleTagAdd} className="w-full px-3 py-2 bg-zinc-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500 mb-2" />
               <div className="flex flex-wrap gap-2">
                 {o.tags?.map(t => <span key={t} className="px-2 py-1 bg-zinc-100 rounded text-xs font-bold text-text-muted">{t}</span>)}
               </div>
-
-
             </div>
           </div>
         </div>
 
-
         {/* Edit Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95">
-              <div className="flex justify-between items-center p-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-text-dark">Edit Order Details</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-3 sm:p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95">
+              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 sticky top-0 bg-white z-10">
+                <h2 className="text-lg sm:text-xl font-bold text-text-dark">Edit Order Details</h2>
                 <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors"><X className="w-5 h-5 text-text-muted" /></button>
               </div>
-              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleEditSubmit} className="p-4 sm:p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-bold text-text-muted mb-1">Customer Name</label>
-                  <input required type="text" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500" />
+                  <label className="block text-xs sm:text-sm font-bold text-text-muted mb-1">Customer Name</label>
+                  <input required type="text" value={editFormData.name || ''} onChange={e => setEditFormData({...editFormData, name: e.target.value})} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-text-muted mb-1">Address</label>
-                  <input required type="text" value={editFormData.line1 || ''} onChange={e => setEditFormData({...editFormData, line1: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500" />
+                  <label className="block text-xs sm:text-sm font-bold text-text-muted mb-1">Address</label>
+                  <input required type="text" value={editFormData.line1 || ''} onChange={e => setEditFormData({...editFormData, line1: e.target.value})} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-bold text-text-muted mb-1">City</label>
-                    <input required type="text" value={editFormData.city || ''} onChange={e => setEditFormData({...editFormData, city: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500" />
+                    <label className="block text-xs sm:text-sm font-bold text-text-muted mb-1">City</label>
+                    <input required type="text" value={editFormData.city || ''} onChange={e => setEditFormData({...editFormData, city: e.target.value})} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-text-muted mb-1">State</label>
-                    <input required type="text" value={editFormData.state || ''} onChange={e => setEditFormData({...editFormData, state: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500" />
+                    <label className="block text-xs sm:text-sm font-bold text-text-muted mb-1">State</label>
+                    <input required type="text" value={editFormData.state || ''} onChange={e => setEditFormData({...editFormData, state: e.target.value})} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-text-muted mb-1">Pincode</label>
-                  <input required type="text" value={editFormData.postalCode || ''} onChange={e => setEditFormData({...editFormData, postalCode: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500" />
+                  <label className="block text-xs sm:text-sm font-bold text-text-muted mb-1">Pincode</label>
+                  <input required type="text" value={editFormData.postalCode || ''} onChange={e => setEditFormData({...editFormData, postalCode: e.target.value})} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" />
                 </div>
                 <div className="pt-4 flex gap-3">
-                  <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-2.5 border border-slate-200 text-text-dark font-bold rounded-xl hover:bg-zinc-50">Cancel</button>
-                  <button type="submit" className="flex-1 py-2.5 bg-primary-dark text-white font-bold rounded-xl hover:bg-primary-hover">Save Changes</button>
+                  <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 py-2.5 border border-slate-200 text-text-dark font-bold rounded-xl hover:bg-zinc-50 text-sm">Cancel</button>
+                  <button type="submit" className="flex-1 py-2.5 bg-primary-dark text-white font-bold rounded-xl hover:bg-primary-hover text-sm">Save Changes</button>
                 </div>
               </form>
             </div>
@@ -747,15 +886,15 @@ export default function AdminOrders() {
         {/* Refund Modal */}
         {showRefundModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 p-6 text-center">
+            <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 p-5 sm:p-6 text-center">
               <div className="w-12 h-12 bg-error/10 text-error rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <h2 className="text-xl font-bold text-text-dark mb-2">Process Refund?</h2>
-              <p className="text-sm text-text-muted mb-6">Are you sure you want to refund this order? This action cannot be undone and will mark the order as cancelled.</p>
+              <h2 className="text-lg sm:text-xl font-bold text-text-dark mb-2">Process Refund?</h2>
+              <p className="text-xs sm:text-sm text-text-muted mb-6">Are you sure you want to refund this order? This action cannot be undone and will mark the order as cancelled.</p>
               <div className="flex gap-3">
-                <button onClick={() => setShowRefundModal(false)} className="flex-1 py-2.5 border border-slate-200 text-text-dark font-bold rounded-xl hover:bg-zinc-50">Cancel</button>
-                <button onClick={executeRefund} className="flex-1 py-2.5 bg-error text-white font-bold rounded-xl hover:bg-red-600">Refund</button>
+                <button onClick={() => setShowRefundModal(false)} className="flex-1 py-2.5 border border-slate-200 text-text-dark font-bold rounded-xl hover:bg-zinc-50 text-sm">Cancel</button>
+                <button onClick={executeRefund} className="flex-1 py-2.5 bg-error text-white font-bold rounded-xl hover:bg-red-600 text-sm">Refund</button>
               </div>
             </div>
           </div>
@@ -780,87 +919,86 @@ export default function AdminOrders() {
   // LIST VIEW
   return (
     <div className="w-full animate-in fade-in duration-300 pb-12">
-      <div className="flex justify-between items-end mb-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 md:mb-8">
         <div>
           <span className="text-[10px] text-blue-600 font-bold uppercase tracking-widest font-mono">Operations</span>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-text-dark mt-0.5">Orders</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-text-dark mt-0.5">Orders</h1>
           <p className="text-xs text-text-muted mt-1">Lifecycle, fulfillment, and returns</p>
         </div>
-        <button onClick={exportToCSV} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-text-dark font-bold rounded-xl shadow-sm hover:bg-zinc-50 transition-colors">
-          <FileText className="w-4 h-4" />
+        <button onClick={exportToCSV} className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 text-text-dark font-bold rounded-xl shadow-sm hover:bg-zinc-50 transition-colors w-full sm:w-auto text-sm">
+          <FileText className="w-4 h-4 shrink-0" />
           Export CSV
         </button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="flex overflow-x-auto hide-scrollbar gap-4 mb-8 pb-2">
-        <button onClick={() => setActiveTab('all')} className="min-w-[200px] text-left bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 group-hover:text-blue-600">Total Orders</p>
-          <p className="text-3xl font-extrabold text-text-dark">{totalOrders}</p>
+      {/* Summary Metrics Cards - Responsive Touch-Friendly Horizontal Scroll */}
+      <div className="flex overflow-x-auto hide-scrollbar gap-3 md:gap-4 mb-6 md:mb-8 pb-2 snap-x snap-mandatory">
+        <button onClick={() => setActiveTab('all')} className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left bg-white border border-slate-100 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-blue-600">Total Orders</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-text-dark">{totalOrders}</p>
         </button>
-        <Link to="/admin/financials" className="min-w-[200px] text-left block bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 group-hover:text-blue-600">Total Revenue</p>
-          <p className="text-3xl font-extrabold text-blue-600">{formatCompactCurrency(totalRevenue)}</p>
+        <Link to="/admin/financials" className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left block bg-white border border-slate-100 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-blue-600">Total Revenue</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-blue-600">{formatCompactCurrency(totalRevenue)}</p>
         </Link>
-        <button onClick={() => setActiveTab('PROCESSING')} className="min-w-[200px] text-left bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:border-warning hover:shadow-md transition-all group">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 group-hover:text-warning-dark">Processing</p>
-          <p className="text-3xl font-extrabold text-warning-dark">{pendingOrders}</p>
+        <button onClick={() => setActiveTab('PROCESSING')} className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left bg-white border border-slate-100 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:border-warning hover:shadow-md transition-all group">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-warning-dark">Processing</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-warning-dark">{pendingOrders}</p>
         </button>
-        <button onClick={() => setActiveTab('SHIPPED')} className="min-w-[200px] text-left bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:border-info hover:shadow-md transition-all group">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 group-hover:text-info-dark">Shipped</p>
-          <p className="text-3xl font-extrabold text-info-dark">{shippedOrders}</p>
+        <button onClick={() => setActiveTab('SHIPPED')} className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left bg-white border border-slate-100 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:border-info hover:shadow-md transition-all group">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-info-dark">Shipped</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-info-dark">{shippedOrders}</p>
         </button>
-        <button onClick={() => setActiveTab('DELIVERED')} className="min-w-[200px] text-left bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:border-success hover:shadow-md transition-all group">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 group-hover:text-success-dark">Delivered</p>
-          <p className="text-3xl font-extrabold text-success-dark">{deliveredOrders}</p>
+        <button onClick={() => setActiveTab('DELIVERED')} className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left bg-white border border-slate-100 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:border-success hover:shadow-md transition-all group">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-success-dark">Delivered</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-success-dark">{deliveredOrders}</p>
         </button>
-        <button onClick={() => setActiveTab('RETURNS')} className="min-w-[200px] text-left bg-white border border-amber-200 bg-amber-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
-          {returnRequests > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-pulse m-4"></span>}
-          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 group-hover:text-amber-900">Returns</p>
-          <p className="text-3xl font-extrabold text-amber-900">{returnRequests}</p>
+        <button onClick={() => setActiveTab('RETURNS')} className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left bg-white border border-amber-200 bg-amber-50 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+          {returnRequests > 0 && <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full animate-pulse m-3 sm:m-4"></span>}
+          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-amber-900">Returns</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-amber-900">{returnRequests}</p>
         </button>
-        <button onClick={() => setActiveTab('CANCELLED')} className="min-w-[200px] text-left bg-white border border-slate-100 rounded-xl p-6 shadow-sm hover:border-error hover:shadow-md transition-all group">
-          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 group-hover:text-error">Cancelled</p>
-          <p className="text-3xl font-extrabold text-error">{cancelledOrders}</p>
+        <button onClick={() => setActiveTab('CANCELLED')} className="min-w-[150px] sm:min-w-[180px] md:min-w-[200px] flex-1 snap-start text-left bg-white border border-slate-100 rounded-xl p-4 sm:p-5 md:p-6 shadow-sm hover:border-error hover:shadow-md transition-all group">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 sm:mb-2 group-hover:text-error">Cancelled</p>
+          <p className="text-2xl sm:text-3xl font-extrabold text-error">{cancelledOrders}</p>
         </button>
       </div>
 
       {/* Tabs & Search */}
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-          <div className="flex-1 overflow-hidden w-full">
-            <div className="flex overflow-x-auto w-full hide-scrollbar gap-2 pb-1">
-              {[
-                { id: 'all', label: 'All' },
-                { id: 'PROCESSING', label: 'Processing' },
-                { id: 'SHIPPED', label: 'Shipped' },
-                { id: 'DELIVERED', label: 'Delivered' },
-                { id: 'RETURNS', label: 'Returns & Exchanges' },
-                { id: 'CANCELLED', label: 'Cancelled' },
-                { id: 'ON_HOLD', label: 'On Hold' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                    activeTab === tab.id 
-                      ? 'bg-white border border-slate-200 shadow-sm text-text-dark' 
-                      : 'text-text-muted hover:text-text-primary hover:bg-zinc-100/50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+      <div className="flex flex-col gap-3 sm:gap-4 mb-6">
+        <div className="w-full overflow-hidden">
+          <div className="flex overflow-x-auto w-full hide-scrollbar gap-1.5 sm:gap-2 pb-1">
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'PROCESSING', label: 'Processing' },
+              { id: 'SHIPPED', label: 'Shipped' },
+              { id: 'DELIVERED', label: 'Delivered' },
+              { id: 'RETURNS', label: 'Returns & Exchanges' },
+              { id: 'CANCELLED', label: 'Cancelled' },
+              { id: 'ON_HOLD', label: 'On Hold' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`whitespace-nowrap px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all shrink-0 ${
+                  activeTab === tab.id 
+                    ? 'bg-white border border-slate-200 shadow-sm text-text-dark' 
+                    : 'text-text-muted hover:text-text-primary hover:bg-zinc-100/50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full justify-between items-center bg-zinc-50/50 p-4 rounded-xl border border-slate-200">
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto hide-scrollbar">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full justify-between items-stretch sm:items-center bg-zinc-50/50 p-3 sm:p-4 rounded-xl border border-slate-200">
+          <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
             <select 
               value={filterPayment} 
               onChange={e => setFilterPayment(e.target.value)}
-              className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 border border-slate-200 bg-white rounded-lg text-xs sm:text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm"
             >
               <option value="all">All Payments</option>
               <option value="paid">Paid</option>
@@ -870,7 +1008,7 @@ export default function AdminOrders() {
             <select 
               value={filterDate} 
               onChange={e => setFilterDate(e.target.value)}
-              className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm"
+              className="w-full sm:w-auto px-3 sm:px-4 py-2 border border-slate-200 bg-white rounded-lg text-xs sm:text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm"
             >
               <option value="all">All Time</option>
               <option value="today">Today</option>
@@ -883,29 +1021,92 @@ export default function AdminOrders() {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input 
               type="text" 
-              placeholder="Search orders..." 
+              placeholder="Search orders, names, tracking..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-blue-600 text-sm transition-colors shadow-sm"
+              className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 bg-white focus:outline-none focus:border-blue-600 text-xs sm:text-sm transition-colors shadow-sm"
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm transition-all overflow-hidden">
+      {/* MOBILE / SMALL TABLET VIEW (< md) - Card Based */}
+      <div className="block md:hidden space-y-3">
+        {isLoading ? (
+          <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center text-zinc-400 font-semibold text-sm">
+            Loading orders...
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center text-text-muted">
+            <FileText className="w-8 h-8 mx-auto mb-3 opacity-20" />
+            <p className="font-bold text-text-dark">No orders found</p>
+          </div>
+        ) : (
+          orders.map((order) => (
+            <div 
+              key={order.id} 
+              onClick={() => handleOpenDetail(order)} 
+              className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-sm hover:border-blue-300 transition-all cursor-pointer space-y-3"
+            >
+              {/* Order top line: ID and Total */}
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <div className="min-w-0">
+                  <span className="font-extrabold text-blue-600 text-sm block truncate">
+                    {order.orderNumber || order.id.slice(0, 8)}
+                  </span>
+                  <p className="text-[11px] text-text-muted mt-0.5">
+                    {formatDate(order.createdAt, true)} • {order.items?.length || 0} items
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-extrabold text-text-dark text-base">{formatCurrency(order.total)}</p>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider mt-0.5 ${
+                    order.paymentStatus === 'paid' ? 'bg-green-500/15 text-green-700' : 'bg-orange-500/15 text-orange-700'
+                  }`}>
+                    {order.paymentStatus === 'paid' && <CheckCircle2 className="w-2.5 h-2.5" />}
+                    {order.paymentStatus}
+                  </span>
+                </div>
+              </div>
+
+              {/* Customer info & link */}
+              <div className="flex items-center justify-between text-xs">
+                <div className="min-w-0 flex-1 pr-2">
+                  <span className="font-bold text-text-dark block truncate">{order.shippingAddress?.name || 'Guest'}</span>
+                  <span className="text-[11px] text-text-muted block truncate">
+                    {order.shippingAddress?.city || order.shippingAddress?.line1 || order.shippingAddress?.address || 'Unknown'}
+                  </span>
+                </div>
+                <span className="text-blue-600 text-xs font-bold flex items-center gap-0.5 shrink-0">
+                  Details <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+
+              {/* Actions & Lifecycle Status */}
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Status:</span>
+                {renderStatusControls(order, true)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* TABLET / DESKTOP VIEW (>= md) - Comprehensive Table with Scroll */}
+      <div className="hidden md:block bg-white border border-slate-100 rounded-2xl shadow-sm transition-all overflow-hidden">
         <div className="overflow-x-auto min-h-100">
           {isLoading ? (
             <div className="flex items-center justify-center h-64 text-zinc-400 font-semibold">Loading orders...</div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500">
+            <table className="w-full text-left text-sm min-w-[700px]">
+              <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500 bg-zinc-50/50">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Order</th>
-                  <th className="px-5 py-3 font-medium">Date</th>
-                  <th className="px-5 py-3 font-medium">Customer</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium whitespace-nowrap">Payment</th>
-                  <th className="px-5 py-3 font-medium whitespace-nowrap">Total</th>
+                  <th className="px-5 py-3.5 font-medium">Order</th>
+                  <th className="px-5 py-3.5 font-medium">Date</th>
+                  <th className="px-5 py-3.5 font-medium">Customer</th>
+                  <th className="px-5 py-3.5 font-medium">Status & Action</th>
+                  <th className="px-5 py-3.5 font-medium whitespace-nowrap">Payment</th>
+                  <th className="px-5 py-3.5 font-medium whitespace-nowrap">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -918,139 +1119,22 @@ export default function AdminOrders() {
                   </tr>
                 ) : (
                   orders.map((order) => (
-                    <tr key={order.id} onClick={() => handleOpenDetail(order)} className="hover:bg-zinc-50/50 transition-colors cursor-pointer group">
-                      <td className="px-6 py-4">
+                    <tr key={order.id} onClick={() => handleOpenDetail(order)} className="hover:bg-zinc-50/60 transition-colors cursor-pointer group">
+                      <td className="px-5 py-4">
                         <p className="font-bold text-text-dark group-hover:text-blue-600 transition-colors">{order.orderNumber || order.id.slice(0, 8)}</p>
                         <p className="text-xs text-text-muted mt-0.5">{order.items?.length || 0} items</p>
                       </td>
-                      <td className="px-6 py-4 text-text-muted font-medium">
+                      <td className="px-5 py-4 text-text-muted font-medium whitespace-nowrap text-xs">
                         {formatDate(order.createdAt, true)}
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-text-dark">{order.shippingAddress?.name || 'Guest'}</p>
-                        <p className="text-xs text-text-muted">{order.shippingAddress?.city || order.shippingAddress?.line1 || order.shippingAddress?.address || 'Unknown'}</p>
+                      <td className="px-5 py-4">
+                        <p className="font-bold text-text-dark text-sm">{order.shippingAddress?.name || 'Guest'}</p>
+                        <p className="text-xs text-text-muted truncate max-w-[180px]">{order.shippingAddress?.city || order.shippingAddress?.line1 || order.shippingAddress?.address || 'Unknown'}</p>
                       </td>
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                        {/* 1. Return Requested: badge + Approve Return + Reject */}
-                        {order.status === 'RETURN_REQUESTED' && (
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-300">
-                              <RotateCcw className="w-3 h-3 text-amber-600" />
-                              Return Req.
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleQuickStatusChange(order, 'RETURN_APPROVED')}
-                                className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
-                                title="Approve Return Request"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleQuickStatusChange(order, 'RETURN_REJECTED')}
-                                className="px-1.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded border border-rose-200 transition-colors"
-                                title="Reject Request"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 2. Exchange Requested: badge + Approve Exchange + Reject */}
-                        {order.status === 'EXCHANGE_REQUESTED' && (
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/15 text-amber-800 border border-amber-300">
-                              <RefreshCw className="w-3 h-3 text-amber-600" />
-                              Exchange Req.
-                            </span>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleQuickStatusChange(order, 'EXCHANGE_APPROVED')}
-                                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
-                                title="Approve Exchange Request"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleQuickStatusChange(order, 'RETURN_REJECTED')}
-                                className="px-1.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[10px] font-bold uppercase rounded border border-rose-200 transition-colors"
-                                title="Reject Request"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 3. Return Approved */}
-                        {order.status === 'RETURN_APPROVED' && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/15 text-emerald-800 border border-emerald-300">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Return Approved
-                            </span>
-                          </div>
-                        )}
-
-                        {/* 4. Exchange Approved: badge + Ship Replacement */}
-                        {order.status === 'EXCHANGE_APPROVED' && (
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-purple-500/15 text-purple-800 border border-purple-300">
-                              <CheckCircle2 className="w-3 h-3 text-purple-600" />
-                              Exchange Approved
-                            </span>
-                            <button
-                              onClick={() => handleQuickStatusChange(order, 'SHIPPED')}
-                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase rounded shadow-sm transition-colors whitespace-nowrap"
-                              title="Mark Replacement Package Shipped"
-                            >
-                              Ship Replacement
-                            </button>
-                          </div>
-                        )}
-
-                        {/* 5. Return / Exchange Rejected */}
-                        {order.status === 'RETURN_REJECTED' && (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider bg-rose-500/10 text-rose-700 border border-rose-200">
-                            <X className="w-3 h-3" />
-                            Rejected
-                          </span>
-                        )}
-
-                        {/* 6. Delivered, Cancelled, Refunded */}
-                        {['DELIVERED', 'CANCELLED', 'REFUNDED'].includes(order.status) && (
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
-                            order.status === 'DELIVERED' ? 'bg-green-500/15 text-green-700' : 'bg-red-500/10 text-red-700'
-                          }`}>
-                            {order.status === 'DELIVERED' && <CheckCircle2 className="w-3 h-3" />}
-                            {order.status}
-                          </span>
-                        )}
-
-                        {/* 7. In-flight Standard statuses (PROCESSING, ON_HOLD, SHIPPED) */}
-                        {['PROCESSING', 'ON_HOLD', 'SHIPPED'].includes(order.status) && (
-                          <div className="relative inline-block">
-                            <select
-                              value={order.status || 'PROCESSING'}
-                              onChange={(e) => handleQuickStatusChange(order, e.target.value)}
-                              className={`inline-flex items-center px-2.5 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider cursor-pointer border-none outline-none focus:ring-2 focus:ring-blue-600/50 pr-6 ${
-                                order.status === 'SHIPPED' ? 'bg-blue-500/15 text-blue-700' : 'bg-orange-500/15 text-orange-700'
-                              }`}
-                            >
-                              <option value="PROCESSING">Processing</option>
-                              <option value="ON_HOLD">On Hold</option>
-                              <option value="SHIPPED">Shipped</option>
-                              <option value="DELIVERED">Delivered</option>
-                              <option value="CANCELLED">Cancelled</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1.5">
-                              <svg className="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </div>
-                          </div>
-                        )}
+                      <td className="px-5 py-4">
+                        {renderStatusControls(order, false)}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
                           order.paymentStatus === 'paid' ? 'bg-green-500/15 text-green-700' : 'bg-orange-500/15 text-orange-700'
                         }`}>
@@ -1058,7 +1142,7 @@ export default function AdminOrders() {
                           {order.paymentStatus}
                         </span>
                       </td>
-                      <td className="px-6 py-4 font-semibold text-text-dark">{formatCurrency(order.total)}</td>
+                      <td className="px-5 py-4 font-semibold text-text-dark whitespace-nowrap">{formatCurrency(order.total)}</td>
                     </tr>
                   ))
                 )}
@@ -1070,3 +1154,4 @@ export default function AdminOrders() {
     </div>
   );
 }
+

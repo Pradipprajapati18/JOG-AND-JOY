@@ -164,7 +164,7 @@
 
 @media (max-width: 768px) {
   .hidden-mobile {
-    display: none;
+    display: none !important;
   }
 
   .card-nav-cta-button {
