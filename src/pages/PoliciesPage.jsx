@@ -49,7 +49,7 @@ const TABS = [
     id: 'refund', 
     label: 'Refund & Cancellation', 
     path: '/refund-policy', 
-    badge: '7-Day Return',
+    badge: '3-Day Return',
     color: '#10B981',
     icon: RotateCcw,
     subtitle: 'Doorstep pickup, size exchanges, bank timelines & RQC process'
@@ -58,10 +58,10 @@ const TABS = [
     id: 'shipping', 
     label: 'Shipping & Delivery', 
     path: '/shipping-policy', 
-    badge: '19,000+ Pincodes',
+    badge: 'Ahmedabad - Gandhinagar Delivery',
     color: '#FF6B00',
     icon: Truck,
-    subtitle: 'Pan-India logistics, zone schedules, live tracking & RTO rules'
+    subtitle: 'Ahmedabad & Gandhinagar logistics, zone schedules, live tracking & RTO rules'
   },
 ];
 
@@ -105,7 +105,7 @@ const FAQS = {
   refund: [
     {
       q: 'How long does the refund take to show in my bank account?',
-      a: 'For online prepaid orders (UPI/Cards), refunds are processed via Razorpay and take 5 to 7 business days to reflect in your source account. For COD orders, transfers via NEFT/IMPS take 3 to 5 business days after bank details submission.'
+      a: 'All approved refunds are processed within 7 working days to reflect in your source bank account or UPI ID.'
     },
     {
       q: 'Do I have to pay for return shipping or reverse pickups?',
@@ -113,7 +113,7 @@ const FAQS = {
     },
     {
       q: 'What if my child needs a size exchange instead of a refund?',
-      a: 'We gladly offer hassle-free size exchanges within 7 days of delivery. Subject to stock availability, our team will dispatch the new size immediately upon reverse pickup.'
+      a: 'We gladly offer hassle-free size exchanges within 3 days of delivery. Subject to stock availability, our team will dispatch the new size immediately upon reverse pickup.'
     },
     {
       q: 'What items cannot be returned for hygiene reasons?',
@@ -130,8 +130,8 @@ const FAQS = {
       a: 'As soon as your package is dispatched, we send an SMS and email with your AWB tracking link. You can also visit our Track Order page at any time to monitor your parcel in real time.'
     },
     {
-      q: 'Do you ship to remote areas and North-Eastern states?',
-      a: 'Yes, we cover over 19,000+ pincodes across all 28 states and union territories in India via premier partners like BlueDart, Delhivery, and India Post.'
+      q: 'Which regions do you deliver to?',
+      a: 'We provide delivery services across Ahmedabad and Gandhinagar via our local delivery and courier partners.'
     },
     {
       q: 'What happens if a parcel arrives damaged or tampered?',
@@ -222,13 +222,13 @@ export default function PoliciesPage() {
                     : 'bg-white border-slate-200/80 hover:border-slate-300 text-slate-800 hover:shadow-md'
                 }`}
               >
-                <div className="flex items-center justify-between w-full mb-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                <div className="flex items-start justify-between w-full gap-2 mb-3">
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold shrink-0 ${
                     isActive ? 'bg-white/10 text-white' : 'bg-slate-50 text-slate-700'
                   }`}>
-                    <Icon className="w-5 h-5" style={{ color: isActive ? '#fff' : tab.color }} />
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: isActive ? '#fff' : tab.color }} />
                   </div>
-                  <span className={`text-[11px] font-extrabold uppercase tracking-wider ${
+                  <span className={`text-[9px] sm:text-[10px] font-extrabold uppercase tracking-tight text-right leading-tight flex-1 min-w-0 ${
                     isActive ? 'text-amber-300' : 'text-slate-400'
                   }`}>
                     {tab.badge}
@@ -414,6 +414,15 @@ export default function PoliciesPage() {
                       These Terms are governed by and construed in accordance with the substantive laws of India. Any legal dispute, arbitration, or proceeding shall be subject to the exclusive jurisdiction of the competent courts in <strong>Ahmedabad, Gujarat, India</strong>.
                     </p>
                   </section>
+
+                  <section className="space-y-2">
+                    <h3 className="text-base sm:text-lg font-black text-slate-900">
+                      10. Customer Support Hours
+                    </h3>
+                    <p>
+                      Our customer support team is available from Monday to Saturday, 10:00 AM to 6:00 PM IST, excluding public holidays. For assistance with orders, returns, or other queries, please contact us through our official support channels. We aim to respond as soon as possible during business hours.
+                    </p>
+                  </section>
                 </div>
               </motion.div>
             )}
@@ -540,7 +549,7 @@ export default function PoliciesPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-xs">
                       <span className="text-xs font-black text-emerald-700 tracking-wider">01</span>
-                      <h5 className="font-extrabold text-slate-900 text-sm mt-1">Request within 7 Days</h5>
+                      <h5 className="font-extrabold text-slate-900 text-sm mt-1">Request within 3 Days</h5>
                       <p className="text-xs text-slate-500 mt-1 font-medium">WhatsApp or email us with your Order ID & reason (size swap or return).</p>
                     </div>
 
@@ -552,8 +561,8 @@ export default function PoliciesPage() {
 
                     <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-xs">
                       <span className="text-xs font-black text-emerald-700 tracking-wider">03</span>
-                      <h5 className="font-extrabold text-slate-900 text-sm mt-1">Instant Refund (5-7 Days)</h5>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Razorpay initiates refund directly to your original payment source or UPI.</p>
+                      <h5 className="font-extrabold text-slate-900 text-sm mt-1">Refund (7 Working Days)</h5>
+                      <p className="text-xs text-slate-500 mt-1 font-medium">Refund is initiated directly to your original payment source or UPI within 7 working days.</p>
                     </div>
                   </div>
                 </div>
@@ -571,10 +580,10 @@ export default function PoliciesPage() {
 
                   <section className="space-y-2">
                     <h3 className="text-base sm:text-lg font-black text-slate-900">
-                      2. 7-Calendar-Day Return & Size Exchange Window
+                      2. 3-Calendar-Day Return & Exchange
                     </h3>
                     <p>
-                      Because children grow quickly, we offer a generous <strong>7-calendar-day return and exchange window</strong> from confirmed delivery:
+                      Because children grow quickly, we offer a generous <strong>3-calendar-day return and exchange window</strong> from confirmed delivery:
                     </p>
                     <ul className="list-disc pl-6 space-y-1 text-slate-600">
                       <li>Garments must be unworn, unwashed, and in original packaging with brand tags attached.</li>
@@ -584,7 +593,7 @@ export default function PoliciesPage() {
 
                   <section className="space-y-2">
                     <h3 className="text-base sm:text-lg font-black text-slate-900">
-                      3. Refund Methods & Banking Timelines
+                      3. Refund Methods & Banking Timelines (7 Working Days)
                     </h3>
                     <div className="overflow-x-auto my-3">
                       <table className="w-full text-left text-xs sm:text-sm border border-slate-200 rounded-xl overflow-hidden">
@@ -599,17 +608,17 @@ export default function PoliciesPage() {
                           <tr>
                             <td className="p-3 font-bold text-slate-900">UPI (GPay / PhonePe / Paytm)</td>
                             <td className="p-3">Source Bank Account via Razorpay</td>
-                            <td className="p-3 font-bold text-emerald-700">2 - 4 Business Days</td>
+                            <td className="p-3 font-bold text-emerald-700">7 Working Days</td>
                           </tr>
                           <tr>
                             <td className="p-3 font-bold text-slate-900">Credit / Debit Card</td>
                             <td className="p-3">Issuing Bank Account via Razorpay</td>
-                            <td className="p-3 font-bold text-emerald-700">5 - 7 Business Days</td>
+                            <td className="p-3 font-bold text-emerald-700">7 Working Days</td>
                           </tr>
                           <tr>
                             <td className="p-3 font-bold text-slate-900">Cash on Delivery (COD)</td>
                             <td className="p-3">Direct Bank Transfer (NEFT/IMPS) or UPI ID</td>
-                            <td className="p-3 font-bold text-emerald-700">3 - 5 Business Days</td>
+                            <td className="p-3 font-bold text-emerald-700">7 Working Days</td>
                           </tr>
                         </tbody>
                       </table>
@@ -646,8 +655,8 @@ export default function PoliciesPage() {
                       <Truck className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">19,000+ Pin Codes</h4>
-                      <p className="text-xs text-slate-600 mt-1">Partnerships with BlueDart, Delhivery, Xpressbees & India Post.</p>
+                      <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">Ahmedabad - Gandhinagar Delivery</h4>
+                      <p className="text-xs text-slate-600 mt-1">Local delivery and courier partner services across Ahmedabad & Gandhinagar.</p>
                     </div>
                   </div>
 
@@ -674,7 +683,7 @@ export default function PoliciesPage() {
 
                   <section className="space-y-2">
                     <h3 className="text-base sm:text-lg font-black text-slate-900">
-                      2. Estimated Delivery Schedules Across India by Zones
+                      2. Estimated Delivery Schedules Across Ahmedabad & Gandhinagar
                     </h3>
                     <div className="overflow-x-auto my-3">
                       <table className="w-full text-left text-xs sm:text-sm border border-slate-200 rounded-xl overflow-hidden">
@@ -687,24 +696,14 @@ export default function PoliciesPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
                           <tr>
-                            <td className="p-3 font-bold text-slate-900">Zone A: Gujarat Intra-State (Surat, Vadodara, Rajkot, etc.)</td>
-                            <td className="p-3">Surface Express</td>
-                            <td className="p-3 font-bold text-[#FF6B00]">1 - 2 Business Days</td>
+                            <td className="p-3 font-bold text-slate-900">Zone A: Ahmedabad</td>
+                            <td className="p-3">Local Delivery / Courier Partner</td>
+                            <td className="p-3 font-bold text-[#FF6B00]">1 - 3 Business Days</td>
                           </tr>
                           <tr>
-                            <td className="p-3 font-bold text-slate-900">Zone B: Major Metro Hubs (Mumbai, Delhi-NCR, Bengaluru, etc.)</td>
-                            <td className="p-3">BlueDart / Delhivery Surface/Air</td>
-                            <td className="p-3 font-bold text-[#FF6B00]">2 - 3 Business Days</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 font-bold text-slate-900">Zone C: Tier-2 and Tier-3 State Hubs</td>
-                            <td className="p-3">Xpressbees / Delhivery / DTDC</td>
-                            <td className="p-3 font-bold text-[#FF6B00]">3 - 5 Business Days</td>
-                          </tr>
-                          <tr>
-                            <td className="p-3 font-bold text-slate-900">Zone D: Remote Areas (Northeast, J&K, Island Territories)</td>
-                            <td className="p-3">India Post Speed Post / Air Cargo</td>
-                            <td className="p-3 font-bold text-[#FF6B00]">5 - 7 Business Days</td>
+                            <td className="p-3 font-bold text-slate-900">Zone B: Gandhinagar</td>
+                            <td className="p-3">Local Delivery / Courier Partner</td>
+                            <td className="p-3 font-bold text-[#FF6B00]">2 - 5 Business Days</td>
                           </tr>
                         </tbody>
                       </table>

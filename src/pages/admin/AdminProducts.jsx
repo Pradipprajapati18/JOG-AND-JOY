@@ -357,7 +357,7 @@ export default function AdminProducts() {
 
   const applyFabricDefault = () => setFormData(prev => ({ ...prev, fabric: '100% Bio-Washed Premium Cotton. Sourced from certified mills using non-toxic Azo-free dyes. Pre-shrunk fabric ensures no shrinkage after washing.' }));
   const applyCareDefault = () => setFormData(prev => ({ ...prev, care: 'Machine wash cold inside out with similar colors. Do not bleach. Tumble dry low. Do not iron directly on print.' }));
-  const applyShippingDefault = () => setFormData(prev => ({ ...prev, shipping: 'Standard delivery takes 3-5 business days across India. Free shipping applies on all orders above ₹999. Hassle-free 15-day return policy.' }));
+  const applyShippingDefault = () => setFormData(prev => ({ ...prev, shipping: 'Standard delivery takes 3-5 business days across India. Free shipping applies on all orders above ₹999. Hassle-free 3-day return policy.' }));
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -490,7 +490,7 @@ export default function AdminProducts() {
     <div className="w-full max-w-6xl mx-auto pb-12 animate-in fade-in duration-300">
 
       {/* Top Header & Button */}
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6 sm:mb-8">
         <div>
           <span className="text-[10px] text-blue-600 font-bold uppercase tracking-widest font-mono">Catalog Management</span>
           <h1 className="text-2xl md:text-3xl font-extrabold text-text-dark mt-0.5">Products</h1>
@@ -501,7 +501,7 @@ export default function AdminProducts() {
             if (showForm) resetForm();
             else setShowForm(true);
           }}
-          className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-[#003366] rounded-xl font-bold hover:bg-slate-50 shadow-sm transition-all"
+          className="flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-white border border-slate-200 text-[#003366] rounded-xl font-bold hover:bg-slate-50 shadow-sm transition-all w-full sm:w-auto"
         >
           {showForm ? (
             <>
@@ -978,8 +978,8 @@ export default function AdminProducts() {
             {(formData.variants?.length > 0) && (
               <div className="bg-white p-6 rounded-xl border border-slate-200 space-y-4">
                 <h3 className="font-bold text-slate-800 border-b border-slate-200 pb-2">Variant Matrix (Inventory & Pricing)</h3>
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-left text-sm">
+                <div className="overflow-x-auto custom-scrollbar rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[580px] text-left text-sm">
                     <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs tracking-wider">
                       <tr>
                         <th className="p-4">Variant</th>
@@ -1105,62 +1105,64 @@ export default function AdminProducts() {
 
       {/* Active Product Listings */}
       <div className="bg-white border border-slate-100 rounded-xl shadow-sm transition-all overflow-hidden mb-12">
-        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 bg-zinc-50/50">
-          <div className="flex items-center gap-4 w-full sm:w-auto">
-            <h2 className="text-xl font-extrabold text-text-dark whitespace-nowrap">Active Listings</h2>
-            <div className="px-3 py-1 bg-zinc-100 text-zinc-500 rounded-lg text-sm font-bold whitespace-nowrap">
+        <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3 sm:gap-4 bg-zinc-50/50">
+          <div className="flex items-center justify-between sm:justify-start gap-4 w-full md:w-auto">
+            <h2 className="text-lg sm:text-xl font-extrabold text-text-dark whitespace-nowrap">Active Listings</h2>
+            <div className="px-2.5 py-1 bg-zinc-100 text-zinc-500 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap">
               {products.length} Total
             </div>
           </div>
           
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto hide-scrollbar">
-            <select 
-              value={filterCategory} 
-              onChange={e => setFilterCategory(e.target.value)}
-              className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm"
-            >
-              <option value="all">All Categories</option>
-              {allCategories.map(cat => (
-                <option key={cat.id} value={cat.id}>{cat.label}</option>
-              ))}
-            </select>
-            <select 
-              value={filterStock} 
-              onChange={e => setFilterStock(e.target.value)}
-              className="px-4 py-2 border border-slate-200 bg-white rounded-lg text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm"
-            >
-              <option value="all">All Stock Status</option>
-              <option value="in_stock">In Stock ({'>'}10)</option>
-              <option value="low_stock">Low Stock (1-10)</option>
-              <option value="out_of_stock">Out of Stock (0)</option>
-            </select>
-          </div>
-          
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input 
-              type="text" 
-              placeholder="Search products..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none focus:border-blue-600 text-sm transition-colors shadow-sm"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto">
+            <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
+              <select 
+                value={filterCategory} 
+                onChange={e => setFilterCategory(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-slate-200 bg-white rounded-lg text-xs sm:text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm truncate"
+              >
+                <option value="all">All Categories</option>
+                {allCategories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.label}</option>
+                ))}
+              </select>
+              <select 
+                value={filterStock} 
+                onChange={e => setFilterStock(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-slate-200 bg-white rounded-lg text-xs sm:text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm truncate"
+              >
+                <option value="all">All Stock Status</option>
+                <option value="in_stock">In Stock ({'>'}10)</option>
+                <option value="low_stock">Low Stock (1-10)</option>
+                <option value="out_of_stock">Out of Stock (0)</option>
+              </select>
+            </div>
+            
+            <div className="relative w-full sm:w-56 md:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input 
+                type="text" 
+                placeholder="Search products..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-slate-200 bg-white rounded-lg focus:outline-none focus:border-blue-600 text-xs sm:text-sm transition-colors shadow-sm"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto min-h-100">
+        <div className="overflow-x-auto custom-scrollbar min-h-100">
           {isLoading ? (
             <div className="flex items-center justify-center h-64 text-zinc-400 font-semibold">Loading catalog...</div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500">
+            <table className="w-full min-w-[700px] text-left text-sm">
+              <thead className="border-b border-slate-100 text-xs font-bold text-zinc-500 bg-slate-50/50">
                 <tr>
-                  <th className="px-5 py-3 font-medium">Product Details</th>
-                  <th className="px-5 py-3 font-medium">SKU / Code</th>
-                  <th className="px-5 py-3 font-medium">Stock Level</th>
-                  <th className="px-5 py-3 font-medium">Price</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium text-right">Actions</th>
+                  <th className="px-4 sm:px-5 py-3 font-medium min-w-[220px]">Product Details</th>
+                  <th className="px-4 sm:px-5 py-3 font-medium whitespace-nowrap">SKU / Code</th>
+                  <th className="px-4 sm:px-5 py-3 font-medium whitespace-nowrap">Stock Level</th>
+                  <th className="px-4 sm:px-5 py-3 font-medium whitespace-nowrap">Price</th>
+                  <th className="px-4 sm:px-5 py-3 font-medium whitespace-nowrap">Status</th>
+                  <th className="px-4 sm:px-5 py-3 font-medium text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1176,7 +1178,7 @@ export default function AdminProducts() {
 
                     return (
                       <tr key={product.id} className="hover:bg-zinc-50/50 transition-colors group">
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4">
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-100 border border-slate-200 flex items-center justify-center shrink-0">
                               {image ? (
@@ -1208,8 +1210,8 @@ export default function AdminProducts() {
                               </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs font-bold text-zinc-600">{sku}</td>
-                        <td className="px-6 py-4 font-bold text-zinc-600">
+                        <td className="px-4 sm:px-6 py-4 font-mono text-xs font-bold text-zinc-600 whitespace-nowrap">{sku}</td>
+                        <td className="px-4 sm:px-6 py-4 font-bold text-zinc-600 whitespace-nowrap">
                           <span className={totalStock <= 5 ? "text-orange-600" : ""}>{totalStock} units</span>
                           {product.variants?.some(v => Number(v.stock) === 0) && totalStock > 0 && (
                             <p className="text-[9px] text-red-500 font-extrabold uppercase mt-1">⚠️ Low Size Avail</p>
@@ -1218,8 +1220,8 @@ export default function AdminProducts() {
                             <p className="text-[9px] text-red-500 font-extrabold uppercase mt-1">Sold Out</p>
                           )}
                         </td>
-                        <td className="px-6 py-4 font-extrabold text-text-dark">₹{product.price || product.basePrice}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4 font-extrabold text-text-dark whitespace-nowrap">₹{product.price || product.basePrice}</td>
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider ${
                             product.status === 'live' ? 'bg-green-500/15 text-green-700' : 
                             product.status === 'pending_review' ? 'bg-orange-500/15 text-orange-700' : 
@@ -1230,7 +1232,7 @@ export default function AdminProducts() {
                             {product.status.replace('_', ' ')}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                           <div className="flex justify-end gap-3">
                             <button onClick={() => handleEdit(product)} className="text-blue-600 hover:opacity-80 transition-opacity" title="Edit Product">
                               <Edit2 className="w-4 h-4" />

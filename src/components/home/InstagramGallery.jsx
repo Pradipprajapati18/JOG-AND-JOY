@@ -2,10 +2,10 @@ import React from 'react';
 import { Heart, Camera, Sparkles } from 'lucide-react';
 
 const instaPhotos = [
-  { id: 1, image: 'https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=800&auto=format&fit=crop', likes: '1.2k' },
-  { id: 2, image: 'https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?q=80&w=800&auto=format&fit=crop', likes: '980' },
-  { id: 3, image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=800&auto=format&fit=crop', likes: '2.4k' },
-  { id: 4, image: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?q=80&w=800&auto=format&fit=crop', likes: '1.8k' }
+  { id: 1, image: '/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (1).webp', likes: '1.2k', position: 'center' },
+  { id: 2, image: '/gallery_images/insta_feature_2.png', likes: '980', position: 'top' },
+  { id: 3, image: '/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (12).webp', likes: '2.4k', position: 'center' },
+  { id: 4, image: '/gallery_images/insta_feature_4.png', likes: '1.8k', position: 'top' }
 ];
 
 export default function InstagramGallery() {
@@ -31,14 +31,18 @@ export default function InstagramGallery() {
         {/* Gallery Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {instaPhotos.map((photo) => (
-            <div
+            <a
               key={photo.id}
-              className="group relative h-64 sm:h-72 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
+              href="https://www.instagram.com/jognjoy_official?mdxt=MXdncjk4NDlqczFxcA=="
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative h-64 sm:h-72 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 block cursor-pointer"
             >
               <img
                 src={photo.image}
                 alt="Instagram Kids Fashion"
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                style={{ objectPosition: photo.position || 'center' }}
+                className={`w-full h-full object-cover ${photo.position === 'top' ? 'object-top' : 'object-center'} group-hover:scale-110 transition-transform duration-500`}
               />
 
               {/* Hover Overlay */}
@@ -48,7 +52,7 @@ export default function InstagramGallery() {
                   <Heart className="w-4 h-4 fill-white text-white" /> {photo.likes} Likes
                 </span>
               </div>
-            </div>
+            </a>
           ))}
         </div>
 

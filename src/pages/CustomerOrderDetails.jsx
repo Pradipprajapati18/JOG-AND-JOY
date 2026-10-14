@@ -11,7 +11,7 @@ import { useOrdersList, useUpdateOrder } from '../queries/useOrders';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCreateReview, useReviewsList } from '../queries/useReviews';
 import { useUIContext } from '../context/UIContext';
-import { getColorName } from '../utils/helpers';
+import { getColorName, createSlug } from '../utils/helpers';
 
 export default function CustomerOrderDetails() {
   const { id } = useParams();
@@ -522,13 +522,16 @@ export default function CustomerOrderDetails() {
               <ExternalLink className="w-3.5 h-3.5 text-amber-600" /> Track Courier
             </a>
           )}
-          {order.status === 'DELIVERED' && (
-            <Link 
-              to={`/invoice/${order.id}`} 
+          {order.status !== 'CANCELLED' && (
+            <a 
+              href={`/invoice/${String(order.orderNumber || order.id || '').replace(/^#/, '')}`} 
+              target="_blank" 
+              rel="noreferrer"
               className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-xs hover:border-[#EF4A45] hover:text-[#EF4A45] transition-colors shadow-2xs"
+              title="Download or Print Invoice"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" /> Invoice
-            </Link>
+            </a>
           )}
         </div>
       </div>
@@ -810,18 +813,37 @@ export default function CustomerOrderDetails() {
             <div className="divide-y divide-amber-100/50">
               {order.items?.map((item, i) => {
                 const isReviewed = reviewedProductIds.includes(item.id) || reviewedProductIds.includes(item.productId);
+                const matchedProduct = combinedProducts.find(p => String(p.id) === String(item.productId || item.id) || (item.titleSnapshot && createSlug(p.title || p.name) === createSlug(item.titleSnapshot)));
+                const productSlug = matchedProduct ? (createSlug(matchedProduct.name || matchedProduct.title) || matchedProduct.id) : (createSlug(item.titleSnapshot) || item.productId || item.id);
+                const productUrl = productSlug ? `/product/${productSlug}` : null;
                 
                 return (
                   <div key={i} className="p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:bg-amber-50/20 transition-colors">
-                    {item.image ? (
-                      <img src={item.image} alt={item.titleSnapshot} className="w-20 h-20 md:w-22 md:h-22 rounded-2xl border-2 border-amber-100/80 object-cover shrink-0 shadow-2xs" />
+                    {productUrl ? (
+                      <Link to={productUrl} className="shrink-0 hover:opacity-85 transition-opacity group" title="View product details">
+                        {item.image ? (
+                          <img src={item.image} alt={item.titleSnapshot} className="w-20 h-20 md:w-22 md:h-22 rounded-2xl border-2 border-amber-100/80 object-cover shrink-0 shadow-2xs group-hover:border-amber-300 transition-colors" />
+                        ) : (
+                          <div className="w-20 h-20 md:w-22 md:h-22 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-center text-xs text-amber-500 shrink-0 font-bold group-hover:border-amber-300 transition-colors">👕</div>
+                        )}
+                      </Link>
                     ) : (
-                      <div className="w-20 h-20 md:w-22 md:h-22 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-center text-xs text-amber-500 shrink-0 font-bold">👕</div>
+                      item.image ? (
+                        <img src={item.image} alt={item.titleSnapshot} className="w-20 h-20 md:w-22 md:h-22 rounded-2xl border-2 border-amber-100/80 object-cover shrink-0 shadow-2xs" />
+                      ) : (
+                        <div className="w-20 h-20 md:w-22 md:h-22 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-center text-xs text-amber-500 shrink-0 font-bold">👕</div>
+                      )
                     )}
                     
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-black text-slate-900 truncate text-base md:text-lg">{item.titleSnapshot}</p>
+                        {productUrl ? (
+                          <Link to={productUrl} className="hover:text-[#EF4A45] transition-colors truncate max-w-full" title="View product details">
+                            <p className="font-black text-slate-900 truncate text-base md:text-lg hover:text-[#EF4A45] transition-colors">{item.titleSnapshot}</p>
+                          </Link>
+                        ) : (
+                          <p className="font-black text-slate-900 truncate text-base md:text-lg">{item.titleSnapshot}</p>
+                        )}
                         {isReviewed && (
                           <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-amber-200">
                             <Star className="w-3 h-3 fill-amber-500" /> Reviewed
@@ -850,6 +872,18 @@ export default function CustomerOrderDetails() {
                         </span>
                         <span className="bg-slate-100 px-2 py-0.5 rounded-md">Qty: <strong className="text-slate-900">{item.quantity}</strong></span>
                       </div>
+
+                      {productUrl && (
+                        <div className="pt-0.5">
+                          <Link 
+                            to={productUrl} 
+                            className="inline-flex items-center gap-1 text-xs font-bold text-[#5B2E89] hover:text-[#EF4A45] transition-colors"
+                          >
+                            <span>View Product Details</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      )}
 
                       {/* Quick Item Actions when Delivered */}
                       {order.status === 'DELIVERED' && !order.returnRequest && (
@@ -940,10 +974,10 @@ export default function CustomerOrderDetails() {
           {/* Order Summary Receipt */}
           <div className="bg-white/95 backdrop-blur-xs rounded-3xl shadow-xs border border-amber-100/90 p-6 relative overflow-hidden">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-dashed border-amber-200">
-              <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2 whitespace-nowrap">
                 <span>🧾</span> Order Receipt
               </h2>
-              <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200">
+              <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full border border-amber-200 whitespace-nowrap shrink-0">
                 Official Bill
               </span>
             </div>
@@ -971,6 +1005,21 @@ export default function CustomerOrderDetails() {
                 <p>Total Paid</p>
                 <p className="text-[#EF4A45]">₹{order.total || order.subtotal}</p>
               </div>
+
+              {order.status !== 'CANCELLED' && (
+                <div className="pt-3">
+                  <button
+                    onClick={() => {
+                      const cleanId = String(order.orderNumber || order.id || '').replace(/^#/, '');
+                      window.open(`/invoice/${cleanId}`, '_blank');
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-[#EF4A45] text-white font-bold text-xs shadow-sm transition-all"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download Official Tax Invoice (PDF)
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

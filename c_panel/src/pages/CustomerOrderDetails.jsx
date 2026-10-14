@@ -12,7 +12,7 @@ import { useOrdersList, useOrder, useUpdateOrder } from '../queries/useOrders';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCreateReview, useReviewsList } from '../queries/useReviews';
 import { useUIContext } from '../context/UIContext';
-import { getColorName } from '../utils/helpers';
+import { getColorName, createSlug } from '../utils/helpers';
 
 export default function CustomerOrderDetails() {
   const { id } = useParams();
@@ -895,27 +895,49 @@ export default function CustomerOrderDetails() {
             <div className="divide-y divide-slate-100">
               {order.items?.map((item, i) => {
                 const isReviewed = reviewedProductIds.includes(item.id) || reviewedProductIds.includes(item.productId);
+                const matchedProduct = combinedProducts.find(p => String(p.id) === String(item.productId || item.id) || (item.titleSnapshot && createSlug(p.title || p.name) === createSlug(item.titleSnapshot)));
+                const productSlug = matchedProduct ? (createSlug(matchedProduct.name || matchedProduct.title) || matchedProduct.id) : (createSlug(item.titleSnapshot) || item.productId || item.id);
+                const productUrl = productSlug ? `/product/${productSlug}` : null;
                 
                 return (
                   <div key={i} className="p-6 md:p-7 hover:bg-slate-50/40 transition-colors space-y-4">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                       {/* Product Thumbnail */}
-                      <div className="relative group overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 shrink-0">
-                        {item.image ? (
-                          <img 
-                            src={item.image} 
-                            alt={item.titleSnapshot} 
-                            className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-2xl group-hover:scale-105 transition-transform duration-300" 
-                          />
-                        ) : (
-                          <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center text-xs text-slate-400 font-bold">
-                            IMG
-                          </div>
-                        )}
-                        <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                          Qty: {item.quantity}
-                        </span>
-                      </div>
+                      {productUrl ? (
+                        <Link to={productUrl} className="relative group overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 shrink-0 block hover:border-[#EF4A45]/40 transition-colors" title="View product details">
+                          {item.image ? (
+                            <img 
+                              src={item.image} 
+                              alt={item.titleSnapshot} 
+                              className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-2xl group-hover:scale-105 transition-transform duration-300" 
+                            />
+                          ) : (
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center text-xs text-slate-400 font-bold">
+                              IMG
+                            </div>
+                          )}
+                          <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            Qty: {item.quantity}
+                          </span>
+                        </Link>
+                      ) : (
+                        <div className="relative group overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 shrink-0">
+                          {item.image ? (
+                            <img 
+                              src={item.image} 
+                              alt={item.titleSnapshot} 
+                              className="w-24 h-24 sm:w-28 sm:h-28 object-cover rounded-2xl group-hover:scale-105 transition-transform duration-300" 
+                            />
+                          ) : (
+                            <div className="w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center text-xs text-slate-400 font-bold">
+                              IMG
+                            </div>
+                          )}
+                          <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            Qty: {item.quantity}
+                          </span>
+                        </div>
+                      )}
                       
                       {/* Product Meta */}
                       <div className="flex-1 min-w-0 space-y-2">
@@ -930,9 +952,17 @@ export default function CustomerOrderDetails() {
                           )}
                         </div>
 
-                        <h3 className="font-extrabold text-slate-800 text-base md:text-lg leading-snug">
-                          {item.titleSnapshot}
-                        </h3>
+                        {productUrl ? (
+                          <Link to={productUrl} className="hover:text-[#EF4A45] transition-colors block" title="View product details">
+                            <h3 className="font-extrabold text-slate-800 text-base md:text-lg leading-snug hover:text-[#EF4A45] transition-colors">
+                              {item.titleSnapshot}
+                            </h3>
+                          </Link>
+                        ) : (
+                          <h3 className="font-extrabold text-slate-800 text-base md:text-lg leading-snug">
+                            {item.titleSnapshot}
+                          </h3>
+                        )}
 
                         {/* Specs Pill Strip */}
                         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -955,6 +985,18 @@ export default function CustomerOrderDetails() {
                             Qty: {item.quantity}
                           </span>
                         </div>
+
+                        {productUrl && (
+                          <div className="pt-0.5">
+                            <Link 
+                              to={productUrl} 
+                              className="inline-flex items-center gap-1 text-xs font-bold text-[#5B2E89] hover:text-[#EF4A45] transition-colors"
+                            >
+                              <span>View Product Details</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
+                          </div>
+                        )}
 
                         {/* Quick Item Action Buttons when Delivered */}
                         {order.status === 'DELIVERED' && !order.returnRequest && (

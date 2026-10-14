@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, CreditCard, Package, AlertCircle, ArrowLeft, MoreHorizontal, ShieldAlert, FileText, CheckCircle2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useOrdersList, useUpdateOrder } from '../../queries/useOrders';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { useUIContext } from '../../context/UIContext';
+import { restockOrderItems } from '../../utils/inventory';
 
 import { useSearchParams, Link } from 'react-router-dom';
 import { getColorName } from '../../utils/helpers';
@@ -79,6 +81,7 @@ export default function AdminOrders() {
   }
 
   const updateMut = useUpdateOrder();
+  const queryClient = useQueryClient();
 
   const handleOpenDetail = (order) => {
     setSelectedOrder(order);
@@ -137,6 +140,15 @@ export default function AdminOrders() {
       } else if (newStatus === 'CANCELLED') {
         patchData.paymentStatus = selectedOrder.paymentStatus === 'paid' ? 'refunded' : 'cancelled';
       }
+
+      // Automatically restock items if order is cancelled or return is approved
+      let didRestock = false;
+      if ((newStatus === 'CANCELLED' || newStatus === 'RETURN_APPROVED') && !selectedOrder.isRestocked) {
+        patchData.isRestocked = true;
+        patchData.restockedAt = new Date().toISOString();
+        restockOrderItems(selectedOrder, queryClient);
+        didRestock = true;
+      }
       
       updateMut.mutate({ 
         id: selectedOrder.id, 
@@ -145,7 +157,8 @@ export default function AdminOrders() {
         onSuccess: (updated) => {
           setSelectedOrder(updated);
           setIsMenuOpen(false);
-          addToast(`Order marked as ${newStatus}`, 'success');
+          const restockMsg = didRestock ? ' & items restocked into inventory' : '';
+          addToast(`Order marked as ${newStatus.replace('_', ' ')}${restockMsg}!`, 'success');
         }
       });
     }
@@ -185,6 +198,15 @@ export default function AdminOrders() {
       patchData.paymentStatus = orderToUpdate.paymentStatus === 'paid' ? 'refunded' : 'cancelled';
     }
 
+    // Automatically restock items if order is cancelled or return is approved
+    let didRestock = false;
+    if ((newStatus === 'CANCELLED' || newStatus === 'RETURN_APPROVED') && !orderToUpdate.isRestocked) {
+      patchData.isRestocked = true;
+      patchData.restockedAt = new Date().toISOString();
+      restockOrderItems(orderToUpdate, queryClient);
+      didRestock = true;
+    }
+
     updateMut.mutate({
       id: orderToUpdate.id,
       patch: patchData
@@ -193,7 +215,8 @@ export default function AdminOrders() {
         if (selectedOrder && (selectedOrder.id === orderToUpdate.id || selectedOrder.orderNumber === orderToUpdate.orderNumber)) {
           setSelectedOrder(updated);
         }
-        addToast(`Order ${orderToUpdate.orderNumber || orderToUpdate.id.slice(0, 8)} updated to ${newStatus.replace('_', ' ')}!`, 'success');
+        const restockMsg = didRestock ? ' & items restocked' : '';
+        addToast(`Order ${orderToUpdate.orderNumber || orderToUpdate.id.slice(0, 8)} updated to ${newStatus.replace('_', ' ')}${restockMsg}!`, 'success');
       }
     });
   };
@@ -206,18 +229,24 @@ export default function AdminOrders() {
   const executeRefund = () => {
     if (selectedOrder) {
       const historyEntry = { status: 'REFUNDED', timestamp: new Date().toISOString(), note: 'Order refunded by admin' };
+      const patchData = {
+        paymentStatus: 'refunded',
+        status: 'REFUNDED',
+        statusHistory: [...(selectedOrder.statusHistory || []), historyEntry]
+      };
+      if (!selectedOrder.isRestocked) {
+        patchData.isRestocked = true;
+        patchData.restockedAt = new Date().toISOString();
+        restockOrderItems(selectedOrder, queryClient);
+      }
       updateMut.mutate({
         id: selectedOrder.id,
-        patch: {
-          paymentStatus: 'refunded',
-          status: 'REFUNDED',
-          statusHistory: [...(selectedOrder.statusHistory || []), historyEntry]
-        }
+        patch: patchData
       }, {
         onSuccess: (updated) => {
           setSelectedOrder(updated);
           setShowRefundModal(false);
-          addToast('Order refunded successfully', 'success');
+          addToast('Order refunded and items restocked successfully', 'success');
         }
       });
     }

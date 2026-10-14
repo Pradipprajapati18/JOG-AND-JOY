@@ -215,7 +215,7 @@ export function CartProvider({ children }) {
     }
   }, [promosData?.data, cartSubtotal]);
 
-  const applyCoupon = (code) => {
+  const applyCoupon = (code, customSubtotal = null) => {
     if (appliedCoupon) {
       return { success: false, message: 'A coupon is already applied. Please remove it first to apply a new one.' };
     }
@@ -232,7 +232,9 @@ export function CartProvider({ children }) {
         return { success: false, message: 'This coupon has expired.' };
       }
 
-      if (matchedPromo.minOrderValue && cartSubtotal < matchedPromo.minOrderValue) {
+      const effectiveSubtotal = typeof customSubtotal === 'number' ? customSubtotal : cartSubtotal;
+
+      if (matchedPromo.minOrderValue && effectiveSubtotal < matchedPromo.minOrderValue) {
         return { success: false, message: `Minimum order value is ₹${matchedPromo.minOrderValue}` };
       }
 
@@ -264,9 +266,9 @@ export function CartProvider({ children }) {
 
   const clearCart = () => setCart([]);
   
-  const baseShippingRate = settings.baseShippingRate ?? 99;
-  const freeShippingThreshold = settings.freeShippingThreshold ?? 999;
-  const expressShippingRate = settings.expressShippingRate ?? 149;
+  const baseShippingRate = settings.baseShippingRate !== undefined ? Number(settings.baseShippingRate) : 99;
+  const freeShippingThreshold = settings.freeShippingThreshold !== undefined ? Number(settings.freeShippingThreshold) : 999;
+  const expressShippingRate = settings.expressShippingRate !== undefined ? Number(settings.expressShippingRate) : 149;
 
   let discountAmount = 0;
   
@@ -284,7 +286,8 @@ export function CartProvider({ children }) {
       discountAmount = Math.min(cartSubtotal, activeDiscount.discountFixed);
     }
   }
-  const shippingFee = cartSubtotal >= freeShippingThreshold || activeDiscount?.freeShipping ? 0 : (cartSubtotal > 0 ? baseShippingRate : 0);
+  const hasFreeShipping = (freeShippingThreshold > 0 && cartSubtotal >= freeShippingThreshold) || Boolean(activeDiscount?.freeShipping);
+  const shippingFee = hasFreeShipping ? 0 : (cartSubtotal > 0 ? baseShippingRate : 0);
   const cartGrandTotal = Math.max(0, cartSubtotal - discountAmount + shippingFee);
 
   const updatePromoMut = useUpdatePromotion();
@@ -313,6 +316,8 @@ export function CartProvider({ children }) {
         discountAmount,
         shippingFee,
         expressShippingRate,
+        baseShippingRate,
+        freeShippingThreshold,
         cartGrandTotal,
         appliedCoupon,
         autoCoupon,

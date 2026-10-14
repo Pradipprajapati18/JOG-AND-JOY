@@ -271,8 +271,28 @@ export default function ProductDetails() {
     }
     const colorObj = globalColors.find(c => c.hex?.toLowerCase() === selectedColor?.toLowerCase());
     const colorName = colorObj?.name || getColorName(selectedColor);
-    addToCart(product, selectedSize, selectedColor, null, quantity, false, displayStock, colorName);
-    navigate('/checkout');
+    const rawPrice = displayPrice ?? product.price ?? 499;
+    const numericPrice = typeof rawPrice === 'number'
+      ? rawPrice
+      : parseInt(String(rawPrice).replace(/[^0-9]/g, ''), 10) || 499;
+
+    navigate('/checkout', {
+      state: {
+        buyNowItem: {
+          id: product.id,
+          name: product.name,
+          category: product.category,
+          price: rawPrice,
+          numericPrice: numericPrice,
+          image: activeImage || product.image,
+          size: selectedSize,
+          color: selectedColor,
+          colorName: colorName,
+          quantity: quantity,
+          stock: displayStock
+        }
+      }
+    });
   };
 
   const handleAddToCart = (e, isBuyNow = false) => {
@@ -598,7 +618,7 @@ export default function ProductDetails() {
               </div>
               <div className="flex items-center gap-1.5">
                 <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Easy 15-Day Returns</span>
+                <span>3-Day Returns</span>
               </div>
             </div>
 
@@ -639,7 +659,7 @@ export default function ProductDetails() {
             )}
             {activeTab === 'shipping' && (
               <div className="animate-in fade-in duration-300">
-                <p>{product.shipping || 'Standard delivery takes 3-5 business days across India. Free shipping applies on all orders above ₹999. Hassle-free 15-day return policy.'}</p>
+                <p>{product.shipping || 'Standard delivery takes 3-5 business days across India. Free shipping applies on all orders above ₹999. Hassle-free 3-day return policy.'}</p>
               </div>
             )}
             {activeTab === 'reviews' && (

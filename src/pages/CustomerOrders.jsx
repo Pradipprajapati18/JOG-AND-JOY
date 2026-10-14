@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, ChevronRight, Loader2 } from 'lucide-react';
+import { Package, ChevronRight, Loader2, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useOrdersList } from '../queries/useOrders';
+import { createSlug } from '../utils/helpers';
 
 export default function CustomerOrders() {
   const { user } = useAuth();
@@ -84,25 +85,56 @@ export default function CustomerOrders() {
                 </div>
 
                 {/* Preview of first item */}
-                {firstItem && (
-                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100/60">
-                    {firstItem.image ? (
-                      <img src={firstItem.image} alt="Product" className="w-10 h-10 rounded border border-slate-200 object-cover" />
-                    ) : (
-                      <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] text-slate-400">IMG</div>
-                    )}
-                    <span className="text-sm text-slate-600 truncate max-w-[200px] md:max-w-[300px]">
-                      {firstItem.titleSnapshot} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
-                    </span>
-                  </div>
-                )}
+                {firstItem && (() => {
+                  const productSlug = createSlug(firstItem.titleSnapshot) || firstItem.productId || firstItem.id;
+                  return productSlug ? (
+                    <Link
+                      to={`/product/${productSlug}`}
+                      className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100/60 hover:text-[#EF4A45] transition-colors group w-fit max-w-full"
+                      title="View product details"
+                    >
+                      {firstItem.image ? (
+                        <img src={firstItem.image} alt={firstItem.titleSnapshot || 'Product'} className="w-10 h-10 rounded border border-slate-200 object-cover shrink-0 group-hover:border-[#EF4A45]/40 transition-colors" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] text-slate-400 shrink-0">IMG</div>
+                      )}
+                      <span className="text-sm text-slate-600 group-hover:text-[#EF4A45] transition-colors truncate max-w-[200px] md:max-w-[300px]">
+                        {firstItem.titleSnapshot} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
+                      </span>
+                    </Link>
+                  ) : (
+                    <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100/60">
+                      {firstItem.image ? (
+                        <img src={firstItem.image} alt={firstItem.titleSnapshot || 'Product'} className="w-10 h-10 rounded border border-slate-200 object-cover" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] text-slate-400">IMG</div>
+                      )}
+                      <span className="text-sm text-slate-600 truncate max-w-[200px] md:max-w-[300px]">
+                        {firstItem.titleSnapshot} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Action */}
-              <div className="flex items-center md:items-start justify-end shrink-0">
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center md:items-start justify-end gap-2 shrink-0">
+                {order.status !== 'CANCELLED' && (
+                  <button
+                    onClick={() => {
+                      const cleanId = String(order.orderNumber || order.id || '').replace(/^#/, '');
+                      window.open(`/invoice/${cleanId}`, '_blank');
+                    }}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 font-bold rounded-xl transition-all text-xs shadow-2xs"
+                    title="Download / Print Receipt"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    Receipt
+                  </button>
+                )}
                 <Link 
-                  to={`/account/orders/${order.orderNumber || order.id}`}
-                  className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:border-[#EF4A45] hover:text-[#EF4A45] hover:bg-[#EF4A45]/5 font-bold rounded-xl transition-all"
+                  to={`/account/orders/${String(order.orderNumber || order.id || '').replace(/^#/, '')}`}
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:border-[#EF4A45] hover:text-[#EF4A45] hover:bg-[#EF4A45]/5 font-bold rounded-xl transition-all text-xs shadow-2xs"
                 >
                   View Details
                   <ChevronRight className="w-4 h-4" />

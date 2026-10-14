@@ -170,7 +170,8 @@ export default function UserProfileModal({ isOpen, onClose }) {
   };
 
   const handleDownloadInvoice = (order) => {
-    window.open(`/invoice/${order.id}`, '_blank');
+    const cleanId = String(order.orderNumber || order.id || '').replace(/^#/, '');
+    window.open(`/invoice/${cleanId}`, '_blank');
   };
 
   return (
@@ -331,8 +332,8 @@ export default function UserProfileModal({ isOpen, onClose }) {
                       </button>
 
                       <div className="flex gap-2">
-                        {order.status === 'DELIVERED' && (
-                          <button onClick={() => handleDownloadInvoice(order)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm" title="Download Invoice">
+                        {order.status !== 'CANCELLED' && (
+                          <button onClick={() => handleDownloadInvoice(order)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-sm" title="Download Invoice / Receipt">
                             <FileText className="w-4 h-4" />
                           </button>
                         )}
