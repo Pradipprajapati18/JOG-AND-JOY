@@ -5,7 +5,7 @@ import { useWishlist } from '../../context/WishlistContext';
 import { useOrdersList, useUpdateOrder } from '../../queries/useOrders';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getColorName } from '../../utils/helpers';
+import { getColorName, formatColorName, formatColorHex } from '../../utils/helpers';
 
 export default function UserProfileModal({ isOpen, onClose }) {
   const { user, logout, updateUser } = useAuth();
@@ -283,11 +283,11 @@ export default function UserProfileModal({ isOpen, onClose }) {
                                  {item.titleSnapshot || item.name || 'Item'}
                                </span>
                                <span className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                                 <span>Size: {item.size || 'N/A'} | Color:</span>
+                                 <span>Size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')} | Color:</span>
                                  {item.color && (
-                                   <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: item.color }} />
+                                   <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: formatColorHex(item.color) }} />
                                  )}
-                                 <span className="font-semibold text-slate-700">{item.colorName || getColorName(item.color)}</span>
+                                 <span className="font-semibold text-slate-700">{formatColorName(item.colorName, item.color)}</span>
                                </span>
                              </div>
                            </div>

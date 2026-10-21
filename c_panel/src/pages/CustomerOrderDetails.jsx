@@ -12,7 +12,7 @@ import { useOrdersList, useOrder, useUpdateOrder } from '../queries/useOrders';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCreateReview, useReviewsList } from '../queries/useReviews';
 import { useUIContext } from '../context/UIContext';
-import { getColorName, createSlug } from '../utils/helpers';
+import { getColorName, formatColorName, formatColorHex, createSlug } from '../utils/helpers';
 
 export default function CustomerOrderDetails() {
   const { id } = useParams();
@@ -360,17 +360,24 @@ export default function CustomerOrderDetails() {
     const newStatus = 'EXCHANGE_REQUESTED';
     const repProd = replacementVariant.product;
 
+    const origPrice = Number(selectedItemForAction.unitPrice || 0);
+    const repPrice = Number(repProd.price || origPrice);
+    const priceDifference = repPrice - origPrice;
+
     const exchangeData = {
       type: 'EXCHANGE',
       reason: exchangeReason,
       comments: exchangeComments,
+      originalPrice: origPrice,
+      replacementPrice: repPrice,
+      priceDifference: priceDifference,
       originalItem: {
         id: selectedItemForAction.id || selectedItemForAction.productId,
         productId: selectedItemForAction.productId || selectedItemForAction.id,
         title: selectedItemForAction.titleSnapshot,
         size: selectedItemForAction.size,
         color: selectedItemForAction.color,
-        colorName: selectedItemForAction.colorName || getColorName(selectedItemForAction.color),
+        colorName: formatColorName(selectedItemForAction.colorName, selectedItemForAction.color),
         quantity: selectedItemForAction.quantity || 1,
         unitPrice: selectedItemForAction.unitPrice,
         image: selectedItemForAction.image
@@ -380,7 +387,7 @@ export default function CustomerOrderDetails() {
         title: repProd.name || repProd.title || selectedItemForAction.titleSnapshot,
         size: replacementVariant.size || 'M',
         color: replacementVariant.color || selectedItemForAction.color || 'Default',
-        colorName: replacementVariant.colorName || getColorName(replacementVariant.color || selectedItemForAction.color),
+        colorName: formatColorName(replacementVariant.colorName, replacementVariant.color || selectedItemForAction.color),
         price: repProd.price || selectedItemForAction.unitPrice,
         image: repProd.image || (repProd.images && repProd.images[0]) || selectedItemForAction.image
       },
@@ -428,6 +435,25 @@ export default function CustomerOrderDetails() {
     e.preventDefault();
     if (!selectedItemForAction) return;
 
+    if (refundMode === 'bank') {
+      const cleanAcc = (bankDetails.accountNumber || '').trim();
+      const cleanIfsc = (bankDetails.ifsc || '').trim().toUpperCase();
+      const cleanName = (bankDetails.accountName || '').trim();
+
+      if (!cleanName || cleanName.length < 2) {
+        if (addToast) addToast('Please enter the Account Holder (Beneficiary) Name.', 'error');
+        return;
+      }
+      if (!/^\d{9,18}$/.test(cleanAcc)) {
+        if (addToast) addToast('Please enter a valid Bank Account Number (9 to 18 digits).', 'error');
+        return;
+      }
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIfsc)) {
+        if (addToast) addToast('Please enter a valid 11-character IFSC Code (e.g. SBIN0001234).', 'error');
+        return;
+      }
+    }
+
     setIsSubmittingReturn(true);
     const newStatus = 'RETURN_REQUESTED';
 
@@ -440,14 +466,19 @@ export default function CustomerOrderDetails() {
         title: selectedItemForAction.titleSnapshot,
         size: selectedItemForAction.size,
         color: selectedItemForAction.color,
-        colorName: selectedItemForAction.colorName || getColorName(selectedItemForAction.color),
+        colorName: formatColorName(selectedItemForAction.colorName, selectedItemForAction.color),
         quantity: selectedItemForAction.quantity || 1,
         unitPrice: selectedItemForAction.unitPrice,
         image: selectedItemForAction.image
       },
       refundMode: refundMode,
       refundAmount: selectedItemForAction.unitPrice * (selectedItemForAction.quantity || 1),
-      bankDetails: refundMode === 'bank' ? bankDetails : null,
+      bankDetails: refundMode === 'bank' ? {
+        accountNumber: bankDetails.accountNumber.trim(),
+        accountName: bankDetails.accountName.trim(),
+        ifsc: bankDetails.ifsc.trim().toUpperCase(),
+        bankName: bankDetails.bankName || ''
+      } : null,
       requestedAt: new Date().toISOString()
     };
 
@@ -813,9 +844,9 @@ export default function CustomerOrderDetails() {
                       <span className="inline-flex items-center gap-1">
                         Color:
                         {(order.returnRequest.originalItem?.color || order.items?.[0]?.color) && (
-                          <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: order.returnRequest.originalItem?.color || order.items?.[0]?.color }} />
+                          <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(order.returnRequest.originalItem?.color || order.items?.[0]?.color) }} />
                         )}
-                        <span className="font-semibold text-slate-700">{order.returnRequest.originalItem?.colorName || getColorName(order.returnRequest.originalItem?.color || order.items?.[0]?.color)}</span>
+                        <span className="font-semibold text-slate-700">{formatColorName(order.returnRequest.originalItem?.colorName, order.returnRequest.originalItem?.color || order.items?.[0]?.color)}</span>
                       </span>
                     </p>
                   </div>
@@ -828,12 +859,12 @@ export default function CustomerOrderDetails() {
                       <div>
                         <p className="font-bold text-slate-900 text-sm">{order.returnRequest.exchangeItem.title}</p>
                         <p className="text-xs text-slate-600 font-semibold flex items-center gap-1 flex-wrap mt-1">
-                          <span>Size: {order.returnRequest.exchangeItem.size}</span>
+                          <span>Size: {typeof order.returnRequest.exchangeItem.size === 'object' ? (order.returnRequest.exchangeItem.size.name || 'N/A') : String(order.returnRequest.exchangeItem.size || 'N/A')}</span>
                           {order.returnRequest.exchangeItem.color && (
                             <span className="inline-flex items-center gap-1">
                               • Color:
-                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: order.returnRequest.exchangeItem.color }} />
-                              <span className="font-bold text-slate-800">{order.returnRequest.exchangeItem.colorName || getColorName(order.returnRequest.exchangeItem.color)}</span>
+                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(order.returnRequest.exchangeItem.color) }} />
+                              <span className="font-bold text-slate-800">{formatColorName(order.returnRequest.exchangeItem.colorName, order.returnRequest.exchangeItem.color)}</span>
                             </span>
                           )}
                         </p>
@@ -975,10 +1006,10 @@ export default function CustomerOrderDetails() {
                             {item.color && (
                               <span 
                                 className="w-3 h-3 rounded-full border border-slate-300 shrink-0" 
-                                style={{ backgroundColor: item.color }} 
+                                style={{ backgroundColor: formatColorHex(item.color) }} 
                               />
                             )}
-                            <span>{item.colorName || getColorName(item.color)}</span>
+                            <span>{formatColorName(item.colorName, item.color)}</span>
                           </span>
 
                           <span className="bg-slate-100 text-slate-700 font-bold px-2.5 py-1 rounded-xl">
@@ -1273,9 +1304,9 @@ export default function CustomerOrderDetails() {
                           <span className="inline-flex items-center gap-1">
                             Color:
                             {selectedItemForAction.color && (
-                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: selectedItemForAction.color }} />
+                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(selectedItemForAction.color) }} />
                             )}
-                            <span className="text-slate-800 font-bold">{selectedItemForAction.colorName || getColorName(selectedItemForAction.color)}</span>
+                            <span className="text-slate-800 font-bold">{formatColorName(selectedItemForAction.colorName, selectedItemForAction.color)}</span>
                           </span>
                         </p>
                       </div>
@@ -1410,9 +1441,9 @@ export default function CustomerOrderDetails() {
                           <span className="inline-flex items-center gap-1">
                             Color:
                             {selectedItemForAction.color && (
-                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: selectedItemForAction.color }} />
+                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(selectedItemForAction.color) }} />
                             )}
-                            <span className="font-bold text-slate-800">{selectedItemForAction.colorName || getColorName(selectedItemForAction.color)}</span>
+                            <span className="font-bold text-slate-800">{formatColorName(selectedItemForAction.colorName, selectedItemForAction.color)}</span>
                           </span>
                         </p>
                       </div>
@@ -1569,19 +1600,38 @@ export default function CustomerOrderDetails() {
                   )}
 
                   {/* Realtime Exchange Comparison Card */}
-                  <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-500">Exchange Preview:</span>
-                      <span className="font-bold text-slate-800">{selectedItemForAction?.size}</span>
-                      <span className="text-emerald-600 font-black">➔</span>
-                      <span className="font-black text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200">
-                        {replacementVariant.size} {replacementVariant.product?.name ? `(${replacementVariant.product.name})` : ''}
-                      </span>
-                    </div>
-                    <span className="font-black text-emerald-800 uppercase tracking-wider text-[11px]">
-                      Equal Value Exchange
-                    </span>
-                  </div>
+                  {(() => {
+                    const origP = Number(selectedItemForAction?.unitPrice || 0);
+                    const repP = Number(replacementVariant.product?.price || origP);
+                    const diff = repP - origP;
+                    return (
+                      <div className={`p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border ${
+                        diff > 0 ? 'bg-amber-50/70 border-amber-200' : diff < 0 ? 'bg-blue-50/70 border-blue-200' : 'bg-emerald-50/70 border-emerald-200'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-500">Exchange Preview:</span>
+                          <span className="font-bold text-slate-800">{selectedItemForAction?.size}</span>
+                          <span className="text-slate-400 font-black">➔</span>
+                          <span className="font-black text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs">
+                            {replacementVariant.size} {replacementVariant.product?.name ? `(${replacementVariant.product.name})` : ''}
+                          </span>
+                        </div>
+                        <span className={`font-black uppercase tracking-wider text-[11px] px-2.5 py-1 rounded-lg ${
+                          diff === 0 
+                            ? 'text-emerald-800 bg-emerald-100' 
+                            : diff > 0 
+                            ? 'text-amber-800 bg-amber-100' 
+                            : 'text-blue-800 bg-blue-100'
+                        }`}>
+                          {diff === 0 
+                            ? 'Equal Value Exchange (₹0)' 
+                            : diff > 0 
+                            ? `Extra to Pay: +₹${diff}` 
+                            : `Refund / Credit Due: ₹${Math.abs(diff)}`}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Pickup Address Confirmation */}
@@ -1650,9 +1700,9 @@ export default function CustomerOrderDetails() {
                         <span className="inline-flex items-center gap-1">
                           Color:
                           {selectedItemForAction.color && (
-                            <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: selectedItemForAction.color }} />
+                            <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(selectedItemForAction.color) }} />
                           )}
-                          <span className="font-bold text-slate-800">{selectedItemForAction.colorName || getColorName(selectedItemForAction.color)}</span>
+                          <span className="font-bold text-slate-800">{formatColorName(selectedItemForAction.colorName, selectedItemForAction.color)}</span>
                         </span>
                       </p>
                     </div>
@@ -1725,23 +1775,71 @@ export default function CustomerOrderDetails() {
                   </div>
 
                   {refundMode === 'bank' && (
-                    <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
-                      <input 
-                        type="text" 
-                        placeholder="Account Number" 
-                        value={bankDetails.accountNumber}
-                        onChange={(e) => setBankDetails(prev => ({ ...prev, accountNumber: e.target.value }))}
-                        className="p-2.5 rounded-lg border border-slate-200 font-bold"
-                        required
-                      />
-                      <input 
-                        type="text" 
-                        placeholder="IFSC Code" 
-                        value={bankDetails.ifsc}
-                        onChange={(e) => setBankDetails(prev => ({ ...prev, ifsc: e.target.value }))}
-                        className="p-2.5 rounded-lg border border-slate-200 font-bold uppercase"
-                        required
-                      />
+                    <div className="space-y-2.5 pt-2 text-xs">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                          Account Holder Name <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          type="text" 
+                          placeholder="Name as per Bank Passbook / Cheque" 
+                          value={bankDetails.accountName || ''}
+                          onChange={(e) => setBankDetails(prev => ({ ...prev, accountName: e.target.value }))}
+                          className="w-full p-2.5 rounded-lg border border-slate-200 font-bold focus:outline-none focus:border-[#EF4A45]"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                            Account Number <span className="text-red-500">*</span>
+                          </label>
+                          <input 
+                            type="text" 
+                            inputMode="numeric"
+                            maxLength={18}
+                            placeholder="9 to 18 Digits" 
+                            value={bankDetails.accountNumber}
+                            onChange={(e) => {
+                              const numeric = e.target.value.replace(/\D/g, '').slice(0, 18);
+                              setBankDetails(prev => ({ ...prev, accountNumber: numeric }));
+                            }}
+                            className={`w-full p-2.5 rounded-lg border font-mono font-bold focus:outline-none ${
+                              bankDetails.accountNumber && !/^\d{9,18}$/.test(bankDetails.accountNumber)
+                                ? 'border-red-400 bg-red-50/30'
+                                : 'border-slate-200 focus:border-[#EF4A45]'
+                            }`}
+                            required
+                          />
+                          {bankDetails.accountNumber && !/^\d{9,18}$/.test(bankDetails.accountNumber) && (
+                            <p className="text-[10px] text-red-500 font-medium mt-1">Must be 9–18 digits (numbers only)</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                            IFSC Code <span className="text-red-500">*</span>
+                          </label>
+                          <input 
+                            type="text" 
+                            maxLength={11}
+                            placeholder="e.g. SBIN0001234" 
+                            value={bankDetails.ifsc}
+                            onChange={(e) => {
+                              const formatted = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11);
+                              setBankDetails(prev => ({ ...prev, ifsc: formatted }));
+                            }}
+                            className={`w-full p-2.5 rounded-lg border font-mono font-bold uppercase focus:outline-none ${
+                              bankDetails.ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankDetails.ifsc)
+                                ? 'border-red-400 bg-red-50/30'
+                                : 'border-slate-200 focus:border-[#EF4A45]'
+                            }`}
+                            required
+                          />
+                          {bankDetails.ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(bankDetails.ifsc) && (
+                            <p className="text-[10px] text-red-500 font-medium mt-1">Format: 4 letters, 0, then 6 chars</p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>

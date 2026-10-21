@@ -1,11 +1,15 @@
-import React, { useLayoutEffect, useRef, useState, useCallback, useEffect } from 'react';
+import React, { useLayoutEffect, useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Bell } from 'lucide-react';
+import { Menu, X, Bell, CheckCheck, Package, Tag, Sparkles, ArrowRight } from 'lucide-react';
 import { Search, Heart, User, ShoppingBag, Home } from '../ui/CustomIcons';
 import BrandLogo from '../ui/BrandLogo';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useAuth } from '../../context/AuthContext';
+import { useOrdersList } from '../../queries/useOrders';
+import { usePromotionsList } from '../../queries/usePromotions';
 
 import './CardNav.css';
 import './StaggeredMenu.css'; 
@@ -26,9 +30,154 @@ const CardNav = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const notifRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 80, right: 24 });
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [textLines, setTextLines] = useState(['Menu', 'Close']);
+
+  const { user } = useAuth();
+  const { data: userOrdersData } = useOrdersList(user?.id ? { customerId: user.id } : undefined);
+  const { data: promosData } = usePromotionsList();
+
+  const [readState, setReadState] = useState(() => {
+    try {
+      const stored = localStorage.getItem('website_notif_read_state');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const myOrders = useMemo(() => {
+    if (!user?.id) return [];
+    return (userOrdersData?.data || []).filter(
+      (o) => o.customerId === user.id || o.customerEmail === user.email
+    );
+  }, [user, userOrdersData]);
+
+  const activePromos = useMemo(() => {
+    return (promosData?.data || []).filter((p) => p.isActive !== false);
+  }, [promosData]);
+
+  const notifications = useMemo(() => {
+    const list = [];
+
+    // Order status updates for current user
+    if (myOrders.length > 0) {
+      myOrders.slice(0, 4).forEach((order) => {
+        const orderNum = order.orderNumber || `#${order.id?.substring(0, 8).toUpperCase()}`;
+        const statusText = order.status ? order.status.charAt(0) + order.status.slice(1).toLowerCase() : 'Updated';
+        list.push({
+          id: `order-${order.id}-${order.status}`,
+          type: 'order',
+          title: `Order ${orderNum}: ${statusText}`,
+          description: `Total ₹${order.totalAmount || order.total || 0} • ${order.items?.length || 1} item(s)`,
+          time: new Date(order.createdAt || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+          link: `/account/orders/${String(order.orderNumber || order.id || '').replace(/^#/, '')}`,
+        });
+      });
+    }
+
+    // Active promotions / offers
+    if (activePromos.length > 0) {
+      activePromos.slice(0, 3).forEach((promo) => {
+        const discountVal = promo.discountValue ?? promo.value ?? '';
+        const isPercent = promo.discountType === 'PERCENT' || promo.discountType === 'percentage';
+        const discountText = discountVal ? (isPercent ? `${discountVal}% OFF` : `₹${discountVal} OFF`) : 'Special Offer';
+        const promoCode = promo.code || promo.title || 'PROMO';
+        list.push({
+          id: `promo-${promo.id}`,
+          type: 'promo',
+          title: `${promoCode} — ${discountText}`,
+          description: promo.description || `Special offer on your order! Apply code at checkout.`,
+          time: 'Active Offer',
+          link: '/products',
+        });
+      });
+    }
+
+    // Default welcome notice
+    list.push({
+      id: 'welcome-jog-joy',
+      type: 'announcement',
+      title: 'Welcome to Jog & Joy 🎉',
+      description: 'Discover trendy, high-quality, and joyful kids wear designed for everyday play.',
+      time: 'Jog & Joy',
+      link: '/products',
+    });
+
+    return list;
+  }, [myOrders, activePromos]);
+
+  const markAllRead = () => {
+    const updated = { ...readState };
+    notifications.forEach((n) => {
+      updated[n.id] = true;
+    });
+    setReadState(updated);
+    try {
+      localStorage.setItem('website_notif_read_state', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const markAsRead = (id) => {
+    const updated = { ...readState, [id]: true };
+    setReadState(updated);
+    try {
+      localStorage.setItem('website_notif_read_state', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const unreadCount = notifications.filter((n) => !readState[n.id]).length;
+
+  // Position updater and click outside listener for notification dropdown
+  useEffect(() => {
+    if (!isNotifOpen) return;
+    const updatePosition = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (notifRef.current) {
+        const rect = notifRef.current.getBoundingClientRect();
+        setDropdownPos({
+          top: Math.round(rect.bottom + 8),
+          right: Math.max(12, Math.round(window.innerWidth - rect.right)),
+        });
+      }
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    const handleClickOutside = (e) => {
+      if (
+        notifRef.current && 
+        !notifRef.current.contains(e.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target)
+      ) {
+        setIsNotifOpen(false);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isNotifOpen]);
 
   const navRef = useRef(null);
   const cardsRef = useRef([]);
@@ -212,6 +361,7 @@ const CardNav = ({
 
     if (target) {
       setIsSearchOpen(false);
+      setIsNotifOpen(false);
       tl.play(0);
     } else {
       tl.eventCallback('onReverseComplete', () => setIsExpanded(false));
@@ -232,6 +382,8 @@ const CardNav = ({
 
   useEffect(() => {
     closeMenu();
+    setIsNotifOpen(false);
+    setIsSearchOpen(false);
   }, [location.pathname]);
 
   const handleSearchSubmit = (e) => {
@@ -239,6 +391,7 @@ const CardNav = ({
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
       setIsSearchOpen(false);
+      setIsNotifOpen(false);
       setSearchQuery('');
     }
   };
@@ -327,13 +480,13 @@ const CardNav = ({
           </div>
 
           <div className="sm-logo absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2" aria-label="Logo">
-            <BrandLogo className="h-8 md:h-10" showTagline={false} animate={true} />
+            <BrandLogo className="h-7 sm:h-8 md:h-10" showTagline={false} animate={true} />
           </div>
 
           <div className="sm-header-right">
             <Link
               to="/"
-              className="action-btn hidden md:flex"
+              className="action-btn hidden-mobile"
               title="Home"
               onClick={() => {
                 if (isExpanded) closeMenu();
@@ -345,6 +498,7 @@ const CardNav = ({
             <button
               onClick={() => {
                 setIsSearchOpen(!isSearchOpen);
+                if (isNotifOpen) setIsNotifOpen(false);
                 if (isExpanded) closeMenu();
               }}
               className="action-btn"
@@ -357,6 +511,7 @@ const CardNav = ({
               onClick={() => {
                 onOpenProfile?.();
                 if (isExpanded) closeMenu();
+                if (isNotifOpen) setIsNotifOpen(false);
               }}
               className="action-btn hidden-mobile group"
               title="Profile"
@@ -364,16 +519,171 @@ const CardNav = ({
               <img src="/profile_icon.webp" alt="Profile" className="w-5 h-5 object-contain transition-all duration-200 group-hover:scale-110 group-hover:brightness-110" />
             </button>
 
-            <Link
-              to="/account/orders"
-              className="action-btn hidden-mobile"
-              title="Notifications / Orders"
-              onClick={() => {
-                if (isExpanded) closeMenu();
-              }}
-            >
-              <Bell className="w-5 h-5 text-slate-700" />
-            </Link>
+            {/* Notification Button & Responsive Dropdown Panel */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNotifOpen(!isNotifOpen);
+                  if (isExpanded) closeMenu();
+                  if (isSearchOpen) setIsSearchOpen(false);
+                }}
+                className="action-btn relative"
+                title="Notifications"
+                aria-label="Notifications"
+                aria-expanded={isNotifOpen}
+              >
+                <Bell className="w-5 h-5 text-slate-700" />
+                {unreadCount > 0 && (
+                  <span className="badge">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotifOpen && typeof document !== 'undefined' && createPortal(
+                <>
+                  {/* Backdrop for click outside dismiss on mobile */}
+                  <div 
+                    className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-[1px] sm:hidden"
+                    onClick={() => setIsNotifOpen(false)} 
+                    aria-hidden="true"
+                  />
+
+                  {/* Responsive Notification Panel */}
+                  <div 
+                    ref={dropdownRef}
+                    style={{
+                      position: 'fixed',
+                      top: `${dropdownPos.top}px`,
+                      right: isMobile ? '12px' : `${dropdownPos.right}px`,
+                      left: isMobile ? '12px' : 'auto',
+                      width: isMobile ? 'calc(100vw - 24px)' : '384px',
+                      maxWidth: 'calc(100vw - 24px)',
+                      zIndex: 9999,
+                    }}
+                    className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 select-auto"
+                  >
+                    <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 rounded-t-2xl">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm sm:text-base text-slate-900">Notifications</span>
+                        {unreadCount > 0 && (
+                          <span className="bg-[#EF4A45] text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                            {unreadCount} New
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 sm:gap-2">
+                        {unreadCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={markAllRead}
+                            className="p-1.5 text-xs text-slate-500 hover:text-[#EF4A45] hover:bg-[#EF4A45]/10 rounded-lg transition-colors flex items-center gap-1 font-semibold"
+                            title="Mark all as read"
+                          >
+                            <CheckCheck className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Mark read</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setIsNotifOpen(false)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"
+                          title="Close"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto overscroll-contain divide-y divide-slate-100">
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center text-slate-400 text-sm">
+                          <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-50" />
+                          No notifications
+                        </div>
+                      ) : (
+                        notifications.map((n) => {
+                          const isUnread = !readState[n.id];
+                          return (
+                            <Link
+                              key={n.id}
+                              to={n.link}
+                              onClick={() => {
+                                markAsRead(n.id);
+                                setIsNotifOpen(false);
+                              }}
+                              className={`flex items-start gap-3 p-3.5 sm:p-4 hover:bg-slate-50 transition-colors ${
+                                isUnread ? 'bg-amber-50/40' : ''
+                              }`}
+                            >
+                              <div className={`p-2 rounded-xl shrink-0 ${
+                                n.type === 'order'
+                                  ? 'bg-blue-50 text-blue-600'
+                                  : n.type === 'promo'
+                                  ? 'bg-red-50 text-[#EF4A45]'
+                                  : 'bg-amber-50 text-amber-600'
+                              }`}>
+                                {n.type === 'order' ? (
+                                  <Package className="w-4 h-4" />
+                                ) : n.type === 'promo' ? (
+                                  <Tag className="w-4 h-4" />
+                                ) : (
+                                  <Sparkles className="w-4 h-4" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-1">
+                                  <h4 className={`text-xs sm:text-sm leading-tight truncate ${
+                                    isUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'
+                                  }`}>
+                                    {n.title}
+                                  </h4>
+                                  {isUnread && (
+                                    <span className="w-2 h-2 bg-[#EF4A45] rounded-full shrink-0" />
+                                  )}
+                                </div>
+                                <p className="text-[11px] sm:text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                                  {n.description}
+                                </p>
+                                <span className="text-[10px] text-slate-400 mt-1.5 inline-block font-medium">
+                                  {n.time}
+                                </span>
+                              </div>
+                            </Link>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="p-2.5 sm:p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
+                      {user ? (
+                        <Link
+                          to="/account/orders"
+                          onClick={() => setIsNotifOpen(false)}
+                          className="w-full text-center py-1.5 font-bold text-[#EF4A45] hover:underline flex items-center justify-center gap-1.5"
+                        >
+                          View all orders & history
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsNotifOpen(false);
+                            onOpenProfile?.();
+                          }}
+                          className="w-full text-center py-1.5 font-bold text-[#EF4A45] hover:underline"
+                        >
+                          Sign in to view your order updates →
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>,
+                document.body
+              )}
+            </div>
 
 
             <Link

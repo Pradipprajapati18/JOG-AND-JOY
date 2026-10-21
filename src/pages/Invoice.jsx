@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useOrdersList } from '../queries/useOrders';
 import { useSettingsContext } from '../context/SettingsContext';
-import { getColorName } from '../utils/helpers';
+import { getColorName, formatColorName } from '../utils/helpers';
 import { ordersApi } from '../api/endpoints/orders';
 import { Printer, ArrowLeft, AlertCircle } from 'lucide-react';
 
@@ -232,6 +232,15 @@ export default function Invoice() {
   
   const total = order.total !== undefined ? Number(order.total) : (subtotal + shippingCharge + tax - discountAmount);
 
+  const hasApprovedExchange = order?.returnRequest?.type === 'EXCHANGE' && Boolean(order?.returnRequest?.exchangeItem) && ['EXCHANGE_APPROVED', 'SHIPPED', 'DELIVERED'].includes(order?.status);
+  const exchangeItem = order?.returnRequest?.exchangeItem;
+  const originalExchangeItem = order?.returnRequest?.originalItem;
+  const origPrice = Number(order?.returnRequest?.originalPrice || originalExchangeItem?.unitPrice || 0);
+  const repPrice = Number(order?.returnRequest?.replacementPrice || exchangeItem?.price || origPrice);
+  const priceDiff = typeof order?.returnRequest?.priceDifference === 'number'
+    ? order.returnRequest.priceDifference
+    : (repPrice - origPrice);
+
   // Format date helper for DD/MM/YYYY
   const formatSimpleDate = (isoString) => {
     if (!isoString) return '';
@@ -263,7 +272,18 @@ export default function Invoice() {
         <div className="mb-12">
           <h1 className="text-3xl font-black mb-1">JOG & JOY</h1>
           <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Jainam Products</p>
-          <p className="text-xl text-gray-700 mt-1">{isPackingSlip ? 'Packing Slip' : 'Invoice'}</p>
+          <div className="flex items-center gap-3">
+            <p className="text-xl text-gray-700 mt-1">
+              {isPackingSlip 
+                ? (hasApprovedExchange ? 'Exchange Packing Slip (Replacement Package)' : 'Packing Slip') 
+                : (hasApprovedExchange ? 'Tax Invoice (With Approved Exchange)' : 'Invoice')}
+            </p>
+            {hasApprovedExchange && (
+              <span className="mt-1 px-3 py-0.5 rounded-full text-xs font-black bg-purple-100 text-purple-900 border border-purple-300">
+                EXCHANGE REPLACEMENT
+              </span>
+            )}
+          </div>
           
           <div className="mt-8 text-lg">
             <p>2488, Navo Vas, Swaminarayan Mandir, Kalupur,</p>
@@ -316,28 +336,110 @@ export default function Invoice() {
               </tr>
             </thead>
             <tbody>
-              {order.items?.map((item, index) => (
-                <tr key={index}>
-                  <td className="py-3 px-2 border-[3px] border-black text-sm font-medium">
-                    {item.titleSnapshot || item.name || 'Product'}
-                  </td>
-                  <td className="py-3 px-2 border-[3px] border-black text-sm whitespace-pre-line text-center">
-                    {item.color && (() => {
-                      const colName = item.colorName || getColorName(item.color);
-                      return (
-                        <div>colour: {colName} {item.color?.startsWith('#') && colName !== item.color ? `(${item.color})` : ''}</div>
-                      );
-                    })()}
-                    {item.size && <div>size: {item.size}</div>}
-                  </td>
-                  <td className="py-3 px-2 border-[3px] border-black text-sm">₹{item.price || item.unitPrice || 0}</td>
-                  <td className="py-3 px-2 border-[3px] border-black text-sm">{item.quantity || 1}</td>
-                  <td className="py-3 px-2 border-[3px] border-black text-sm">₹{(item.price || item.unitPrice || 0) * (item.quantity || 1)}</td>
-                </tr>
-              ))}
+              {order.items?.map((item, index) => {
+                const isSwapped = hasApprovedExchange && (
+                  originalExchangeItem?.id === item.id || 
+                  originalExchangeItem?.productId === item.productId || 
+                  originalExchangeItem?.title === item.titleSnapshot
+                );
+
+                // On Packing Slip: Display the replacement item to pack instead of the old returned item
+                if (isPackingSlip && isSwapped) {
+                  return (
+                    <tr key={index} className="bg-purple-50/40">
+                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold text-purple-950">
+                        {exchangeItem.title}
+                        <span className="block text-[10px] font-black uppercase text-purple-800 tracking-wider mt-0.5">
+                          ★ REPLACEMENT ITEM TO PACK
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 border-[3px] border-black text-sm whitespace-pre-line text-center">
+                        <div>colour: {formatColorName(exchangeItem.colorName, exchangeItem.color)}</div>
+                        <div>size: {typeof exchangeItem.size === 'object' ? (exchangeItem.size?.name || 'N/A') : String(exchangeItem.size)}</div>
+                        <div className="text-[10px] text-gray-500 italic mt-0.5">
+                          (Swapped with original: {item.titleSnapshot} - Size: {item.size})
+                        </div>
+                      </td>
+                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{repPrice}</td>
+                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">{item.quantity || 1}</td>
+                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{repPrice * (item.quantity || 1)}</td>
+                    </tr>
+                  );
+                }
+
+                return (
+                  <tr key={index}>
+                    <td className="py-3 px-2 border-[3px] border-black text-sm font-medium">
+                      {item.titleSnapshot || item.name || 'Product'}
+                      {isSwapped && (
+                        <span className="block text-[10px] font-bold text-purple-700 mt-0.5">
+                          (⇄ Swapped for {exchangeItem.title} - Size: {exchangeItem.size})
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2 border-[3px] border-black text-sm whitespace-pre-line text-center">
+                      {item.color && (() => {
+                        const colName = formatColorName(item.colorName, item.color);
+                        const hexStr = typeof item.color === 'string' && item.color.startsWith('#') ? item.color : (typeof item.color === 'object' && item.color.hex ? item.color.hex : null);
+                        return (
+                          <div>colour: {colName} {hexStr && colName !== hexStr ? `(${hexStr})` : ''}</div>
+                        );
+                      })()}
+                      {item.size && <div>size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size)}</div>}
+                    </td>
+                    <td className="py-3 px-2 border-[3px] border-black text-sm">₹{item.price || item.unitPrice || 0}</td>
+                    <td className="py-3 px-2 border-[3px] border-black text-sm">{item.quantity || 1}</td>
+                    <td className="py-3 px-2 border-[3px] border-black text-sm">₹{(item.price || item.unitPrice || 0) * (item.quantity || 1)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {/* Exchange Replacement & Price Adjustment Endorsement on Invoice */}
+        {!isPackingSlip && hasApprovedExchange && (
+          <div className="mb-6 p-4 border-[2px] border-black bg-purple-50/40 rounded-xl text-left">
+            <div className="flex items-center justify-between border-b border-black/20 pb-2 mb-3">
+              <span className="font-black text-sm uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+                <span>⇄</span> Product Exchange Endorsement & Price Adjustment
+              </span>
+              <span className="text-xs font-mono font-bold px-2 py-0.5 bg-purple-200 text-purple-900 rounded">
+                Status: {order.status.replace('_', ' ')}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="p-3 bg-white border border-slate-300 rounded-lg">
+                <p className="font-bold text-slate-500 uppercase text-[10px] tracking-wider mb-1">Original Returned Item:</p>
+                <p className="font-bold text-slate-900">{originalExchangeItem?.title || 'Original Item'}</p>
+                <p className="text-slate-600 mt-0.5">Size: {originalExchangeItem?.size || 'N/A'} • Color: {formatColorName(originalExchangeItem?.colorName, originalExchangeItem?.color)}</p>
+                <p className="font-mono text-slate-700 font-bold mt-1.5">Original Unit Price: ₹{origPrice}</p>
+              </div>
+              <div className="p-3 bg-white border border-purple-300 rounded-lg">
+                <p className="font-bold text-purple-800 uppercase text-[10px] tracking-wider mb-1">New Replacement Item Dispatched:</p>
+                <p className="font-bold text-purple-950">{exchangeItem.title}</p>
+                <p className="text-slate-700 mt-0.5">Size: {exchangeItem.size} • Color: {formatColorName(exchangeItem.colorName, exchangeItem.color)}</p>
+                <p className="font-mono text-purple-950 font-bold mt-1.5">Replacement Unit Price: ₹{repPrice}</p>
+              </div>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-dashed border-black/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs">
+              <span className="font-bold text-slate-800">Exchange Price Adjustment:</span>
+              <span className={`font-black px-2.5 py-1 rounded text-xs ${
+                priceDiff === 0 
+                  ? 'bg-emerald-100 text-emerald-800' 
+                  : priceDiff > 0 
+                  ? 'bg-amber-100 text-amber-900' 
+                  : 'bg-blue-100 text-blue-900'
+              }`}>
+                {priceDiff === 0 
+                  ? '₹0.00 (Equal Value Exchange - No Balance Due)' 
+                  : priceDiff > 0 
+                  ? `+₹${priceDiff}.00 (Customer Balance to Collect)` 
+                  : `-₹${Math.abs(priceDiff)}.00 (Refund / Store Credit Due to Customer)`}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Totals */}
         <div className="flex justify-end mb-16">
@@ -362,11 +464,25 @@ export default function Invoice() {
                 <span className="font-bold text-base w-28 text-right">₹{tax}</span>
               </div>
             )}
+            {hasApprovedExchange && priceDiff !== 0 && (
+              <div className="flex justify-end items-center gap-4 mb-2 pr-6 text-purple-900">
+                <span className="font-bold text-base">Exchange Adj:</span>
+                <span className="font-bold text-base w-28 text-right">
+                  {priceDiff > 0 ? `+₹${priceDiff}` : `-₹${Math.abs(priceDiff)}`}
+                </span>
+              </div>
+            )}
             <div className="border-t-[4px] border-black my-2"></div>
             <div className="flex justify-end items-center gap-4 mt-2 pr-6">
-              <span className="font-bold text-2xl">Total:</span>
+              <span className="font-bold text-2xl">Total Paid:</span>
               <span className="font-bold text-2xl w-28 text-right">₹{total}</span>
             </div>
+            {hasApprovedExchange && priceDiff !== 0 && (
+              <div className="flex justify-end items-center gap-4 mt-1 pr-6 text-purple-950">
+                <span className="font-black text-lg">Net Revised:</span>
+                <span className="font-black text-lg w-28 text-right">₹{total + priceDiff}</span>
+              </div>
+            )}
           </div>
         </div>
 
