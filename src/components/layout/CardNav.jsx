@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { gsap } from 'gsap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Bell, CheckCheck, Package, Tag, Sparkles, ArrowRight } from 'lucide-react';
@@ -31,6 +32,9 @@ const CardNav = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 80, right: 24 });
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isScrolled, setIsScrolled] = useState(false);
   const [textLines, setTextLines] = useState(['Menu', 'Close']);
@@ -81,10 +85,14 @@ const CardNav = ({
     // Active promotions / offers
     if (activePromos.length > 0) {
       activePromos.slice(0, 3).forEach((promo) => {
+        const discountVal = promo.discountValue ?? promo.value ?? '';
+        const isPercent = promo.discountType === 'PERCENT' || promo.discountType === 'percentage';
+        const discountText = discountVal ? (isPercent ? `${discountVal}% OFF` : `₹${discountVal} OFF`) : 'Special Offer';
+        const promoCode = promo.code || promo.title || 'PROMO';
         list.push({
           id: `promo-${promo.id}`,
           type: 'promo',
-          title: `${promo.code} — ${promo.discountType === 'PERCENT' ? `${promo.discountValue}% OFF` : `₹${promo.discountValue} OFF`}`,
+          title: `${promoCode} — ${discountText}`,
           description: promo.description || `Special offer on your order! Apply code at checkout.`,
           time: 'Active Offer',
           link: '/products',
@@ -126,19 +134,48 @@ const CardNav = ({
 
   const unreadCount = notifications.filter((n) => !readState[n.id]).length;
 
-  // Click outside listener for notification dropdown
+  // Position updater and click outside listener for notification dropdown
   useEffect(() => {
     if (!isNotifOpen) return;
+    const updatePosition = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (notifRef.current) {
+        const rect = notifRef.current.getBoundingClientRect();
+        setDropdownPos({
+          top: Math.round(rect.bottom + 8),
+          right: Math.max(12, Math.round(window.innerWidth - rect.right)),
+        });
+      }
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
     const handleClickOutside = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
+      if (
+        notifRef.current && 
+        !notifRef.current.contains(e.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target)
+      ) {
+        setIsNotifOpen(false);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
         setIsNotifOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
     return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [isNotifOpen]);
 
@@ -504,16 +541,29 @@ const CardNav = ({
                 )}
               </button>
 
-              {isNotifOpen && (
+              {isNotifOpen && typeof document !== 'undefined' && createPortal(
                 <>
                   {/* Backdrop for click outside dismiss on mobile */}
                   <div 
-                    className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] md:hidden"
+                    className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-[1px] sm:hidden"
                     onClick={() => setIsNotifOpen(false)} 
+                    aria-hidden="true"
                   />
 
                   {/* Responsive Notification Panel */}
-                  <div className="fixed inset-x-3 top-18 sm:inset-x-auto sm:absolute sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-85 md:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-200 overflow-hidden">
+                  <div 
+                    ref={dropdownRef}
+                    style={{
+                      position: 'fixed',
+                      top: `${dropdownPos.top}px`,
+                      right: isMobile ? '12px' : `${dropdownPos.right}px`,
+                      left: isMobile ? '12px' : 'auto',
+                      width: isMobile ? 'calc(100vw - 24px)' : '384px',
+                      maxWidth: 'calc(100vw - 24px)',
+                      zIndex: 9999,
+                    }}
+                    className="bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 select-auto"
+                  >
                     <div className="p-3.5 sm:p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/90 rounded-t-2xl">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm sm:text-base text-slate-900">Notifications</span>
@@ -630,7 +680,8 @@ const CardNav = ({
                       )}
                     </div>
                   </div>
-                </>
+                </>,
+                document.body
               )}
             </div>
 
