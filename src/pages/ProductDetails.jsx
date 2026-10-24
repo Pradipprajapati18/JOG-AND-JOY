@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useReviewsList, useCreateReview } from '../queries/useReviews';
 import { ordersApi } from '../api/endpoints/orders';
-import { createSlug, getColorName } from '../utils/helpers';
+import { createSlug, getColorName, normalizeColor } from '../utils/helpers';
 
 import ProductCard from '../components/ui/ProductCard';
 import SizeGuideModal from '../components/ui/SizeGuideModal';
@@ -154,9 +154,10 @@ export default function ProductDetails() {
       const inStockVariant = product.variants?.find(v => Number(v.stock) > 0);
       
       if (inStockVariant) {
-        setSelectedColor(inStockVariant.colorHex);
+        setSelectedColor(normalizeColor(inStockVariant.colorHex).hex);
       } else {
-        setSelectedColor(product.colors?.[0]?.hex || '#AEE6FF');
+        const fallback = normalizeColor(product.colors?.[0] || product.variants?.[0]?.colorHex).hex;
+        setSelectedColor(fallback);
       }
       setSelectedSize(null);
       setSizeError(false);
@@ -214,23 +215,43 @@ export default function ProductDetails() {
 
   const globalColors = [];
   siblingProducts.forEach(sibling => {
-    sibling.colors?.forEach(color => {
-      const hex = typeof color === 'string' ? color : color.hex;
-      const name = (typeof color === 'object' && color.name) ? color.name : getColorName(hex);
-      if (hex && !globalColors.some(c => c.hex?.toLowerCase() === hex?.toLowerCase())) {
-        const variantWithImage = sibling.variants?.find(
-          (v) => v.colorHex?.toLowerCase() === hex?.toLowerCase() && v.image
-        );
-        globalColors.push({ 
-          hex,
-          name,
-          productId: sibling.id,
-          image: variantWithImage?.image || (typeof color === 'object' ? color.image : null) || sibling.image || product.image,
-          price: sibling.price || product.price,
-          originalPrice: sibling.originalPrice || product.originalPrice
-        });
-      }
-    });
+    // 1. From sibling.colors
+    if (Array.isArray(sibling?.colors) && sibling.colors.length > 0) {
+      sibling.colors.forEach(color => {
+        const norm = normalizeColor(color);
+        if (norm.hex && !globalColors.some(c => c.hex?.toLowerCase() === norm.hex.toLowerCase())) {
+          const variantWithImage = sibling.variants?.find(
+            (v) => v.colorHex?.toLowerCase() === norm.hex.toLowerCase() && v.image
+          );
+          globalColors.push({ 
+            hex: norm.hex,
+            name: norm.name,
+            productId: sibling.id,
+            image: variantWithImage?.image || (typeof color === 'object' ? color.image : null) || sibling.image || product.image,
+            price: sibling.price || product.price,
+            originalPrice: sibling.originalPrice || product.originalPrice
+          });
+        }
+      });
+    }
+    // 2. From sibling.variants
+    if (Array.isArray(sibling?.variants)) {
+      sibling.variants.forEach(v => {
+        if (v.colorHex) {
+          const norm = normalizeColor({ hex: v.colorHex, name: v.colorName });
+          if (norm.hex && !globalColors.some(c => c.hex?.toLowerCase() === norm.hex.toLowerCase())) {
+            globalColors.push({
+              hex: norm.hex,
+              name: norm.name,
+              productId: sibling.id,
+              image: v.image || sibling.image || product.image,
+              price: sibling.price || product.price,
+              originalPrice: sibling.originalPrice || product.originalPrice
+            });
+          }
+        }
+      });
+    }
   });
 
   const getVisibleColors = () => {

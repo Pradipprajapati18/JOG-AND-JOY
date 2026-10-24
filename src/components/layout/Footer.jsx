@@ -140,6 +140,9 @@ export default function Footer() {
 
                 {/* Vertical Social Icons Column */}
                 <div className="flex sm:flex-col items-center gap-3 shrink-0 pt-0.5">
+                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" title="Instagram" className="hover:scale-110 transition-transform">
+                    <InstagramGradientIcon />
+                  </a>
                   <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" title="Facebook" className="hover:scale-110 transition-transform">
                     <FacebookSquareIcon />
                   </a>

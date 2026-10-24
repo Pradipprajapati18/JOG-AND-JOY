@@ -3,7 +3,7 @@ import { Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
-import { createSlug } from '../../utils/helpers';
+import { createSlug, normalizeColor } from '../../utils/helpers';
 import { flyToCart } from '../../utils/animations';
 
 export default function MenProductCard({ product }) {
@@ -46,7 +46,8 @@ export default function MenProductCard({ product }) {
     
     // Add to cart with size + age
     const cartSize = `${selectedSize} (${selectedAge})`;
-    addToCart(product, cartSize, product.colors?.[0]?.hex || '#000');
+    const colorObj = normalizeColor(product.colors?.[0] || product.variants?.[0]?.colorHex);
+    addToCart(product, cartSize, colorObj.hex, e, 1, false, product.stock, colorObj.name);
   };
 
   return (
@@ -69,11 +70,11 @@ export default function MenProductCard({ product }) {
 
         {/* Wishlist Heart Icon */}
         <button
-          onClick={handleWishlistClick}
+          onClick={handleToggleWishlist}
           aria-label="Toggle Wishlist"
-          className={`absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center transition-opacity duration-300 z-10 hover:bg-slate-50 cursor-pointer ${isWished ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+          className={`absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center transition-opacity duration-300 z-10 hover:bg-slate-50 cursor-pointer ${isWishlisted ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         >
-          <Heart className={`w-4 h-4 transition-all duration-300 ${isWished ? 'text-[#FF7A59] fill-[#FF7A59]' : 'text-slate-600 hover:text-[#FF7A59]'} ${animateHeart ? 'scale-[1.75]' : 'scale-100'}`} />
+          <Heart className={`w-4 h-4 transition-all duration-300 ${isWishlisted ? 'text-[#FF7A59] fill-[#FF7A59]' : 'text-slate-600 hover:text-[#FF7A59]'}`} />
         </button>
 
         {/* Size Chart Modal Overlay (inside the card) */}

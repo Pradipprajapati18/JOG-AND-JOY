@@ -7,6 +7,7 @@ import { useCustomersList } from '../../queries/useCustomers';
 import { useProductsList } from '../../queries/useProducts';
 import { useCategoriesList } from '../../queries/useCategories';
 import { useSettingsContext } from '../../context/SettingsContext';
+import { parseNumericAmount } from '../../api/mockApi';
 
 export default function AdminAnalytics() {
   const [activeTab, setActiveTab] = useState('sales');
@@ -41,22 +42,26 @@ export default function AdminAnalytics() {
   const filteredOrders = orders.filter(o => new Date(o.createdAt || now) >= startDate);
   const filteredCustomers = customers.filter(c => new Date(c.createdAt || now) >= startDate);
 
-  // Dynamic Chart Data based on Period
+  // Helper: check if order is active/valid (exclude cancelled and refunded orders from sales KPIs)
+  const isCancelledOrRefunded = (status) => ['CANCELLED', 'REFUNDED'].includes(String(status || '').toUpperCase());
+  const isValidSaleOrder = (o) => o && !isCancelledOrRefunded(o.status);
+
+  // Dynamic Chart Data based on Period (authoritative revenue aggregation)
   let chartData = [];
   if (period === 'year') {
     chartData = Array.from({ length: 12 }).map((_, i) => {
       const d = new Date(now.getFullYear(), i, 1);
       const monthStr = d.toISOString().substring(0, 7);
-      const monthOrders = filteredOrders.filter(o => o.createdAt?.startsWith(monthStr) && o.status !== 'cancelled');
-      const value = monthOrders.reduce((sum, o) => sum + (o.total || ((o.subtotal || 0) + (o.tax || 0) + (o.shippingCost || 0) - (o.discountAmount || 0))), 0);
+      const monthOrders = filteredOrders.filter(o => o.createdAt?.startsWith(monthStr) && isValidSaleOrder(o));
+      const value = monthOrders.reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
       return { label: d.toLocaleDateString('en-US', { month: 'short' }), value };
     });
   } else if (period === 'all') {
     chartData = Array.from({ length: 5 }).map((_, i) => {
       const year = now.getFullYear() - (4 - i);
       const yearStr = String(year);
-      const yearOrders = filteredOrders.filter(o => o.createdAt?.startsWith(yearStr) && o.status !== 'cancelled');
-      const value = yearOrders.reduce((sum, o) => sum + (o.total || ((o.subtotal || 0) + (o.tax || 0) + (o.shippingCost || 0) - (o.discountAmount || 0))), 0);
+      const yearOrders = filteredOrders.filter(o => o.createdAt?.startsWith(yearStr) && isValidSaleOrder(o));
+      const value = yearOrders.reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
       return { label: yearStr, value };
     });
   } else {
@@ -65,26 +70,48 @@ export default function AdminAnalytics() {
       const d = new Date();
       d.setDate(now.getDate() - (days - 1 - i));
       const dateStr = d.toISOString().split('T')[0];
-      const dayOrders = filteredOrders.filter(o => o.createdAt?.startsWith(dateStr) && o.status !== 'cancelled');
-      const value = dayOrders.reduce((sum, o) => sum + (o.total || ((o.subtotal || 0) + (o.tax || 0) + (o.shippingCost || 0) - (o.discountAmount || 0))), 0);
+      const dayOrders = filteredOrders.filter(o => o.createdAt?.startsWith(dateStr) && isValidSaleOrder(o));
+      const value = dayOrders.reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
       return { label: days > 7 ? d.getDate() : d.toLocaleDateString('en-US', { weekday: 'short' }), value };
     });
   }
   const maxVal = Math.max(...chartData.map(d => d.value), 100);
 
-  // Real logic for Top Products and Categories
+  // Real logic for Top Products and Categories (supports both Supabase JSONB items and legacy strings)
   const productStats = {};
   const categoryStats = {};
   filteredOrders.forEach(order => {
-    if (order.status !== 'cancelled') {
-      order.items?.forEach(item => {
+    if (isValidSaleOrder(order)) {
+      let itemsList = [];
+      if (Array.isArray(order.items)) {
+        itemsList = order.items;
+      } else if (typeof order.items === 'string') {
+        try {
+          const parsed = JSON.parse(order.items);
+          if (Array.isArray(parsed)) itemsList = parsed;
+        } catch {
+          itemsList = order.items.split(',').map(s => {
+            const m = s.trim().match(/^(.*?)\s*\(x(\d+)\)$/);
+            return {
+              title: m ? m[1] : s.trim(),
+              quantity: m ? parseInt(m[2], 10) : 1,
+              unitPrice: 0
+            };
+          });
+        }
+      }
+
+      itemsList.forEach(item => {
         const title = item.titleSnapshot || item.title || item.name || 'Unknown Product';
         const key = item.productId || title;
+        const qty = parseInt(item.quantity, 10) || 1;
+        const itemPrice = parseNumericAmount(item.unitPrice || item.price || 0);
+
         if (!productStats[key]) {
           productStats[key] = { name: title, units: 0, revenue: 0 };
         }
-        productStats[key].units += item.quantity || 1;
-        productStats[key].revenue += ((item.unitPrice || item.price) * (item.quantity || 1)) || 0;
+        productStats[key].units += qty;
+        productStats[key].revenue += (itemPrice * qty);
 
         let category = item.category;
         if (!category && item.productId) {
@@ -104,7 +131,7 @@ export default function AdminAnalytics() {
         if (!categoryStats[category]) {
           categoryStats[category] = { name: category, units: 0 };
         }
-        categoryStats[category].units += item.quantity || 1;
+        categoryStats[category].units += qty;
       });
     }
   });
@@ -147,20 +174,28 @@ export default function AdminAnalytics() {
   const totalActiveCustomers = newCustomers + returningCustomers;
   const returningRate = totalActiveCustomers > 0 ? ((returningCustomers / totalActiveCustomers) * 100).toFixed(1) : 0;
 
-  // Gross vs Net
-  const grossSales = filteredOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
-  const totalDiscounts = filteredOrders.reduce((sum, o) => sum + (o.discountAmount || 0), 0);
-  const netSales = grossSales - totalDiscounts;
+  // Gross vs Net (computed from active, non-cancelled, non-refunded orders)
+  const validFilteredOrders = filteredOrders.filter(isValidSaleOrder);
+  const periodTotalRevenue = validFilteredOrders.reduce((sum, o) => sum + parseNumericAmount(o.total || 0), 0);
+  const periodAOV = validFilteredOrders.length > 0 ? periodTotalRevenue / validFilteredOrders.length : 0;
+  const grossSales = validFilteredOrders.reduce((sum, o) => {
+    const sub = o.subtotal !== undefined && o.subtotal !== null && o.subtotal !== ''
+      ? parseNumericAmount(o.subtotal)
+      : (parseNumericAmount(o.total) + parseNumericAmount(o.discountAmount));
+    return sum + sub;
+  }, 0);
+  const totalDiscounts = validFilteredOrders.reduce((sum, o) => sum + parseNumericAmount(o.discountAmount), 0);
+  const netSales = Math.max(0, grossSales - totalDiscounts);
 
   // Promotion Tracking
   const promoStats = {};
-  filteredOrders.forEach(o => {
+  validFilteredOrders.forEach(o => {
     if (o.promotionCodeApplied && o.discountAmount) {
       if (!promoStats[o.promotionCodeApplied]) {
         promoStats[o.promotionCodeApplied] = { code: o.promotionCodeApplied, uses: 0, totalDiscount: 0 };
       }
       promoStats[o.promotionCodeApplied].uses += 1;
-      promoStats[o.promotionCodeApplied].totalDiscount += o.discountAmount;
+      promoStats[o.promotionCodeApplied].totalDiscount += parseNumericAmount(o.discountAmount);
     }
   });
   const topPromos = Object.values(promoStats).sort((a, b) => b.totalDiscount - a.totalDiscount);
@@ -198,21 +233,21 @@ export default function AdminAnalytics() {
     let count = 0;
     if (period === 'year') {
       const monthStr = new Date(now.getFullYear(), chartData.indexOf(d), 1).toISOString().substring(0, 7);
-      count = filteredOrders.filter(o => o.createdAt?.startsWith(monthStr) && o.status !== 'cancelled').length;
+      count = filteredOrders.filter(o => o.createdAt?.startsWith(monthStr) && isValidSaleOrder(o)).length;
     } else if (period === 'all') {
       const yearStr = d.label;
-      count = filteredOrders.filter(o => o.createdAt?.startsWith(yearStr) && o.status !== 'cancelled').length;
+      count = filteredOrders.filter(o => o.createdAt?.startsWith(yearStr) && isValidSaleOrder(o)).length;
     } else {
       let days = period === 'today' ? 1 : period === '30d' ? 30 : 7;
       const date = new Date();
       date.setDate(now.getDate() - (days - 1 - chartData.indexOf(d)));
       const dateStr = date.toISOString().split('T')[0];
-      count = filteredOrders.filter(o => o.createdAt?.startsWith(dateStr) && o.status !== 'cancelled').length;
+      count = filteredOrders.filter(o => o.createdAt?.startsWith(dateStr) && isValidSaleOrder(o)).length;
     }
     return { ...d, orders: count };
   });
 
-  // Order Status Distribution for Pie Chart
+  // Order Status Distribution for Pie Chart (inclusive of all valid fulfillment statuses)
   const statusCounts = {
     PROCESSING: 0,
     SHIPPED: 0,
@@ -222,10 +257,19 @@ export default function AdminAnalytics() {
   };
   
   filteredOrders.forEach(o => {
-    if (['RETURN_REQUESTED', 'EXCHANGE_REQUESTED', 'RETURN_APPROVED', 'EXCHANGE_APPROVED', 'RETURN_REJECTED', 'RETURNS'].includes(o.status)) {
+    const status = String(o.status || '').toUpperCase();
+    if (['RETURN_REQUESTED', 'EXCHANGE_REQUESTED', 'RETURN_APPROVED', 'EXCHANGE_APPROVED', 'RETURN_REJECTED', 'EXCHANGE_REJECTED', 'REFUNDED', 'RETURNS'].includes(status) || o.returnRequest) {
       statusCounts.RETURNS++;
-    } else if (statusCounts[o.status] !== undefined) {
-      statusCounts[o.status]++;
+    } else if (['PROCESSING', 'CONFIRMED', 'PACKED', 'ON_HOLD', 'PENDING'].includes(status)) {
+      statusCounts.PROCESSING++;
+    } else if (status === 'SHIPPED') {
+      statusCounts.SHIPPED++;
+    } else if (status === 'DELIVERED') {
+      statusCounts.DELIVERED++;
+    } else if (status === 'CANCELLED') {
+      statusCounts.CANCELLED++;
+    } else {
+      statusCounts.PROCESSING++;
     }
   });
 
@@ -277,13 +321,13 @@ export default function AdminAnalytics() {
         <button onClick={() => setActiveTab('sales')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
           <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-1 sm:mb-2 group-hover:text-blue-600 transition-colors truncate">Total Sales</p>
           <div className="flex items-end gap-3">
-            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{isLoading ? '...' : formatCurrency(summary?.totalRevenue || 0)}</p>
+            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{formatCurrency(periodTotalRevenue)}</p>
           </div>
         </button>
         <button onClick={() => setActiveTab('sales')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">
           <p className="text-[10px] sm:text-xs font-bold text-text-muted uppercase tracking-widest mb-1 sm:mb-2 group-hover:text-blue-600 transition-colors truncate">Avg Order Value</p>
           <div className="flex items-end gap-3">
-            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{isLoading ? '...' : formatCurrency(summary?.totalRevenue / (summary?.totalOrders || 1) || 0)}</p>
+            <p className="text-lg sm:text-2xl font-black text-text-dark truncate">{formatCurrency(periodAOV)}</p>
           </div>
         </button>
         <button onClick={() => setActiveTab('orders')} className="text-left p-3.5 sm:p-5 bg-white border border-slate-100 rounded-2xl transition-all shadow-sm hover:border-blue-300 hover:shadow-md group">

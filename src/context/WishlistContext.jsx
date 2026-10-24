@@ -20,19 +20,19 @@ export function WishlistProvider({ children }) {
   useEffect(() => {
     const fetchWishlist = async () => {
       if (!user?.id) {
-         setWishlist([]);
-         localStorage.removeItem('jog_n_joy_wishlist');
-         return;
+        setWishlist([]);
+        localStorage.removeItem('jog_n_joy_wishlist');
+        return;
       }
       const { data, error } = await supabase
         .from('users')
         .select('wishlist')
         .eq('id', user.id)
         .single();
-        
+
       if (!error && data?.wishlist) {
-         setWishlist(data.wishlist);
-         localStorage.setItem('jog_n_joy_wishlist', JSON.stringify(data.wishlist));
+        setWishlist(data.wishlist);
+        localStorage.setItem('jog_n_joy_wishlist', JSON.stringify(data.wishlist));
       }
     };
     fetchWishlist();
@@ -61,14 +61,14 @@ export function WishlistProvider({ children }) {
 
     // Sync to DB
     if (user?.id) {
-       await supabase.from('users').update({ wishlist: newWishlist }).eq('id', user.id);
+      await supabase.from('users').update({ wishlist: newWishlist }).eq('id', user.id);
     }
   };
 
   const clearWishlist = async () => {
     setWishlist([]);
     if (user?.id) {
-       await supabase.from('users').update({ wishlist: [] }).eq('id', user.id);
+      await supabase.from('users').update({ wishlist: [] }).eq('id', user.id);
     }
   };
 
@@ -89,6 +89,15 @@ export function WishlistProvider({ children }) {
   );
 }
 
+const defaultWishlistContext = {
+  wishlist: [],
+  toggleWishlist: () => {},
+  clearWishlist: () => {},
+  isInWishlist: () => false,
+  wishlistCount: 0
+};
+
 export function useWishlist() {
-  return useContext(WishlistContext);
+  const ctx = useContext(WishlistContext);
+  return ctx || defaultWishlistContext;
 }

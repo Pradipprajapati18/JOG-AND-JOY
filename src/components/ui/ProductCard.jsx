@@ -1,40 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Heart, Eye, ShoppingBag, Star } from 'lucide-react';
-import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCombinedProducts } from '../../queries/useCombinedProducts';
-import { createSlug } from '../../utils/helpers';
+import { createSlug, normalizeColor } from '../../utils/helpers';
 
 export default function ProductCard({ product, onQuickView }) {
   const { combinedProducts } = useCombinedProducts();
-  const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
   const [activeProduct, setActiveProduct] = useState(product);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setActiveProduct(product);
   }, [product]);
 
-  const [selectedSize, setSelectedSize] = useState(activeProduct.wishlistSize || activeProduct.sizes?.[0] || '4Y-5Y');
-  const [selectedColor, setSelectedColor] = useState(activeProduct.wishlistColor || activeProduct.colors?.[0]?.hex || '#AEE6FF');
+  const siblingProducts = useMemo(() => {
+    if (!combinedProducts) return [activeProduct];
+    return combinedProducts.filter(p => 
+      (activeProduct.groupId && p.groupId === activeProduct.groupId) ||
+      (activeProduct.groupId && String(p.id) === String(activeProduct.groupId)) ||
+      (p.groupId && String(p.groupId) === String(activeProduct.id)) ||
+      String(p.id) === String(activeProduct.id)
+    );
+  }, [combinedProducts, activeProduct]);
 
-  const siblingProducts = combinedProducts?.filter(p => 
-    (activeProduct.groupId && p.groupId === activeProduct.groupId) ||
-    (activeProduct.groupId && String(p.id) === String(activeProduct.groupId)) ||
-    (p.groupId && String(p.groupId) === String(activeProduct.id)) ||
-    String(p.id) === String(activeProduct.id)
-  ) || [activeProduct];
-
-  const globalColors = [];
-  siblingProducts.forEach(sibling => {
-    sibling.colors?.forEach(color => {
-      if (!globalColors.some(c => c.hex === color.hex)) {
-        globalColors.push({ ...color, productId: sibling.id });
+  const globalColors = useMemo(() => {
+    const colors = [];
+    siblingProducts.forEach(sibling => {
+      // 1. Check colors array
+      if (Array.isArray(sibling?.colors) && sibling.colors.length > 0) {
+        sibling.colors.forEach(color => {
+          const norm = normalizeColor(color);
+          if (norm.hex && !colors.some(c => c.hex?.toLowerCase() === norm.hex.toLowerCase())) {
+            colors.push({ ...norm, productId: sibling.id });
+          }
+        });
+      }
+      // 2. Check variants for additional colors
+      if (Array.isArray(sibling?.variants)) {
+        sibling.variants.forEach(v => {
+          if (v.colorHex) {
+            const norm = normalizeColor({ hex: v.colorHex, name: v.colorName });
+            if (norm.hex && !colors.some(c => c.hex?.toLowerCase() === norm.hex.toLowerCase())) {
+              colors.push({ ...norm, productId: sibling.id });
+            }
+          }
+        });
       }
     });
-  });
+    return colors;
+  }, [siblingProducts]);
+
+  const defaultColorHex = activeProduct.wishlistColor || 
+    (globalColors[0]?.hex) || 
+    normalizeColor(activeProduct.colors?.[0] || activeProduct.variants?.[0]?.colorHex).hex;
+
+  const [selectedSize, setSelectedSize] = useState(activeProduct.wishlistSize || activeProduct.sizes?.[0] || '4Y-5Y');
+  const [selectedColor, setSelectedColor] = useState(defaultColorHex);
+
+  useEffect(() => {
+    if (activeProduct) {
+      const nextColor = activeProduct.wishlistColor || 
+        (globalColors[0]?.hex) || 
+        normalizeColor(activeProduct.colors?.[0] || activeProduct.variants?.[0]?.colorHex).hex;
+      setSelectedColor(nextColor);
+      setSelectedSize(activeProduct.wishlistSize || activeProduct.sizes?.[0] || '4Y-5Y');
+    }
+  }, [activeProduct.id, globalColors]);
 
   const isFavorited = isInWishlist(activeProduct.id, selectedSize, selectedColor);
 
@@ -136,28 +169,34 @@ export default function ProductCard({ product, onQuickView }) {
         <div className="hidden sm:flex pt-2 border-t border-slate-100 items-center justify-between">
 
           {/* Color Swatches */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {globalColors.map((col, idx) => (
-              <button
-                key={idx}
-                aria-label={`Select color ${col.name}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSelectedColor(col.hex);
-                  if (String(col.productId) !== String(activeProduct.id)) {
-                    const nextProduct = siblingProducts.find(p => String(p.id) === String(col.productId));
-                    if (nextProduct) setActiveProduct(nextProduct);
-                  }
-                }}
-                className={`w-4 h-4 rounded-full border border-black shadow-xs transition-transform cursor-pointer ${
-                  selectedColor === col.hex ? 'scale-125 ring-2 ring-[#FF7A59]' : 'hover:scale-110'
-                }`}
-                style={{ backgroundColor: col.hex }}
-                title={col.name}
-              />
-            ))}
-          </div>
+          {globalColors.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {globalColors.map((col, idx) => {
+                const isSelected = selectedColor?.toLowerCase() === col.hex?.toLowerCase();
+                return (
+                  <button
+                    key={`${col.hex}-${idx}`}
+                    type="button"
+                    aria-label={`Select color ${col.name}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSelectedColor(col.hex);
+                      if (String(col.productId) !== String(activeProduct.id)) {
+                        const nextProduct = siblingProducts.find(p => String(p.id) === String(col.productId));
+                        if (nextProduct) setActiveProduct(nextProduct);
+                      }
+                    }}
+                    className={`w-4 h-4 rounded-full border border-black/25 shadow-xs transition-transform cursor-pointer ${
+                      isSelected ? 'scale-125 ring-2 ring-[#FF7A59]' : 'hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: col.hex }}
+                    title={`${col.name} (${col.hex})`}
+                  />
+                );
+              })}
+            </div>
+          )}
 
         </div>
 

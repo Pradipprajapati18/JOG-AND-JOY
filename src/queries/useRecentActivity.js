@@ -3,7 +3,7 @@ import { useSettingsContext } from '../context/SettingsContext';
 
 export function useRecentActivity() {
   const { formatDate } = useSettingsContext();
-  
+
   // Fetch the 10 most recent orders for our activity stream
   const { data: ordersData, isLoading } = useOrdersList({ pageSize: 10, sort: '-createdAt' });
 
@@ -14,22 +14,34 @@ export function useRecentActivity() {
       // Determine activity type and message based on status
       let type = 'info';
       let title = `Order ${order.orderNumber || order.id} placed`;
-      
-      if (order.status === 'SHIPPED') {
+
+      if (order.status === 'EXCHANGE_REQUESTED') {
+        type = 'warning';
+        title = `Exchange requested for Order #${order.orderNumber || order.id}`;
+      } else if (order.status === 'RETURN_REQUESTED') {
+        type = 'warning';
+        title = `Return requested for Order #${order.orderNumber || order.id}`;
+      } else if (order.status === 'EXCHANGE_APPROVED') {
         type = 'success';
-        title = `Order ${order.orderNumber || order.id} shipped`;
+        title = `Exchange approved for Order #${order.orderNumber || order.id}`;
+      } else if (order.status === 'RETURN_APPROVED') {
+        type = 'success';
+        title = `Return approved for Order #${order.orderNumber || order.id}`;
+      } else if (order.status === 'SHIPPED') {
+        type = 'success';
+        title = `Order #${order.orderNumber || order.id} shipped`;
       } else if (order.status === 'DELIVERED') {
         type = 'success';
-        title = `Order ${order.orderNumber || order.id} delivered`;
+        title = `Order #${order.orderNumber || order.id} delivered`;
       } else if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
         type = 'error';
-        title = `Order ${order.orderNumber || order.id} ${order.status.toLowerCase()}`;
+        title = `Order #${order.orderNumber || order.id} ${order.status.toLowerCase()}`;
       } else if (order.paymentStatus === 'failed') {
         type = 'error';
-        title = `Payment failed for ${order.orderNumber || order.id}`;
+        title = `Payment failed for #${order.orderNumber || order.id}`;
       } else if (order.status === 'ON_HOLD') {
         type = 'warning';
-        title = `Order ${order.orderNumber || order.id} on hold`;
+        title = `Order #${order.orderNumber || order.id} on hold`;
       }
 
       return {

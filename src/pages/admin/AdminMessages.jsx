@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MessageSquare, Search, Filter, Clock, MoreVertical, Send, FileText, ChevronDown, CheckCircle2, User, HelpCircle, FileTerminal } from 'lucide-react';
+import { MessageSquare, Search, MoreVertical, Send, FileText, CheckCircle2, User, HelpCircle, FileTerminal } from 'lucide-react';
 import { useMessagesList, useUpdateMessage } from '../../queries/useMessages';
 
 export default function AdminMessages() {

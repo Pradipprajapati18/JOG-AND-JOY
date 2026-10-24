@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Camera, Sparkles } from 'lucide-react';
+import { Heart, Camera } from 'lucide-react';
 
 const instaPhotos = [
   { id: 1, image: '/gallery_images/WhatsApp Image 2026-10-02 at 17.09.51 (1).webp', likes: '1.2k', position: 'center' },

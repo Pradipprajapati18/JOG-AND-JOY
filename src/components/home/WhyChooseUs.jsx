@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Star, ShieldCheck, HeartHandshake } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import whyChooseUsDesktop from '../../assets/why-choose-us-desktop.webp';
 import whyChooseUsMobile from '../../assets/why-choose-us-mobile.webp';
 import { getImageUrl } from '../../utils/getImageUrl';

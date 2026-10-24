@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useProductsList } from './useProducts';
 import { useCategoriesList } from './useCategories';
+import { normalizeColor } from '../utils/helpers';
 
 export function useCombinedProducts() {
   const { data: productsData, isLoading: isProductsLoading } = useProductsList();
@@ -30,6 +31,23 @@ export function useCombinedProducts() {
           categoryName = matchedCat.label;
         }
 
+        // Normalize colors and fallback to unique variant colors if colors array is empty
+        let resolvedColors = [];
+        if (Array.isArray(p.colors) && p.colors.length > 0) {
+          resolvedColors = p.colors.map(c => normalizeColor(c));
+        } else if (Array.isArray(p.variants) && p.variants.length > 0) {
+          const seen = new Set();
+          p.variants.forEach(v => {
+            if (v.colorHex) {
+              const norm = normalizeColor({ hex: v.colorHex, name: v.colorName });
+              if (!seen.has(norm.hex.toLowerCase())) {
+                seen.add(norm.hex.toLowerCase());
+                resolvedColors.push(norm);
+              }
+            }
+          });
+        }
+
         return {
           id: p.id,
           name: p.title || 'Untitled Product',
@@ -45,7 +63,7 @@ export function useCombinedProducts() {
           care: p.care,
           shipping: p.shipping,
           sizes: p.sizes || [],
-          colors: p.colors || [],
+          colors: resolvedColors,
           variants: p.variants || [],
           groupId: p.groupId || null,
           stock: p.variants?.[0]?.stock || p.stock || 0,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, Check, X, Search, MessageSquare, AlertTriangle, ShieldBan, Image as ImageIcon } from 'lucide-react';
+import { Star, Check, X, MessageSquare, ShieldBan, Image as ImageIcon } from 'lucide-react';
 import { useReviewsList, useUpdateReview } from '../../queries/useReviews';
 import { useOrder } from '../../queries/useOrders';
 import { formatColorName } from '../../utils/helpers';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, Flame, ArrowRight } from 'lucide-react';
+import { Flame, ArrowRight } from 'lucide-react';
 import { usePromotionsList } from '../../queries/usePromotions';
 
 export default function LimitedTimeOffers() {

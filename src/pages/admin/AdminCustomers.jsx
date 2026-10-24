@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useCustomersList } from '../../queries/useCustomers';
 import { useOrdersList } from '../../queries/useOrders';
-import { Users, Search, ShoppingBag, ArrowUpRight, FileText, X, Mail, Phone, MapPin, Calendar, CheckCircle, Package } from 'lucide-react';
+import { Users, Search, FileText, X, Mail, Phone, MapPin, Calendar, Package, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { Link } from 'react-router-dom';
 
@@ -12,6 +12,12 @@ export default function AdminCustomers() {
   const [filterType, setFilterType] = useState('all'); // all, returning, new
   const [sortBy, setSortBy] = useState('newest'); // newest, spent, orders
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterType, sortBy]);
 
   const customers = useMemo(() => {
     return customersData?.data || [];
@@ -49,6 +55,14 @@ export default function AdminCustomers() {
 
     return result;
   }, [customers, search, filterType, sortBy]);
+
+  // Pagination Calculations
+  const totalCustomersCount = filteredCustomers.length;
+  const totalPages = Math.max(1, Math.ceil(totalCustomersCount / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedCustomers = filteredCustomers.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+  const startIndex = totalCustomersCount === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(safeCurrentPage * pageSize, totalCustomersCount);
 
   const { data: allOrdersData } = useOrdersList({ pageSize: 10000 });
   
@@ -202,7 +216,7 @@ export default function AdminCustomers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredCustomers.length === 0 ? (
+                {paginatedCustomers.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="p-12 text-center text-text-muted">
                       <Users className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -210,7 +224,7 @@ export default function AdminCustomers() {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((c) => (
+                  paginatedCustomers.map((c) => (
                     <tr 
                       key={c.id} 
                       onClick={() => setSelectedCustomer(c)}
@@ -262,6 +276,113 @@ export default function AdminCustomers() {
             </table>
           )}
         </div>
+
+        {/* Responsive Pagination Controls Bar */}
+        {totalCustomersCount > 0 && (
+          <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl px-5 py-3.5 shadow-xs">
+            {/* Left: Item range */}
+            <div className="text-xs text-text-muted font-medium text-center sm:text-left">
+              Showing <span className="font-bold text-text-dark">{startIndex}</span> to <span className="font-bold text-text-dark">{endIndex}</span> of <span className="font-bold text-text-dark">{totalCustomersCount}</span> customers
+            </div>
+
+            {/* Center: Page numbers */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={safeCurrentPage === 1}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200 bg-white text-text-dark hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {(() => {
+                const pages = [];
+                const maxButtons = 5;
+                let start = Math.max(1, safeCurrentPage - 2);
+                let end = Math.min(totalPages, start + maxButtons - 1);
+                if (end - start < maxButtons - 1) {
+                  start = Math.max(1, end - maxButtons + 1);
+                }
+
+                if (start > 1) {
+                  pages.push(
+                    <button
+                      key={1}
+                      onClick={() => setCurrentPage(1)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border border-slate-200 bg-white text-text-dark hover:bg-zinc-50"
+                    >
+                      1
+                    </button>
+                  );
+                  if (start > 2) {
+                    pages.push(<span key="dots-start" className="px-1 text-zinc-400 text-xs font-bold">...</span>);
+                  }
+                }
+
+                for (let p = start; p <= end; p++) {
+                  pages.push(
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+                        safeCurrentPage === p
+                          ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                          : 'border border-slate-200 bg-white text-text-dark hover:bg-zinc-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                }
+
+                if (end < totalPages) {
+                  if (end < totalPages - 1) {
+                    pages.push(<span key="dots-end" className="px-1 text-zinc-400 text-xs font-bold">...</span>);
+                  }
+                  pages.push(
+                    <button
+                      key={totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border border-slate-200 bg-white text-text-dark hover:bg-zinc-50"
+                    >
+                      {totalPages}
+                    </button>
+                  );
+                }
+
+                return pages;
+              })()}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200 bg-white text-text-dark hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Right: Per page select */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted font-medium whitespace-nowrap">Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1 border border-slate-200 bg-white rounded-lg text-xs font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Customer Details Drawer Overlay */}
@@ -360,9 +481,27 @@ export default function AdminCustomers() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-black text-slate-900">{formatCurrency(order.total)}</p>
-                          <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase ${getStatusBadge(order.status)}`}>
-                            {order.status || 'PROCESSING'}
-                          </span>
+                          {(() => {
+                            const isExDelivered = order.returnRequest?.type === 'EXCHANGE' && (
+                              (order.returnRequest?.status || '').toUpperCase() === 'COMPLETED' ||
+                              (order.status === 'DELIVERED' && (
+                                ['APPROVED', 'SHIPPED'].includes((order.returnRequest?.status || '').toUpperCase()) ||
+                                order.statusHistory?.some(h => h.status === 'EXCHANGE_APPROVED')
+                              ))
+                            );
+                            if (order.status === 'DELIVERED' && isExDelivered) {
+                              return (
+                                <span className="inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase bg-purple-100 text-purple-800 border border-purple-200">
+                                  EXCHANGE DELIVERED
+                                </span>
+                              );
+                            }
+                            return (
+                              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase ${getStatusBadge(order.status)}`}>
+                                {order.status || 'PROCESSING'}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       <div className="pt-3 mt-3 border-t border-slate-100 flex items-center gap-1.5 text-xs text-slate-500">

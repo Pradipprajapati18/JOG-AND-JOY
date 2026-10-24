@@ -4,16 +4,18 @@ import { Link } from 'react-router-dom';
 import { useOrdersList } from '../../queries/useOrders';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { useProductsList } from '../../queries/useProducts';
+import { parseNumericAmount } from '../../api/mockApi';
 
 export default function AdminDashboard() {
   const [period, setPeriod] = useState('30d');
   const { formatCurrency, formatCompactCurrency, formatDate } = useSettingsContext();
-  const { data: ordersData, isLoading: isLoadingOrders } = useOrdersList({ pageSize: 10000 });
-  const { data: productsData } = useProductsList();
-  
+  const { data: ordersData } = useOrdersList({ pageSize: 10000 });
+
   const orders = ordersData?.data || [];
-  
+
+  // Helper: check if order is active/valid (not cancelled or refunded)
+  const isValidOrder = o => o && o.status !== 'CANCELLED' && o.status !== 'REFUNDED';
+
   // Filtering logic
   const now = new Date();
   let startDate = new Date(0);
@@ -46,28 +48,30 @@ export default function AdminDashboard() {
     prevStartDate = new Date(prevEndDate.getFullYear(), 0, 1);
   }
 
-  const filteredOrders = orders.filter(o => {
-    const d = new Date(o.createdAt || new Date());
+  const isDateInPeriod = (dateObj) => {
+    if (!dateObj) return false;
+    const d = new Date(dateObj);
     if (period === 'last_month') {
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
       return d >= startDate && d <= endOfLastMonth;
     }
     return d >= startDate;
-  });
+  };
 
-  const validOrders = filteredOrders.filter(o => o.status !== 'CANCELLED' && o.status !== 'REFUNDED');
-  
+  const filteredOrders = orders.filter(o => isDateInPeriod(o.createdAt || new Date()));
+  const validOrders = filteredOrders.filter(isValidOrder);
+
   const prevOrders = orders.filter(o => {
     const d = new Date(o.createdAt || new Date());
-    return d >= prevStartDate && d <= prevEndDate;
-  }).filter(o => o.status !== 'CANCELLED' && o.status !== 'REFUNDED');
+    return d >= prevStartDate && d <= prevEndDate && isValidOrder(o);
+  });
 
-  // KPIs
-  const totalSales = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  // KPIs (numeric safe aggregations)
+  const totalSales = validOrders.reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
   const totalOrdersCount = validOrders.length;
   const avgOrderValue = totalOrdersCount > 0 ? totalSales / totalOrdersCount : 0;
 
-  const prevSales = prevOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+  const prevSales = prevOrders.reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
   const prevOrdersCount = prevOrders.length;
   const prevAov = prevOrdersCount > 0 ? prevSales / prevOrdersCount : 0;
 
@@ -79,9 +83,9 @@ export default function AdminDashboard() {
   const salesTrend = calculateTrend(totalSales, prevSales);
   const ordersTrend = calculateTrend(totalOrdersCount, prevOrdersCount);
   const aovTrend = calculateTrend(avgOrderValue, prevAov);
-  
+
   // Customers
-  const allValidOrders = orders.filter(o => o.status !== 'CANCELLED' && o.status !== 'REFUNDED');
+  const allValidOrders = orders.filter(isValidOrder);
   const customerOrderHistory = {};
   allValidOrders.forEach(o => {
     const customerId = o.customerInfo?.email || o.shippingAddress?.email || o.userId || o.shippingAddress?.phone || o.shippingAddress?.fullName || o.shippingAddress?.name || o.customerInfo?.name || o.id;
@@ -95,18 +99,11 @@ export default function AdminDashboard() {
 
   let newCustomers = 0;
   let returningCustomers = 0;
-  
+
   Object.values(customerOrderHistory).forEach(dates => {
     dates.sort((a, b) => a - b);
     const firstOrderDate = dates[0];
-    
-    const ordersInPeriod = dates.filter(d => {
-      if (period === 'last_month') {
-        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-        return d >= startDate && d <= endOfLastMonth;
-      }
-      return d >= startDate;
-    });
+    const ordersInPeriod = dates.filter(isDateInPeriod);
 
     if (ordersInPeriod.length > 0) {
       if (firstOrderDate >= startDate) {
@@ -120,12 +117,12 @@ export default function AdminDashboard() {
   // Sales Over Time Chart Data
   let chartData = [];
   let days = period === 'today' ? 1 : period === 'week' ? 7 : period === '30d' || period === 'last_month' ? 30 : 12;
-  
+
   if (period === 'year') {
     chartData = Array.from({ length: 12 }).map((_, i) => {
       const d = new Date(startDate.getFullYear(), i, 1);
       const monthStr = d.toISOString().substring(0, 7);
-      const val = validOrders.filter(o => o.createdAt?.startsWith(monthStr)).reduce((sum, o) => sum + (o.total || 0), 0);
+      const val = validOrders.filter(o => o.createdAt?.startsWith(monthStr)).reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
       return { name: d.toLocaleDateString('en-US', { month: 'short' }), sales: val };
     });
   } else {
@@ -133,7 +130,7 @@ export default function AdminDashboard() {
       const d = new Date(period === 'last_month' ? now : new Date());
       d.setDate(d.getDate() - (days - 1 - i));
       const dateStr = d.toISOString().split('T')[0];
-      const val = validOrders.filter(o => o.createdAt?.startsWith(dateStr)).reduce((sum, o) => sum + (o.total || 0), 0);
+      const val = validOrders.filter(o => o.createdAt?.startsWith(dateStr)).reduce((sum, o) => sum + parseNumericAmount(o.total), 0);
       return { name: days > 7 ? d.getDate() : d.toLocaleDateString('en-US', { weekday: 'short' }), sales: val };
     });
   }
@@ -157,7 +154,7 @@ export default function AdminDashboard() {
     { name: 'REFUNDED', value: statusCounts.REFUNDED },
     { name: 'Others', value: statusCounts.Others }
   ].filter(item => item.value > 0 || item.name === 'SHIPPED' || item.name === 'Others');
-  
+
   const STATUS_COLORS = ['#334155', '#475569', '#64748b', '#94a3b8', '#cbd5e1', '#f1f5f9'];
 
   // Payment Method Distribution
@@ -198,8 +195,10 @@ export default function AdminDashboard() {
     switch (status) {
       case 'DELIVERED': return 'text-success-dark bg-success/10';
       case 'SHIPPED': return 'text-info-dark bg-info/10';
-      case 'PROCESSING': return 'text-warning-dark bg-warning/10';
-      case 'CANCELLED': case 'REFUNDED': return 'text-error bg-error/10';
+      case 'PROCESSING': case 'CONFIRMED': case 'PACKED': return 'text-warning-dark bg-warning/10';
+      case 'RETURN_REQUESTED': case 'EXCHANGE_REQUESTED': return 'text-amber-700 bg-amber-100 border border-amber-300';
+      case 'RETURN_APPROVED': case 'EXCHANGE_APPROVED': return 'text-purple-700 bg-purple-100 border border-purple-200';
+      case 'CANCELLED': case 'REFUNDED': case 'RETURN_REJECTED': case 'EXCHANGE_REJECTED': return 'text-error bg-error/10';
       default: return 'text-zinc-600 bg-zinc-100';
     }
   };
@@ -210,8 +209,8 @@ export default function AdminDashboard() {
         <div>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-text-dark">Overview</h1>
         </div>
-        <select 
-          value={period} 
+        <select
+          value={period}
           onChange={e => setPeriod(e.target.value)}
           className="w-full sm:w-auto px-3.5 py-2 border border-slate-200 bg-white rounded-lg text-xs sm:text-sm font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-slate-400 shadow-sm cursor-pointer"
         >
@@ -282,11 +281,11 @@ export default function AdminDashboard() {
         <div className="bg-white border border-slate-100 rounded-xl shadow-sm flex flex-col justify-between">
           <div className="p-3.5 sm:p-4 border-b border-slate-100 bg-zinc-50/50">
             <h2 className="font-bold text-sm sm:text-base text-text-dark flex items-center gap-2">
-              <Package className="w-4 h-4 text-zinc-400"/> Top Products
+              <Package className="w-4 h-4 text-zinc-400" /> Top Products
             </h2>
           </div>
           <div className="divide-y divide-slate-50 px-3.5 sm:px-4 py-1 sm:py-2 flex-1">
-            {topProducts.length === 0 ? <p className="text-zinc-400 py-4 text-center text-xs sm:text-sm">No data.</p> : 
+            {topProducts.length === 0 ? <p className="text-zinc-400 py-4 text-center text-xs sm:text-sm">No data.</p> :
               topProducts.map((p, i) => (
                 <div key={i} className="flex justify-between items-center py-2.5 sm:py-3 gap-2">
                   <p className="font-medium text-xs sm:text-sm text-text-dark truncate mr-2">{p.name}</p>
@@ -337,9 +336,27 @@ export default function AdminDashboard() {
                         {order.shippingAddress?.name || order.shippingAddress?.fullName || 'Guest'}
                       </td>
                       <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${getStatusColor(order.status)}`}>
-                          {order.status}
-                        </span>
+                        {(() => {
+                          const isExchangeDelivered = order.returnRequest?.type === 'EXCHANGE' && (
+                            (order.returnRequest?.status || '').toUpperCase() === 'COMPLETED' ||
+                            (order.status === 'DELIVERED' && (
+                              ['APPROVED', 'SHIPPED'].includes((order.returnRequest?.status || '').toUpperCase()) ||
+                              order.statusHistory?.some(h => h.status === 'EXCHANGE_APPROVED')
+                            ))
+                          );
+                          if (order.status === 'DELIVERED' && isExchangeDelivered) {
+                            return (
+                              <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase text-purple-800 bg-purple-100 border border-purple-200">
+                                EXCHANGE DELIVERED
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase ${getStatusColor(order.status)}`}>
+                              {order.status}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-3.5 sm:px-5 py-2.5 sm:py-3 text-right font-bold text-text-dark whitespace-nowrap">
                         {formatCurrency(order.total)}
@@ -369,12 +386,12 @@ export default function AdminDashboard() {
               </div>
             ) : <p className="text-xs sm:text-sm text-zinc-400 text-center py-4">No data</p>}
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-2">
-               {paymentData.map((s, i) => (
-                  <div key={s.name} className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-medium text-zinc-500">
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PAYMENT_COLORS[i % PAYMENT_COLORS.length] }}></span>
-                    {s.name} <span className="font-bold text-text-dark ml-0.5">{s.value}</span>
-                  </div>
-                ))}
+              {paymentData.map((s, i) => (
+                <div key={s.name} className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-medium text-zinc-500">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PAYMENT_COLORS[i % PAYMENT_COLORS.length] }}></span>
+                  {s.name} <span className="font-bold text-text-dark ml-0.5">{s.value}</span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -402,12 +419,12 @@ export default function AdminDashboard() {
               </div>
             ) : <p className="text-xs sm:text-sm text-zinc-400 text-center py-8">No data</p>}
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mt-3 sm:mt-4">
-               {statusData.map((s, i) => (
-                  <div key={s.name} className="flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-zinc-500">
-                    <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length] }}></span>
-                    {s.name} <span className="font-bold text-text-dark ml-0.5">{s.value}</span>
-                  </div>
-                ))}
+              {statusData.map((s, i) => (
+                <div key={s.name} className="flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-zinc-500">
+                  <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full" style={{ backgroundColor: STATUS_COLORS[i % STATUS_COLORS.length] }}></span>
+                  {s.name} <span className="font-bold text-text-dark ml-0.5">{s.value}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

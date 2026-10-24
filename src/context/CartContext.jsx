@@ -31,11 +31,11 @@ export function CartProvider({ children }) {
         await supabase.from('users').update({ cart }).eq('id', user.id);
       }
     };
-    
+
     try {
       localStorage.setItem('kids_cart', JSON.stringify(cart));
-    } catch {}
-    
+    } catch { }
+
     syncToCloud();
   }, [cart, user?.id]);
 
@@ -58,24 +58,24 @@ export function CartProvider({ children }) {
 
       if (!error && data) {
         const remoteCart = data.cart || [];
-        
+
         // Merge logic: Combine local cart (built while logged out) with remote cart
         setCart(prevLocal => {
           if (prevLocal.length === 0) return remoteCart;
-          
+
           let merged = [...remoteCart];
           prevLocal.forEach(localItem => {
             const existingIdx = merged.findIndex(
               (item) => item.id === localItem.id && item.size === localItem.size && item.color === localItem.color
             );
             if (existingIdx > -1) {
-               // If item exists in both, keep the highest quantity or sum them
-               merged[existingIdx].quantity = Math.max(merged[existingIdx].quantity, localItem.quantity);
+              // If item exists in both, keep the highest quantity or sum them
+              merged[existingIdx].quantity = Math.max(merged[existingIdx].quantity, localItem.quantity);
             } else {
-               merged.push(localItem);
+              merged.push(localItem);
             }
           });
-          
+
           // Save merged cart back to cloud immediately
           supabase.from('users').update({ cart: merged }).eq('id', user.id);
           return merged;
@@ -94,7 +94,7 @@ export function CartProvider({ children }) {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
   };
-  
+
   const removeToast = (id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
@@ -145,7 +145,7 @@ export function CartProvider({ children }) {
         }
       ]);
     }
-    
+
     showToast(`Added ${product.name} to bag!`);
     setIsCartOpen(true);
   };
@@ -176,7 +176,7 @@ export function CartProvider({ children }) {
   const { data: promosData } = usePromotionsList();
   const { data: settingsData } = useSettings();
   const settings = settingsData || {};
-  
+
   const [autoCoupon, setAutoCoupon] = useState(null);
 
   const cartTotalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -185,10 +185,10 @@ export function CartProvider({ children }) {
   useEffect(() => {
     const promos = promosData?.data || [];
     const now = new Date();
-    const activeAutoPromos = promos.filter(p => 
-      p.active && 
+    const activeAutoPromos = promos.filter(p =>
+      p.active &&
       p.method === 'automatic' &&
-      (!p.startsAt || new Date(p.startsAt) <= now) && 
+      (!p.startsAt || new Date(p.startsAt) <= now) &&
       (!p.expiresAt || new Date(p.expiresAt) >= now) &&
       (!p.minOrderValue || cartSubtotal >= p.minOrderValue) &&
       (!p.usageLimit || (p.usageCount || 0) < p.usageLimit)
@@ -265,13 +265,13 @@ export function CartProvider({ children }) {
   };
 
   const clearCart = () => setCart([]);
-  
+
   const baseShippingRate = settings.baseShippingRate !== undefined ? Number(settings.baseShippingRate) : 99;
   const freeShippingThreshold = settings.freeShippingThreshold !== undefined ? Number(settings.freeShippingThreshold) : 999;
   const expressShippingRate = settings.expressShippingRate !== undefined ? Number(settings.expressShippingRate) : 149;
 
   let discountAmount = 0;
-  
+
   let validAppliedCoupon = appliedCoupon;
   if (appliedCoupon && appliedCoupon.minOrderValue && cartSubtotal < appliedCoupon.minOrderValue) {
     validAppliedCoupon = null;
@@ -335,6 +335,33 @@ export function CartProvider({ children }) {
   );
 }
 
+const defaultCartContext = {
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  updateQuantity: () => {},
+  clearCart: () => {},
+  isCartOpen: false,
+  setIsCartOpen: () => {},
+  cartTotalCount: 0,
+  cartSubtotal: 0,
+  discountAmount: 0,
+  shippingFee: 0,
+  expressShippingRate: 0,
+  baseShippingRate: 0,
+  freeShippingThreshold: 0,
+  cartGrandTotal: 0,
+  appliedCoupon: null,
+  autoCoupon: null,
+  activeDiscount: null,
+  applyCoupon: () => {},
+  removeCoupon: () => {},
+  removeToast: () => {},
+  showToast: () => {},
+  recordCouponUsage: () => {}
+};
+
 export function useCart() {
-  return useContext(CartContext);
+  const ctx = useContext(CartContext);
+  return ctx || defaultCartContext;
 }

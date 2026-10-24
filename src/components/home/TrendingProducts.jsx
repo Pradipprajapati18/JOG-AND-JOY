@@ -1,7 +1,7 @@
 import React from 'react';
 import ProductCard from '../ui/ProductCard';
 import { useCombinedProducts } from '../../queries/useCombinedProducts';
-import { TrendingUp, Sparkles } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 export default function TrendingProducts({ onQuickView }) {
   const { combinedProducts } = useCombinedProducts();

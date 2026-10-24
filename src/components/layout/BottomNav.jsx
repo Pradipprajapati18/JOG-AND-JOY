@@ -7,8 +7,8 @@ import { useWishlist } from '../../context/WishlistContext';
 export default function BottomNav({ onOpenProfile }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { cartTotalCount } = useCart();
-  const { wishlistCount } = useWishlist();
+  const { cartTotalCount = 0 } = useCart() || {};
+  const { wishlistCount = 0 } = useWishlist() || {};
 
   // Restore the original navigation items
   const navItems = [

@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Heart, Star, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
-import { createSlug } from '../../utils/helpers';
+import { createSlug, normalizeColor } from '../../utils/helpers';
 import { flyToCart } from '../../utils/animations';
 
 export default function KidsProductCard({ product }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+
+  // Hover state
+  const [isHovered, setIsHovered] = useState(false);
 
   // Wishlist state
   const isWishlisted = isInWishlist(product.id);
@@ -43,8 +46,11 @@ export default function KidsProductCard({ product }) {
     // Unified size description including selected age range
     const cartSize = `Size: ${selectedSize} (${selectedAge})`;
     
+    // Normalized color
+    const colorObj = normalizeColor(product.colors?.[0] || product.variants?.[0]?.colorHex);
+    
     // Add to cart store context
-    addToCart(product, cartSize, product.colors?.[0]?.hex || '#000');
+    addToCart(product, cartSize, colorObj.hex, e, 1, false, product.stock, colorObj.name);
   };
 
   return (

@@ -1,47 +1,17 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Palette, TrendingUp, Scissors, User, Building, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
-import AnimatedCounter from '../components/ui/AnimatedCounter';
+import { Palette, TrendingUp, Scissors, User, Building, ArrowRight } from 'lucide-react';
 import FloatingElements from '../components/ui/FloatingElements';
 import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 import { getImageUrl } from '../utils/getImageUrl';
 import vaishalImage from '../assets/vaishal_shah.png';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 
-const stats = [
-  { value: 30, suffix: '+', label: 'Years Experience', color: 'text-[#EF4A45]' },
-  { value: 1, suffix: 'M+', label: 'Happy Customers', color: 'text-[#EAB308]' },
-  { value: 500, suffix: '+', label: 'Retail Partners', color: 'text-[#00A3E0]' },
-  { value: 100, suffix: '%', label: 'Bio-Washed Cotton', color: 'text-[#10B981]' }
-];
-
 const teamMembers = [
   { name: 'Vaishal A Shah', role: 'Managing Director', image: vaishalImage || '/images/vaishal_shah.png' }
 ];
 
-const CustomClothingSticker = ({ type, style }) => {
-  const map = {
-    "sticker_0_0": getImageUrl('cutouts/cutout_1.webp'),
-    "sticker_0_1": getImageUrl('cutouts/cutout_2.webp'),
-    "sticker_0_2": getImageUrl('cutouts/cutout_3.webp'),
-    "sticker_1_0": getImageUrl('cutouts/cutout_4.webp'),
-    "sticker_1_1": getImageUrl('cutouts/cutout_5.webp'),
-    "sticker_1_2": getImageUrl('cutouts/cutout_6.webp'),
-    "sticker_2_0": getImageUrl('cutouts/cutout_7.webp'),
-    "sticker_2_1": getImageUrl('cutouts/cutout_8.webp'),
-    "sticker_2_2": getImageUrl('cutouts/cutout_9.webp'),
-  };
-
-  return (
-    <div
-      className="absolute z-0 pointer-events-none drop-shadow-sm opacity-30 mix-blend-multiply"
-      style={{ ...style, width: '120px', height: '120px' }}
-    >
-      <img src={map[type]} alt={type} className="w-full h-full object-contain" />
-    </div>
-  );
-};
 
 export default function AboutUs() {
   const { combinedProducts } = useCombinedProducts();

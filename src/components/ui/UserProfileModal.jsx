@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Package, MapPin, Heart, LogOut, CheckCircle2, ChevronRight, RotateCcw, Edit2, Save, Loader2, FileText } from 'lucide-react';
 import { useWishlist } from '../../context/WishlistContext';
-import { useOrdersList, useUpdateOrder } from '../../queries/useOrders';
+import { useOrdersList } from '../../queries/useOrders';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { getColorName, formatColorName, formatColorHex } from '../../utils/helpers';
@@ -14,12 +14,12 @@ export default function UserProfileModal({ isOpen, onClose }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: '', phone: '', address: '' });
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const [expandedOrderIds, setExpandedOrderIds] = useState([]);
   const toggleOrderStatus = (orderId) => {
     setExpandedOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]);
   };
-  
+
   // Addresses State
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [newAddress, setNewAddress] = useState({ label: 'Home', line1: '', city: '', state: '', postalCode: '', country: 'India', isDefault: false });
@@ -27,21 +27,15 @@ export default function UserProfileModal({ isOpen, onClose }) {
 
   const { wishlistCount } = useWishlist();
   const [orders, setOrders] = useState([]);
-  
-  // Return/Exchange Request State
-  const [returnOrderId, setReturnOrderId] = useState(null);
-  const [returnForm, setReturnForm] = useState({ type: 'RETURN', reason: 'Defective/Damaged', comments: '' });
-  const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
-  
+
   // Use the actual logged-in user's ID to fetch orders
   const { data: ordersData, refetch } = useOrdersList(user ? { customerId: user.id } : {});
-  const updateOrder = useUpdateOrder();
 
   React.useEffect(() => {
     if (isOpen && ordersData?.data) {
       const formattedOrders = ordersData.data.map(o => ({
         id: o.id,
-        orderNumber: o.orderNumber || `#${o.id.substring(0,8).toUpperCase()}`,
+        orderNumber: o.orderNumber || `#${o.id.substring(0, 8).toUpperCase()}`,
         date: new Date(o.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         items: o.items || [],
         total: `₹${o.total}`,
@@ -98,21 +92,21 @@ export default function UserProfileModal({ isOpen, onClose }) {
 
   const handleSaveNewAddress = async () => {
     if (!newAddress.line1.trim()) return alert("Address line 1 is required");
-    
+
     setIsSaving(true);
     const addressToSave = { ...newAddress, id: Date.now().toString() };
-    
+
     let updatedAddresses = [...userAddresses];
     if (addressToSave.isDefault || updatedAddresses.length === 0) {
       addressToSave.isDefault = true;
       updatedAddresses = updatedAddresses.map(a => ({ ...a, isDefault: false }));
     }
-    
+
     updatedAddresses.push(addressToSave);
-    
+
     setUserAddresses(updatedAddresses);
     await updateUser({ addresses: updatedAddresses });
-    
+
     setNewAddress({ label: 'Home', line1: '', city: '', state: '', postalCode: '', country: 'India', isDefault: false });
     setShowAddressForm(false);
     setIsSaving(false);
@@ -140,34 +134,6 @@ export default function UserProfileModal({ isOpen, onClose }) {
     setIsSaving(false);
   };
 
-  const handleRequestReturn = (orderId) => {
-    setReturnOrderId(orderId);
-    setReturnForm({ type: 'RETURN', reason: 'Defective/Damaged', comments: '' });
-  };
-
-  const submitReturnRequest = async (e) => {
-    e.preventDefault();
-    setIsSubmittingReturn(true);
-    const newStatus = returnForm.type === 'RETURN' ? 'RETURN_REQUESTED' : 'EXCHANGE_REQUESTED';
-    
-    await updateOrder.mutateAsync({
-      id: returnOrderId,
-      patch: {
-        status: newStatus,
-        returnRequest: {
-          type: returnForm.type,
-          reason: returnForm.reason,
-          comments: returnForm.comments,
-          requestedAt: new Date().toISOString()
-        },
-        statusHistory: [{ status: newStatus, timestamp: new Date().toISOString(), note: `Customer requested ${returnForm.type.toLowerCase()}` }]
-      }
-    });
-    
-    setIsSubmittingReturn(false);
-    setReturnOrderId(null);
-    refetch();
-  };
 
   const handleDownloadInvoice = (order) => {
     const cleanId = String(order.orderNumber || order.id || '').replace(/^#/, '');
@@ -221,27 +187,24 @@ export default function UserProfileModal({ isOpen, onClose }) {
           <div className="flex border-b border-slate-100 mb-6 text-xs sm:text-sm font-extrabold text-slate-500 space-x-6">
             <button
               onClick={() => setActiveTab('orders')}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${
-                activeTab === 'orders' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
-              }`}
+              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${activeTab === 'orders' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
+                }`}
             >
               <Package className="w-4 h-4" /> My Orders ({orders.length})
             </button>
 
             <button
               onClick={() => setActiveTab('addresses')}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${
-                activeTab === 'addresses' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
-              }`}
+              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${activeTab === 'addresses' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
+                }`}
             >
               <MapPin className="w-4 h-4" /> Saved Addresses
             </button>
 
             <button
               onClick={() => setActiveTab('profile')}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${
-                activeTab === 'profile' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
-              }`}
+              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${activeTab === 'profile' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
+                }`}
             >
               <User className="w-4 h-4" /> Account Info
             </button>
@@ -266,66 +229,66 @@ export default function UserProfileModal({ isOpen, onClose }) {
                         <span className="block text-sm font-black text-[#EF4A45]">{order.total}</span>
                       </div>
                     </div>
-                    
+
                     {/* Items List */}
                     <div className="space-y-3 py-2">
                       {order.items.map((item, idx) => (
                         <div key={idx} className="flex justify-between items-center text-xs text-slate-700 font-semibold">
-                           <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
-                             {item.image ? (
-                               <img src={item.image} alt={item.titleSnapshot} className="w-10 h-10 rounded object-cover border border-amber-100 shrink-0" />
-                             ) : (
-                               <div className="w-10 h-10 rounded bg-amber-50 border border-amber-100 shrink-0 flex items-center justify-center text-[8px] text-amber-400">IMG</div>
-                             )}
-                             <div className="flex flex-col truncate">
-                               <span className="truncate">
-                                 <span className="text-slate-400 mr-1">{item.quantity}x</span> 
-                                 {item.titleSnapshot || item.name || 'Item'}
-                               </span>
-                               <span className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
-                                 <span>Size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')} | Color:</span>
-                                 {item.color && (
-                                   <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: formatColorHex(item.color) }} />
-                                 )}
-                                 <span className="font-semibold text-slate-700">{formatColorName(item.colorName, item.color)}</span>
-                               </span>
-                             </div>
-                           </div>
-                           <span className="font-bold shrink-0">₹{item.unitPrice * item.quantity}</span>
+                          <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
+                            {item.image ? (
+                              <img src={item.image} alt={item.titleSnapshot} className="w-10 h-10 rounded object-cover border border-amber-100 shrink-0" />
+                            ) : (
+                              <div className="w-10 h-10 rounded bg-amber-50 border border-amber-100 shrink-0 flex items-center justify-center text-[8px] text-amber-400">IMG</div>
+                            )}
+                            <div className="flex flex-col truncate">
+                              <span className="truncate">
+                                <span className="text-slate-400 mr-1">{item.quantity}x</span>
+                                {item.titleSnapshot || item.name || 'Item'}
+                              </span>
+                              <span className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                                <span>Size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')} | Color:</span>
+                                {item.color && (
+                                  <span className="w-2 h-2 rounded-full border border-slate-300 shrink-0 inline-block" style={{ backgroundColor: formatColorHex(item.color) }} />
+                                )}
+                                <span className="font-semibold text-slate-700">{formatColorName(item.colorName, item.color)}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <span className="font-bold shrink-0">₹{item.unitPrice * item.quantity}</span>
                         </div>
                       ))}
                     </div>
 
                     {/* Shipping & Payment Grid */}
                     <div className="bg-white/80 rounded-2xl p-4 text-xs grid grid-cols-2 gap-4 border border-white">
-                       <div>
-                          <p className="font-black text-slate-400 uppercase text-[9px] tracking-widest mb-1.5 flex items-center gap-1"><MapPin className="w-3 h-3"/> Shipping To</p>
-                          <p className="font-bold text-slate-800 line-clamp-1">{order.shippingAddress?.name || user?.name || 'Customer'}</p>
-                          <p className="text-slate-500 font-medium leading-tight mt-0.5 line-clamp-2">
-                            {order.shippingAddress ? `${order.shippingAddress.line1}, ${order.shippingAddress.city}` : 'Standard Shipping'}
+                      <div>
+                        <p className="font-black text-slate-400 uppercase text-[9px] tracking-widest mb-1.5 flex items-center gap-1"><MapPin className="w-3 h-3" /> Shipping To</p>
+                        <p className="font-bold text-slate-800 line-clamp-1">{order.shippingAddress?.name || user?.name || 'Customer'}</p>
+                        <p className="text-slate-500 font-medium leading-tight mt-0.5 line-clamp-2">
+                          {order.shippingAddress ? `${order.shippingAddress.line1}, ${order.shippingAddress.city}` : 'Standard Shipping'}
+                        </p>
+                        {order.shippingMethod && (
+                          <p className="mt-1.5 text-[9px] font-bold text-blue-600 uppercase bg-blue-50 inline-block px-1.5 py-0.5 rounded tracking-wider">
+                            {order.shippingMethod}
                           </p>
-                          {order.shippingMethod && (
-                            <p className="mt-1.5 text-[9px] font-bold text-blue-600 uppercase bg-blue-50 inline-block px-1.5 py-0.5 rounded tracking-wider">
-                              {order.shippingMethod}
-                            </p>
-                          )}
-                       </div>
-                       <div>
-                          <p className="font-black text-slate-400 uppercase text-[9px] tracking-widest mb-1.5 flex items-center gap-1"><Package className="w-3 h-3"/> Payment</p>
-                          <p className="font-bold text-slate-800">
-                            {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online'} 
-                            <span className="text-slate-400 font-medium ml-1 capitalize">({order.paymentStatus})</span>
-                          </p>
-                       </div>
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-black text-slate-400 uppercase text-[9px] tracking-widest mb-1.5 flex items-center gap-1"><Package className="w-3 h-3" /> Payment</p>
+                        <p className="font-bold text-slate-800">
+                          {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online'}
+                          <span className="text-slate-400 font-medium ml-1 capitalize">({order.paymentStatus})</span>
+                        </p>
+                      </div>
                     </div>
-                    
+
                     {/* Footer Actions with Tracking Button */}
                     <div className="mt-1 pt-3 border-t border-amber-200/50 flex flex-wrap items-center justify-between gap-2">
-                      <button 
+                      <button
                         onClick={() => {
                           onClose();
                           navigate(`/account/orders/${order.id}`);
-                        }} 
+                        }}
                         className="flex items-center gap-1.5 text-xs text-[#5B2E89] hover:text-[#46236b] font-black transition-colors bg-white px-3 py-2 rounded-lg border border-purple-200 shadow-sm"
                       >
                         View Full Details
@@ -338,7 +301,14 @@ export default function UserProfileModal({ isOpen, onClose }) {
                           </button>
                         )}
                         {order.status === 'DELIVERED' && !order.returnRequest && (
-                          <button onClick={() => handleRequestReturn(order.id)} className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-red-200 text-[#EF4A45] hover:text-red-700 hover:bg-red-50 transition-colors shadow-sm" title="Request Return/Exchange">
+                          <button
+                            onClick={() => {
+                              onClose();
+                              navigate(`/account/orders/${order.orderNumber || order.id}`);
+                            }}
+                            className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-red-200 text-[#EF4A45] hover:text-red-700 hover:bg-red-50 transition-colors shadow-sm"
+                            title="Request Return / Exchange"
+                          >
                             <RotateCcw className="w-4 h-4" />
                           </button>
                         )}
@@ -382,7 +352,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
                               if (order.status === 'EXCHANGE_APPROVED') returnLabel = 'Exchange Approved';
                               if (order.status === 'EXCHANGE_REJECTED') returnLabel = 'Exchange Rejected';
                               if (order.status === 'REFUNDED') returnLabel = 'Refund Processed';
-                              
+
                               steps.push({ label: returnLabel, active: true, desc: 'Post-delivery process initiated.' });
                             }
 
@@ -397,7 +367,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
                                 <div className="absolute left-4 top-2 bottom-2 w-[2px] bg-amber-100 z-0"></div>
                                 {/* Vertical Connecting Line Active */}
                                 <div className="absolute left-4 top-2 w-[2px] bg-[#EF4A45] z-0 transition-all duration-700 ease-out" style={{ height: progressHeight }}></div>
-                                
+
                                 {steps.map((step, idx) => (
                                   <div key={idx} className="relative z-10 flex items-start gap-4">
                                     <div className={`mt-[2px] w-3 h-3 shrink-0 rounded-full flex items-center justify-center ${step.active ? 'bg-[#EF4A45] ring-4 ring-red-50' : 'bg-amber-200'}`}>
@@ -430,9 +400,9 @@ export default function UserProfileModal({ isOpen, onClose }) {
                   <p className="text-xs text-slate-500 mt-1">When you place an order, it will appear here.</p>
                 </div>
               )}
-              
+
               {orders.length > 0 && (
-                <button 
+                <button
                   onClick={() => {
                     onClose();
                     navigate('/account/orders');
@@ -447,7 +417,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
 
           {activeTab === 'addresses' && (
             <div className="space-y-4">
-              
+
               {userAddresses.length === 0 && !showAddressForm && (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
@@ -470,11 +440,11 @@ export default function UserProfileModal({ isOpen, onClose }) {
                       <span className="font-extrabold text-slate-900 text-sm">{addr.label}</span>
                     </div>
                     <p className="text-xs text-slate-700 font-medium leading-relaxed">
-                      {addr.line1}<br/>
-                      {addr.city && addr.state ? `${addr.city}, ${addr.state} ${addr.postalCode || ''}` : ''}<br/>
+                      {addr.line1}<br />
+                      {addr.city && addr.state ? `${addr.city}, ${addr.state} ${addr.postalCode || ''}` : ''}<br />
                       {addr.country}
                     </p>
-                    
+
                     <div className="mt-3 flex gap-3">
                       {!addr.isDefault && (
                         <button onClick={() => handleSetDefaultAddress(addr.id)} className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors uppercase tracking-wider">Set Default</button>
@@ -486,7 +456,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
               ))}
 
               {!showAddressForm ? (
-                <button 
+                <button
                   onClick={() => setShowAddressForm(true)}
                   className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-200 text-slate-500 font-bold text-sm hover:border-slate-300 hover:text-slate-700 transition-colors flex items-center justify-center gap-2"
                 >
@@ -495,29 +465,29 @@ export default function UserProfileModal({ isOpen, onClose }) {
               ) : (
                 <div className="p-5 rounded-2xl border border-slate-200 bg-white shadow-sm space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
                   <h4 className="font-black text-slate-800 text-sm">Add New Address</h4>
-                  
+
                   <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => setNewAddress({...newAddress, label: 'Home'})} className={`py-2 rounded-xl border text-xs font-bold transition-all ${newAddress.label === 'Home' ? 'border-[#EF4A45] bg-red-50 text-[#EF4A45]' : 'border-slate-200 text-slate-600'}`}>Home</button>
-                    <button type="button" onClick={() => setNewAddress({...newAddress, label: 'Work'})} className={`py-2 rounded-xl border text-xs font-bold transition-all ${newAddress.label === 'Work' ? 'border-[#EF4A45] bg-red-50 text-[#EF4A45]' : 'border-slate-200 text-slate-600'}`}>Work</button>
+                    <button type="button" onClick={() => setNewAddress({ ...newAddress, label: 'Home' })} className={`py-2 rounded-xl border text-xs font-bold transition-all ${newAddress.label === 'Home' ? 'border-[#EF4A45] bg-red-50 text-[#EF4A45]' : 'border-slate-200 text-slate-600'}`}>Home</button>
+                    <button type="button" onClick={() => setNewAddress({ ...newAddress, label: 'Work' })} className={`py-2 rounded-xl border text-xs font-bold transition-all ${newAddress.label === 'Work' ? 'border-[#EF4A45] bg-red-50 text-[#EF4A45]' : 'border-slate-200 text-slate-600'}`}>Work</button>
                   </div>
-                  
-                  <input type="text" placeholder="Flat, House no., Building, Company, Apartment" value={newAddress.line1} onChange={(e) => setNewAddress({...newAddress, line1: e.target.value})} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
-                  
+
+                  <input type="text" placeholder="Flat, House no., Building, Company, Apartment" value={newAddress.line1} onChange={(e) => setNewAddress({ ...newAddress, line1: e.target.value })} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
+
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="text" placeholder="City" value={newAddress.city} onChange={(e) => setNewAddress({...newAddress, city: e.target.value})} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
-                    <input type="text" placeholder="State" value={newAddress.state} onChange={(e) => setNewAddress({...newAddress, state: e.target.value})} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
+                    <input type="text" placeholder="City" value={newAddress.city} onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
+                    <input type="text" placeholder="State" value={newAddress.state} onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value })} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3">
-                    <input type="text" placeholder="Pincode" value={newAddress.postalCode} onChange={(e) => setNewAddress({...newAddress, postalCode: e.target.value})} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
-                    <input type="text" placeholder="Country" value={newAddress.country} onChange={(e) => setNewAddress({...newAddress, country: e.target.value})} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
+                    <input type="text" placeholder="Pincode" value={newAddress.postalCode} onChange={(e) => setNewAddress({ ...newAddress, postalCode: e.target.value })} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
+                    <input type="text" placeholder="Country" value={newAddress.country} onChange={(e) => setNewAddress({ ...newAddress, country: e.target.value })} className="w-full text-xs font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#EF4A45]" />
                   </div>
 
                   <label className="flex items-center gap-2 cursor-pointer mt-2">
-                    <input type="checkbox" checked={newAddress.isDefault} onChange={(e) => setNewAddress({...newAddress, isDefault: e.target.checked})} className="rounded text-[#EF4A45] focus:ring-[#EF4A45]" />
+                    <input type="checkbox" checked={newAddress.isDefault} onChange={(e) => setNewAddress({ ...newAddress, isDefault: e.target.checked })} className="rounded text-[#EF4A45] focus:ring-[#EF4A45]" />
                     <span className="text-xs font-bold text-slate-600">Make this my default address</span>
                   </label>
-                  
+
                   <div className="pt-2 flex gap-3">
                     <button onClick={() => setShowAddressForm(false)} className="flex-1 py-3 border border-slate-200 rounded-xl text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors">Cancel</button>
                     <button onClick={handleSaveNewAddress} disabled={isSaving} className="flex-1 py-3 bg-[#EF4A45] text-white rounded-xl font-bold text-xs hover:bg-[#d33a36] transition-colors disabled:opacity-70 flex justify-center items-center gap-2">
@@ -550,7 +520,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
                 <span>Saved Wishlist Items</span>
                 <span className="text-slate-900">{wishlistCount} Products</span>
               </div>
-              
+
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -580,81 +550,6 @@ export default function UserProfileModal({ isOpen, onClose }) {
               </button>
             </div>
           )}
-          {/* Return/Exchange Form Overlay */}
-          <AnimatePresence>
-            {returnOrderId && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-white z-20 rounded-3xl p-6 sm:p-8 flex flex-col"
-              >
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-black text-slate-900">Return / Exchange</h3>
-                  <button onClick={() => setReturnOrderId(null)} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                
-                <form onSubmit={submitReturnRequest} className="flex-1 overflow-y-auto pr-2 space-y-5 pb-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Request Type</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button 
-                        type="button"
-                        onClick={() => setReturnForm({...returnForm, type: 'RETURN'})}
-                        className={`py-3 rounded-xl border-2 font-bold text-sm transition-all ${returnForm.type === 'RETURN' ? 'border-[#EF4A45] bg-red-50 text-[#EF4A45]' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
-                      >
-                        Refund
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setReturnForm({...returnForm, type: 'EXCHANGE'})}
-                        className={`py-3 rounded-xl border-2 font-bold text-sm transition-all ${returnForm.type === 'EXCHANGE' ? 'border-[#EF4A45] bg-red-50 text-[#EF4A45]' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
-                      >
-                        Exchange
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Reason</label>
-                    <select 
-                      value={returnForm.reason}
-                      onChange={(e) => setReturnForm({...returnForm, reason: e.target.value})}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm font-bold rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500/50"
-                    >
-                      <option value="Defective/Damaged">Defective or Damaged</option>
-                      <option value="Wrong Size">Wrong Size</option>
-                      <option value="Not as Expected">Not as Expected</option>
-                      <option value="Received Wrong Item">Received Wrong Item</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Additional Comments</label>
-                    <textarea 
-                      value={returnForm.comments}
-                      onChange={(e) => setReturnForm({...returnForm, comments: e.target.value})}
-                      placeholder="Please provide any details to help us process your request faster..."
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm font-medium rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500/50 min-h-[100px]"
-                    />
-                  </div>
-                  
-                  <div className="pt-4 border-t border-slate-100">
-                    <button 
-                      type="submit" 
-                      disabled={isSubmittingReturn}
-                      className="w-full bg-[#EF4A45] text-white font-bold py-3.5 rounded-xl hover:bg-[#d33a36] transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
-                    >
-                      {isSubmittingReturn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Request'}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
         </motion.div>
       </div>

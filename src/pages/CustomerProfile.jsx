@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { User, Phone, Save, Edit2, Loader2, LogOut, Heart } from 'lucide-react';
+import { Phone, Save, Edit2, Loader2, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
 
 export default function CustomerProfile() {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser } = useAuth();
   const { wishlistCount } = useWishlist();
   
   const [isEditing, setIsEditing] = useState(false);

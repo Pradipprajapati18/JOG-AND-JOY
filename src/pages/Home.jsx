@@ -29,6 +29,7 @@ export default function Home() {
         <WhyChooseUs />
         <CustomerReviews />
         <InstagramGallery />
+        <NewsletterSection />
       </div>
 
       {/* Quick View Modal */}

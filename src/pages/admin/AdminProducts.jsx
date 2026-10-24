@@ -3,7 +3,7 @@ import { Search, Edit2, Trash2, CheckCircle2, Image as ImageIcon, Plus, X, Chevr
 import { useProductsList, useCreateProduct, useUpdateProduct, useDeleteProduct } from '../../queries/useProducts';
 import { useCategoriesList } from '../../queries/useCategories';
 import { useSizesList } from '../../queries/useSizes';
-import { getColorName } from '../../utils/helpers';
+import { getColorName, normalizeColor } from '../../utils/helpers';
 
 export default function AdminProducts() {
   const [search, setSearch] = useState('');
@@ -13,6 +13,13 @@ export default function AdminProducts() {
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
+
+  // Auto-reset page when search or filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterCategory, filterStock]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -129,6 +136,14 @@ export default function AdminProducts() {
     });
   }
 
+  // Pagination Calculations
+  const totalProductsCount = products.length;
+  const totalPages = Math.max(1, Math.ceil(totalProductsCount / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedProducts = products.slice((safeCurrentPage - 1) * pageSize, safeCurrentPage * pageSize);
+  const startIndex = totalProductsCount === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(safeCurrentPage * pageSize, totalProductsCount);
+
   const createMut = useCreateProduct();
   const updateMut = useUpdateProduct();
   const deleteMut = useDeleteProduct();
@@ -145,9 +160,7 @@ export default function AdminProducts() {
     const newVariants = [];
     const sizes = formData.sizes.length > 0 ? formData.sizes : ['Standard'];
     const rawColors = formData.colors.length > 0 ? formData.colors : [{ hex: '#000000', name: 'Standard' }];
-    const colors = rawColors.map(c => 
-      typeof c === 'string' ? { hex: c, name: getColorName(c) } : { hex: c.hex, name: c.name || getColorName(c.hex) }
-    );
+    const colors = rawColors.map(c => normalizeColor(c));
 
     colors.forEach(color => {
       sizes.forEach(size => {
@@ -267,9 +280,7 @@ export default function AdminProducts() {
       care: p.care || '',
       shipping: p.shipping || '',
       sizes: p.sizes || [],
-      colors: (p.colors || []).map(c => 
-        typeof c === 'string' ? { hex: c, name: getColorName(c) } : { hex: c.hex, name: c.name || getColorName(c.hex) }
-      ),
+      colors: (p.colors || []).map(c => normalizeColor(c)),
       variants: p.variants || [],
       collections: p.collections || [],
       isNewArrival: p.isNewArrival || false,
@@ -324,24 +335,27 @@ export default function AdminProducts() {
       care: formData.care,
       shipping: formData.shipping,
       sizes: formData.sizes.length > 0 ? formData.sizes : ['Standard'],
-      colors: formData.colors,
+      colors: formData.colors.map(c => normalizeColor(c)),
       status: submitStatus,
       images: formData.images.length > 0 ? formData.images : ['https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?q=80&w=800&auto=format&fit=crop'],
       stock: finalStock,
       collections: formData.collections || [],
       isNewArrival: formData.isNewArrival || false,
       ageGroup: formData.ageGroup || undefined,
-      variants: finalVariants.map(v => ({
-        id: v.id,
-        sku: v.sku,
-        colorHex: v.colorHex,
-        colorName: v.colorName,
-        size: v.size,
-        stock: Number(v.stock),
-        price: v.price ? Number(v.price) : undefined,
-        image: v.image || undefined,
-        isHidden: v.isHidden || false
-      }))
+      variants: finalVariants.map(v => {
+        const norm = normalizeColor(v.colorHex);
+        return {
+          id: v.id,
+          sku: v.sku,
+          colorHex: norm.hex,
+          colorName: v.colorName || norm.name,
+          size: v.size,
+          stock: Number(v.stock),
+          price: v.price ? Number(v.price) : undefined,
+          image: v.image || undefined,
+          isHidden: v.isHidden || false
+        };
+      })
     };
 
     if (editingId) {
@@ -1166,12 +1180,12 @@ export default function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {products.length === 0 ? (
+                {paginatedProducts.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="p-12 text-center text-zinc-400">No products found.</td>
                   </tr>
                 ) : (
-                  products.map((product) => {
+                  paginatedProducts.map((product) => {
                     const totalStock = product.variants?.reduce((sum, v) => sum + (v.stock || 0), 0) || 0;
                     const sku = product.variants?.[0]?.sku || '-';
                     const image = product.image || product.images?.[0];
@@ -1250,6 +1264,113 @@ export default function AdminProducts() {
             </table>
           )}
         </div>
+
+        {/* Responsive Pagination Controls Bar */}
+        {totalProductsCount > 0 && (
+          <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl px-5 py-3.5 shadow-xs">
+            {/* Left: Item range */}
+            <div className="text-xs text-text-muted font-medium text-center sm:text-left">
+              Showing <span className="font-bold text-text-dark">{startIndex}</span> to <span className="font-bold text-text-dark">{endIndex}</span> of <span className="font-bold text-text-dark">{totalProductsCount}</span> products
+            </div>
+
+            {/* Center: Page numbers */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={safeCurrentPage === 1}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200 bg-white text-text-dark hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {(() => {
+                const pages = [];
+                const maxButtons = 5;
+                let start = Math.max(1, safeCurrentPage - 2);
+                let end = Math.min(totalPages, start + maxButtons - 1);
+                if (end - start < maxButtons - 1) {
+                  start = Math.max(1, end - maxButtons + 1);
+                }
+
+                if (start > 1) {
+                  pages.push(
+                    <button
+                      key={1}
+                      onClick={() => setCurrentPage(1)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border border-slate-200 bg-white text-text-dark hover:bg-zinc-50"
+                    >
+                      1
+                    </button>
+                  );
+                  if (start > 2) {
+                    pages.push(<span key="dots-start" className="px-1 text-zinc-400 text-xs font-bold">...</span>);
+                  }
+                }
+
+                for (let p = start; p <= end; p++) {
+                  pages.push(
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+                        safeCurrentPage === p
+                          ? 'bg-blue-600 text-white shadow-xs font-extrabold'
+                          : 'border border-slate-200 bg-white text-text-dark hover:bg-zinc-50'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                }
+
+                if (end < totalPages) {
+                  if (end < totalPages - 1) {
+                    pages.push(<span key="dots-end" className="px-1 text-zinc-400 text-xs font-bold">...</span>);
+                  }
+                  pages.push(
+                    <button
+                      key={totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all border border-slate-200 bg-white text-text-dark hover:bg-zinc-50"
+                    >
+                      {totalPages}
+                    </button>
+                  );
+                }
+
+                return pages;
+              })()}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={safeCurrentPage === totalPages}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-200 bg-white text-text-dark hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-bold"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Right: Per page select */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted font-medium whitespace-nowrap">Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2.5 py-1 border border-slate-200 bg-white rounded-lg text-xs font-bold text-text-dark focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

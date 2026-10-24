@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Save, Store, ShoppingCart, Truck, Receipt, Bell, CreditCard, FileText, Globe } from 'lucide-react';
+import { Save, Store, ShoppingCart, Truck, Receipt } from 'lucide-react';
 import { useSettings, useUpdateSettings } from '../../queries/useSettings';
 import { useUIContext } from '../../context/UIContext';
 

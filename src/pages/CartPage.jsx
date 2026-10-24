@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Minus, Plus, X, ArrowRight, Truck, CreditCard, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import { createSlug, getColorName, formatColorName, formatColorHex } from '../utils/helpers';
+import { createSlug, formatColorName, formatColorHex } from '../utils/helpers';
 
 export default function CartPage() {
   const {
@@ -15,7 +15,6 @@ export default function CartPage() {
     shippingFee,
     cartGrandTotal,
     appliedCoupon,
-    autoCoupon,
     activeDiscount,
     applyCoupon,
     removeCoupon

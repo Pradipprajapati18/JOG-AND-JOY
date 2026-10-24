@@ -9,6 +9,7 @@ import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCategoriesList } from '../queries/useCategories';
 import ShopByAge from '../components/home/ShopByAge';
 import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
+import { normalizeColor } from '../utils/helpers';
 
 
 
@@ -122,10 +123,10 @@ export default function KidsPage() {
       // Color Filter
       let matchColor = filters.colors.length === 0;
       if (!matchColor) {
-        const productColors = (p.colors || []).map(c => typeof c === 'object' ? c.name : c).filter(Boolean);
-        const variantColors = (p.variants || []).map(v => v.colorName).filter(Boolean);
+        const productColors = (p.colors || []).map(c => normalizeColor(c).name).filter(Boolean);
+        const variantColors = (p.variants || []).map(v => normalizeColor({ hex: v.colorHex, name: v.colorName }).name).filter(Boolean);
         const allColors = [...new Set([...productColors, ...variantColors])];
-        matchColor = allColors.some(c => filters.colors.includes(c));
+        matchColor = allColors.some(c => filters.colors.some(fc => fc.toLowerCase() === c.toLowerCase()));
       }
 
       // Age Group Filter
@@ -241,11 +242,12 @@ export default function KidsPage() {
     const colors = new Set();
     kidsProducts.forEach(p => {
       p.colors?.forEach(c => {
-        const colorName = typeof c === 'object' ? c.name : c;
-        if (colorName) colors.add(colorName);
+        const colorName = normalizeColor(c).name;
+        if (colorName && colorName !== 'Standard') colors.add(colorName);
       });
       p.variants?.forEach(v => {
-        if (v.colorName && v.colorName !== 'Standard') colors.add(v.colorName);
+        const colorName = normalizeColor({ hex: v.colorHex, name: v.colorName }).name;
+        if (colorName && colorName !== 'Standard') colors.add(colorName);
       });
     });
     return Array.from(colors).sort();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Tag, Plus, Trash2, Search, Edit2, CheckCircle2, Clock, X, Percent, TrendingDown, Gift, Truck } from 'lucide-react';
+import { Tag, Plus, Trash2, Search, Edit2, X } from 'lucide-react';
 import { usePromotionsList, useCreatePromotion, useUpdatePromotion, useDeletePromotion } from '../../queries/usePromotions';
 import { useSettingsContext } from '../../context/SettingsContext';
 
@@ -23,7 +23,7 @@ export default function AdminPromotions() {
   const [editingPromo, setEditingPromo] = useState(null);
   const [formData, setFormData] = useState({});
 
-  const { formatCurrency, formatDate } = useSettingsContext();
+  const { formatCurrency } = useSettingsContext();
 
   const { data, isLoading } = usePromotionsList();
   let promotions = data?.data || [];

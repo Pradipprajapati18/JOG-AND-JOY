@@ -7,16 +7,13 @@ import Button from './Button';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCombinedProducts } from '../../queries/useCombinedProducts';
-import { createSlug } from '../../utils/helpers';
+import { createSlug, normalizeColor } from '../../utils/helpers';
 import { useNavigate } from 'react-router-dom';
 
 export default function QuickViewModal({ product, onClose }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
   const navigate = useNavigate();
-
-  const [selectedSize, setSelectedSize] = useState('4Y-5Y');
-  const [selectedColor, setSelectedColor] = useState('#A7D8FF');
 
   const { combinedProducts } = useCombinedProducts();
 
@@ -31,18 +28,46 @@ export default function QuickViewModal({ product, onClose }) {
     if (!product) return [];
     const colors = [];
     siblingProducts.forEach(sibling => {
-      sibling?.colors?.forEach(color => {
-        if (!colors.some(c => c.hex === color.hex)) {
-          colors.push({ ...color, productId: sibling.id });
-        }
-      });
+      // 1. Check colors array
+      if (Array.isArray(sibling?.colors) && sibling.colors.length > 0) {
+        sibling.colors.forEach(color => {
+          const norm = normalizeColor(color);
+          if (norm.hex && !colors.some(c => c.hex?.toLowerCase() === norm.hex.toLowerCase())) {
+            colors.push({ ...norm, productId: sibling.id });
+          }
+        });
+      }
+      // 2. Check variants
+      if (Array.isArray(sibling?.variants)) {
+        sibling.variants.forEach(v => {
+          if (v.colorHex) {
+            const norm = normalizeColor({ hex: v.colorHex, name: v.colorName });
+            if (norm.hex && !colors.some(c => c.hex?.toLowerCase() === norm.hex.toLowerCase())) {
+              colors.push({ ...norm, productId: sibling.id });
+            }
+          }
+        });
+      }
     });
-    // Fallback if no colors found
-    if (colors.length === 0 && product.colors) {
-      return product.colors;
-    }
     return colors;
   }, [siblingProducts, product]);
+
+  const defaultColor = product?.wishlistColor || 
+    (globalColors[0]?.hex) || 
+    normalizeColor(product?.colors?.[0] || product?.variants?.[0]?.colorHex).hex;
+
+  const [selectedSize, setSelectedSize] = useState(product?.wishlistSize || product?.sizes?.[0] || '4Y-5Y');
+  const [selectedColor, setSelectedColor] = useState(defaultColor);
+
+  React.useEffect(() => {
+    if (product) {
+      const nextColor = product.wishlistColor || 
+        (globalColors[0]?.hex) || 
+        normalizeColor(product.colors?.[0] || product.variants?.[0]?.colorHex).hex;
+      setSelectedColor(nextColor);
+      setSelectedSize(product.wishlistSize || product.sizes?.[0] || '4Y-5Y');
+    }
+  }, [product?.id, globalColors]);
 
   // Ensure we have gallery images
   const galleryImages = React.useMemo(() => {

@@ -61,13 +61,17 @@ export const AuthProvider = ({ children }) => {
       
       if (!error && data) {
         setUser(data);
+        return data;
       } else {
         // If profile not found immediately, it might be due to the trigger delay.
         // We can set a minimal user object based on Auth.
-        setUser({ id: userId, role: 'CUSTOMER' });
+        const fallback = { id: userId, role: 'CUSTOMER' };
+        setUser(fallback);
+        return fallback;
       }
     } catch (err) {
       console.error('Error fetching user profile:', err);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -87,8 +91,12 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: error.message };
       }
       
-      // onAuthStateChange will handle fetching the profile
-      return { success: true };
+      let profile = null;
+      if (data?.user?.id) {
+        profile = await fetchUserProfile(data.user.id);
+      }
+
+      return { success: true, user: profile || data?.user };
     } catch (err) {
       console.error('Login exception:', err);
       return { success: false, message: 'An unexpected error occurred' };
@@ -136,7 +144,14 @@ export const AuthProvider = ({ children }) => {
         }]);
         if (custErr) console.error('Failed to add to CRM customers:', custErr);
 
-        return { success: true };
+        let profile = null;
+        try {
+          profile = await fetchUserProfile(data.user.id);
+        } catch (fErr) {
+          console.warn('Could not immediately fetch profile after signup:', fErr);
+        }
+
+        return { success: true, user: profile || data.user };
       }
       
       console.warn('Signup returned no error but no user either?');

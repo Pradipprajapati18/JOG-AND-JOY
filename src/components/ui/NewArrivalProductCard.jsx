@@ -4,19 +4,20 @@ import { useWishlist } from '../../context/WishlistContext';
 import { flyToCart } from '../../utils/animations';
 import { Link } from 'react-router-dom';
 import { Sparkles, Heart, Eye, ShoppingBag } from 'lucide-react';
-import { createSlug } from '../../utils/helpers';
+import { createSlug, normalizeColor } from '../../utils/helpers';
 
 export default function NewArrivalProductCard({ product, onQuickView }) {
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
 
-  const isFavorited = isInWishlist(product.id, product.sizes?.[0] || 'M', product.colors?.[0]?.hex || '#FF7A59');
+  const colorObj = normalizeColor(product.colors?.[0] || product.variants?.[0]?.colorHex);
+  const isFavorited = isInWishlist(product.id, product.sizes?.[0] || 'M', colorObj.hex);
 
   const handleQuickAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
     flyToCart(e, product.image);
-    addToCart(product, product.sizes?.[0] || 'M', product.colors?.[0]?.hex || '#FF7A59');
+    addToCart(product, product.sizes?.[0] || 'M', colorObj.hex, e, 1, false, product.stock, colorObj.name);
   };
 
   return (
@@ -48,7 +49,7 @@ export default function NewArrivalProductCard({ product, onQuickView }) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            toggleWishlist(product.id, product.sizes?.[0] || 'M', product.colors?.[0]?.hex || '#FF7A59');
+            toggleWishlist(product.id, product.sizes?.[0] || 'M', colorObj.hex);
           }}
           aria-label="Add to Wishlist"
           className={`absolute top-3 right-3 p-2.5 rounded-full backdrop-blur-md transition-all duration-200 shadow-md z-10 cursor-pointer ${

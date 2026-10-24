@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { flyToCart } from '../../utils/animations';
-import { createSlug } from '../../utils/helpers';
+import { createSlug, normalizeColor } from '../../utils/helpers';
 
 export default function WomenProductCard({ product }) {
   const { addToCart } = useCart();
@@ -46,7 +46,8 @@ export default function WomenProductCard({ product }) {
     
     // Add to cart with size + age
     const cartSize = `${selectedSize} (${selectedAge})`;
-    addToCart(product, cartSize, product.colors?.[0]?.hex || '#000');
+    const colorObj = normalizeColor(product.colors?.[0] || product.variants?.[0]?.colorHex);
+    addToCart(product, cartSize, colorObj.hex, e, 1, false, product.stock, colorObj.name);
   };
 
   return (

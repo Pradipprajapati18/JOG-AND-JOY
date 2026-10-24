@@ -223,7 +223,13 @@ export default function Invoice() {
     );
   }
 
-  const subtotal = order.items?.reduce((acc, item) => acc + (((item.price || item.unitPrice) || 0) * (item.quantity || 1)), 0) || Number(order.subtotal || 0);
+  const orderItems = Array.isArray(order.items)
+    ? order.items
+    : (typeof order.items === 'string'
+      ? (() => { try { const p = JSON.parse(order.items); return Array.isArray(p) ? p : []; } catch { return []; } })()
+      : []);
+
+  const subtotal = orderItems.reduce((acc, item) => acc + (((item.price || item.unitPrice) || 0) * (item.quantity || 1)), 0) || Number(order.subtotal || 0);
   
   // Use shipping charge from order if available, else settings
   const shippingCharge = order.shippingCost !== undefined ? Number(order.shippingCost) : (settings?.baseShippingRate || 0);
@@ -336,7 +342,7 @@ export default function Invoice() {
               </tr>
             </thead>
             <tbody>
-              {order.items?.map((item, index) => {
+              {orderItems.map((item, index) => {
                 const isSwapped = hasApprovedExchange && (
                   originalExchangeItem?.id === item.id || 
                   originalExchangeItem?.productId === item.productId || 

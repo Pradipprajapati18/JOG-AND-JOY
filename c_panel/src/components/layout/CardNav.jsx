@@ -364,6 +364,7 @@ const CardNav = ({
   };
 
   // Calculate circular fan parameters based on index
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const getCardAnimation = (idx, total) => {
     if (isMobile) {
       return {

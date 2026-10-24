@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { getImageUrl } from '../../utils/getImageUrl';
 
-export default function BrandLogo({ className = 'h-10', showTagline = true, animate = false, linkTo = '/' }) {
+export default function BrandLogo({ className = 'h-10', showTagline = true, _animate = false, linkTo = '/' }) {
   const containerRef = useRef(null);
   const timelineRef = useRef(null);
 
