@@ -13,6 +13,7 @@ import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
 import { flyToCart } from '../utils/animations';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Star,
   Heart,
@@ -34,6 +35,7 @@ export default function ProductDetails() {
   const [searchParams] = useSearchParams();
   const { addToCart } = useCart();
   const { toggleWishlist, isInWishlist } = useWishlist();
+  const { user } = useAuth();
 
   const { combinedProducts, isLoading } = useCombinedProducts();
   const product = combinedProducts.find((p) => {
@@ -85,7 +87,7 @@ export default function ProductDetails() {
     setReviewError('');
     setIsSubmittingReview(true);
     try {
-      const isAdmin = reviewForm.email.toLowerCase() === 'admin@jogandjoy.com';
+      const isAdmin = Boolean(user && user.role === 'ADMIN');
       let customerName = 'Verified Buyer';
 
       if (isAdmin) {

@@ -1,4 +1,5 @@
 import Razorpay from 'razorpay';
+import { createClient } from '@supabase/supabase-js';
 
 async function parseBody(req) {
   if (req.body) {
@@ -59,10 +60,62 @@ export default async function handler(req, res) {
 
   try {
     const body = await parseBody(req);
-    const { amount, currency = 'INR', receipt, notes } = body;
+    const { amount, currency = 'INR', receipt, notes, items } = body;
 
-    const numAmount = Number(amount);
-    if (!numAmount || isNaN(numAmount) || numAmount <= 0) {
+    let finalAmount = Number(amount);
+
+    // Security Check: If line items are provided, verify with database to prevent client price tampering
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseKey && Array.isArray(items) && items.length > 0) {
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const productIds = Array.from(new Set(items.map(i => i.productId || i.id).filter(Boolean)));
+        
+        const { data: dbProducts } = await supabase
+          .from('products')
+          .select('id, basePrice, price, variants')
+          .in('id', productIds);
+
+        if (dbProducts && dbProducts.length > 0) {
+          let calculatedSubtotal = 0;
+          for (const item of items) {
+            const prod = dbProducts.find(p => String(p.id) === String(item.productId || item.id));
+            if (prod) {
+              let itemPrice = Number(prod.basePrice ?? prod.price ?? 0);
+              const reqSize = item.size ? (typeof item.size === 'object' ? item.size.name : String(item.size)) : null;
+              const reqColor = item.color ? String(item.color).toLowerCase() : null;
+
+              if (Array.isArray(prod.variants) && (reqSize || reqColor)) {
+                const matchedV = prod.variants.find(v => {
+                  const sMatch = !reqSize || String(v.size || '').toLowerCase() === reqSize.toLowerCase();
+                  const cMatch = !reqColor || String(v.colorHex || '').toLowerCase() === reqColor;
+                  return sMatch && cMatch;
+                });
+                if (matchedV && matchedV.price) {
+                  itemPrice = Number(matchedV.price);
+                }
+              }
+              calculatedSubtotal += (itemPrice * (Number(item.quantity) || 1));
+            }
+          }
+
+          // If client sent an amount less than 10% of subtotal (e.g. ₹1 tampering attempt)
+          if (calculatedSubtotal > 0 && finalAmount < (calculatedSubtotal * 0.1)) {
+            console.warn(`[Security Alert] Potential price tampering detected. Calculated subtotal: ₹${calculatedSubtotal}, Client amount: ₹${finalAmount}`);
+            return sendJson(res, 400, {
+              success: false,
+              message: 'Invalid order amount. Price tampering detected.'
+            });
+          }
+        }
+      } catch (dbVerifyErr) {
+        console.warn('Non-fatal: Database price cross-verification note:', dbVerifyErr.message);
+      }
+    }
+
+    if (!finalAmount || isNaN(finalAmount) || finalAmount <= 0) {
       return sendJson(res, 400, {
         success: false,
         message: 'Valid order amount is required.'
@@ -70,7 +123,7 @@ export default async function handler(req, res) {
     }
 
     // Convert amount in Rupees to integer Paise (e.g. ₹499 -> 49900)
-    const amountInPaise = Math.round(numAmount * 100);
+    const amountInPaise = Math.round(finalAmount * 100);
 
     const instance = new Razorpay({
       key_id: keyId,

@@ -164,13 +164,20 @@ export default function Checkout() {
     const newErrors = {};
     if (!formData.fullName.trim()) newErrors.fullName = 'Full Name is required';
     if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Valid Email is required';
-    if (!formData.phone.trim() || formData.phone.length < 10) newErrors.phone = 'Valid Phone is required';
+    const cleanPhone = (formData.phone || '').replace(/[^0-9]/g, '');
+    if (!formData.phone.trim() || cleanPhone.length < 10) {
+      newErrors.phone = 'Valid 10-digit mobile number is required';
+    }
 
     if (showManualAddress) {
       if (!formData.address.trim()) newErrors.address = 'Address is required';
       if (!formData.city.trim()) newErrors.city = 'City is required';
-      if (!formData.state.trim()) newErrors.state = 'State is required';
-      if (!formData.pincode.trim()) newErrors.pincode = 'Pincode is required';
+      const cleanPincode = (formData.pincode || '').replace(/[^0-9]/g, '');
+      if (!formData.pincode.trim()) {
+        newErrors.pincode = 'Pincode is required';
+      } else if (!/^[1-9][0-9]{5}$/.test(cleanPincode)) {
+        newErrors.pincode = 'Valid 6-digit postal pincode is required (e.g. 380001)';
+      }
     } else if (!selectedAddressId) {
       newErrors.address = 'Please select a delivery address';
     }
@@ -230,7 +237,7 @@ export default function Checkout() {
     }
 
     const orderPayload = {
-      orderNumber: `JJ-${Math.floor(Math.random() * 90000) + 10000}`,
+      orderNumber: paymentInfo?.customOrderNumber || `JJ-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90) + 10}`,
       customerId: finalCustomerId,
       createdAt: new Date().toISOString(),
       status: 'PROCESSING',
@@ -333,7 +340,7 @@ export default function Checkout() {
       if (paymentInfo?.razorpay_payment_id) {
         console.warn("Attempting emergency fallback order save for paid customer...");
         try {
-          const emergencyOrderId = orderPayload.orderNumber || orderPayload.id || `JJ-${Math.floor(Math.random() * 90000) + 10000}`;
+          const emergencyOrderId = orderPayload.orderNumber || orderPayload.id || `JJ-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90) + 10}`;
           const emergencyPayload = {
             ...orderPayload,
             id: emergencyOrderId,
@@ -484,8 +491,15 @@ export default function Checkout() {
       return;
     }
 
-    // 1. If Cash On Delivery, execute directly
+    // 1. If Cash On Delivery, execute directly with business safeguards
     if (formData.paymentMethod === 'cod') {
+      const MAX_COD_AMOUNT = 5000;
+      if (finalOrderTotal > MAX_COD_AMOUNT) {
+        alert(`Cash on Delivery is limited to orders up to ₹${MAX_COD_AMOUNT}. For orders above ₹${MAX_COD_AMOUNT}, please use secure online payment (UPI, Cards, or Netbanking).`);
+        setIsProcessingPayment(false);
+        return;
+      }
+
       try {
         await executeOrderCreation(null);
       } catch (e) {
@@ -498,13 +512,14 @@ export default function Checkout() {
 
     // 2. Online Payment via Razorpay
     const finalOrderTotal = formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal;
-    const tempReceipt = `JJ-${Math.floor(Math.random() * 90000) + 10000}`;
+    const tempReceipt = `JJ-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90) + 10}`;
 
     try {
-      // Step A: Create order on Razorpay via secure backend endpoint
+      // Step A: Create order on Razorpay with line items passed for server verification
       const razorpayOrderData = await createRazorpayOrder({
         amount: finalOrderTotal,
         receipt: tempReceipt,
+        items: checkoutItems,
         notes: {
           customerName: formData.fullName,
           customerEmail: formData.email,
@@ -524,19 +539,21 @@ export default function Checkout() {
         },
         onSuccess: async (paymentResult) => {
           try {
-            // Cryptographically verify signature via backend API before order insertion
+            // Cryptographically verify signature via backend API - must strictly pass
             if (paymentResult?.razorpay_signature) {
-              try {
-                await verifyRazorpayPayment({
-                  razorpay_order_id: paymentResult.razorpay_order_id,
-                  razorpay_payment_id: paymentResult.razorpay_payment_id,
-                  razorpay_signature: paymentResult.razorpay_signature
-                });
-              } catch (verifyErr) {
-                console.warn('Backend payment verification note:', verifyErr?.message || verifyErr);
+              const verifyRes = await verifyRazorpayPayment({
+                razorpay_order_id: paymentResult.razorpay_order_id,
+                razorpay_payment_id: paymentResult.razorpay_payment_id,
+                razorpay_signature: paymentResult.razorpay_signature
+              });
+              if (!verifyRes || !verifyRes.success) {
+                throw new Error('Cryptographic payment signature verification failed on server.');
               }
             }
-            await executeOrderCreation(paymentResult);
+            await executeOrderCreation({
+              ...paymentResult,
+              customOrderNumber: tempReceipt
+            });
           } catch (orderErr) {
             console.error('Order creation error after payment:', orderErr);
             alert(`Payment was successful (Payment ID: ${paymentResult.razorpay_payment_id}), but saving your order encountered an issue: ${orderErr.message}. Please contact customer support with your payment ID.`);

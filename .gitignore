@@ -29,8 +29,11 @@ dist-ssr
 *.zip
 
 cpanel/
+c_panel/
 jogandjoy_website/
 panel_c/
 
 reference/
 ref/
+.backup_junk_images/
+.backup_junk_cleanup/

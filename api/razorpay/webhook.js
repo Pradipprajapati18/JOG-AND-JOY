@@ -136,8 +136,58 @@ export default async function handler(req, res) {
           console.log(`Order ${order.id} marked as paid via Razorpay webhook.`);
         }
       } else {
-        // If customer closed browser tab before onSuccess completed, log unattached payment for admin review
-        console.warn(`Webhook received captured payment ${paymentId} (Order: ${razorpayOrderId}) with no matching local order yet.`);
+        // Customer paid, but closed browser or connection dropped before onSuccess finished inserting order
+        console.warn(`Webhook received captured payment ${paymentId} (Order: ${razorpayOrderId}) with no matching local order. Rescuing order transaction...`);
+        try {
+          const notes = paymentEntity?.notes || orderEntity?.notes || {};
+          const receipt = orderEntity?.receipt || notes.orderNumber || notes.receipt || `JJ-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90) + 10}`;
+          const amountInRupees = paymentEntity?.amount ? (Number(paymentEntity.amount) / 100) : 0;
+          const customerEmail = notes.customerEmail || paymentEntity?.email || '';
+          const customerName = notes.customerName || 'Customer';
+          const customerPhone = notes.customerPhone || paymentEntity?.contact || '';
+
+          const rescuedOrder = {
+            id: receipt,
+            orderNumber: receipt,
+            createdAt: new Date().toISOString(),
+            status: 'PROCESSING',
+            paymentStatus: 'paid',
+            paymentMethod: 'online',
+            fulfillmentStatus: 'unfulfilled',
+            channel: 'Web Storefront (Webhook Rescued)',
+            subtotal: amountInRupees,
+            discountAmount: 0,
+            shippingCost: 0,
+            total: amountInRupees,
+            razorpayOrderId: razorpayOrderId,
+            razorpayPaymentId: paymentId,
+            items: [],
+            shippingAddress: {
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone,
+              line1: 'Pending Customer Address Confirmation',
+              city: 'India',
+              country: 'India'
+            },
+            statusHistory: [
+              {
+                status: 'PROCESSING',
+                timestamp: new Date().toISOString(),
+                note: `Order automatically rescued via Razorpay Webhook (Payment ID: ${paymentId}). Customer disconnected before browser callback.`
+              }
+            ]
+          };
+
+          const { error: insertError } = await supabase.from('orders').insert([rescuedOrder]);
+          if (insertError) {
+            console.error('Failed to insert rescued order in webhook:', insertError);
+          } else {
+            console.log(`Successfully rescued paid order ${receipt} via webhook.`);
+          }
+        } catch (rescueErr) {
+          console.error('Error rescuing order in webhook:', rescueErr);
+        }
       }
     }
 

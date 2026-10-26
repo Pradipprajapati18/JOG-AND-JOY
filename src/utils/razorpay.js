@@ -30,18 +30,43 @@ export const loadRazorpaySdk = () => {
  * @param {number} params.amount - Total order amount in INR (Rupees)
  * @param {string} [params.receipt] - Receipt / internal order identifier
  * @param {Object} [params.notes] - Key-value metadata
+ * @param {Array} [params.items] - Optional checkout items for server-side price validation
  * @returns {Promise<{success: boolean, order: Object, keyId: string}>}
  */
-export const createRazorpayOrder = async ({ amount, receipt, notes = {} }) => {
+export const createRazorpayOrder = async ({ amount, receipt, notes = {}, items = [] }) => {
   const response = await fetch('/api/razorpay/create-order', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount, receipt, notes })
+    body: JSON.stringify({ amount, receipt, notes, items })
   });
 
   const data = await response.json();
   if (!response.ok || !data.success) {
     throw new Error(data.message || 'Failed to initialize payment order');
+  }
+
+  return data;
+};
+
+/**
+ * Initiates a server-side refund for a paid Razorpay order
+ * @param {Object} params
+ * @param {string} params.paymentId
+ * @param {number} [params.amount]
+ * @param {string} [params.reason]
+ * @param {string} [params.orderNumber]
+ * @returns {Promise<Object>}
+ */
+export const initiateRazorpayRefund = async ({ paymentId, amount, reason, orderNumber }) => {
+  const response = await fetch('/api/razorpay/refund', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paymentId, amount, reason, orderNumber })
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.success) {
+    throw new Error(data.message || 'Failed to process refund');
   }
 
   return data;

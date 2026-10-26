@@ -1,4 +1,5 @@
 import { productsApi } from '../api/endpoints/products';
+import { supabase } from '../lib/supabase';
 
 /**
  * Restocks items from a cancelled or returned order back into the inventory.
@@ -25,6 +26,30 @@ export async function restockOrderItems(order, queryClient) {
   }
 
   try {
+    // 1. Attempt atomic database RPC for concurrency safety
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('restock_order_items_atomic', {
+        order_items: order.items.map(item => ({
+          productId: item.productId || item.id,
+          quantity: Math.max(1, Number(item.quantity) || 1),
+          size: typeof item.size === 'object' ? (item.size?.name || item.size?.label) : item.size,
+          color: typeof item.color === 'object' ? item.color?.hex : item.color,
+          colorName: item.colorName
+        }))
+      });
+
+      if (!rpcError && rpcData?.success) {
+        console.log(`[Restock] Atomically restocked items for order ${order.orderNumber || order.id} via RPC.`);
+        if (queryClient && typeof queryClient.invalidateQueries === 'function') {
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+        }
+        return true;
+      }
+    } catch (rpcErr) {
+      console.warn('[Restock] Atomic RPC note (falling back to sequential update):', rpcErr?.message || rpcErr);
+    }
+
+    // 2. Fallback: sequential client update
     for (const item of order.items) {
       const productId = item.productId || item.id;
       if (!productId) continue;

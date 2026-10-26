@@ -12,11 +12,11 @@ import { useOrder, useOrdersList, useUpdateOrder } from '../queries/useOrders';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCreateReview, useReviewsList } from '../queries/useReviews';
 import { useUIContext } from '../context/UIContext';
-import { getColorName, formatColorName, formatColorHex, createSlug } from '../utils/helpers';
+import { formatColorName, formatColorHex, createSlug } from '../utils/helpers';
 import { resolveOrderTracking } from '../utils/shipping';
 import { supabase } from '../lib/supabase';
 import { restockOrderItems } from '../utils/inventory';
-import { createRazorpayOrder, launchRazorpayCheckout, verifyRazorpayPayment } from '../utils/razorpay';
+import { createRazorpayOrder, launchRazorpayCheckout, verifyRazorpayPayment, initiateRazorpayRefund } from '../utils/razorpay';
 
 export default function CustomerOrderDetails() {
   const { id } = useParams();
@@ -332,6 +332,35 @@ export default function CustomerOrderDetails() {
   const isOnHold = order.status === 'ON_HOLD';
   const tracking = resolveOrderTracking(order);
 
+  // 7-day return and exchange window calculation
+  const isEligibleForReturnOrExchange = (() => {
+    if (!order || order.status !== 'DELIVERED') return false;
+    const deliveryHistory = Array.isArray(order.statusHistory)
+      ? order.statusHistory.slice().reverse().find(h => h.status === 'DELIVERED')
+      : null;
+    const deliveryDateStr = order.deliveredAt || deliveryHistory?.timestamp || order.updatedAt || order.createdAt;
+    if (!deliveryDateStr) return true;
+
+    const deliveryTime = new Date(deliveryDateStr).getTime();
+    if (isNaN(deliveryTime)) return true;
+
+    const diffInDays = (Date.now() - deliveryTime) / (1000 * 60 * 60 * 24);
+    return diffInDays <= 7;
+  })();
+
+  const returnDaysRemaining = (() => {
+    if (!order || order.status !== 'DELIVERED') return 0;
+    const deliveryHistory = Array.isArray(order.statusHistory)
+      ? order.statusHistory.slice().reverse().find(h => h.status === 'DELIVERED')
+      : null;
+    const deliveryDateStr = order.deliveredAt || deliveryHistory?.timestamp || order.updatedAt || order.createdAt;
+    if (!deliveryDateStr) return 7;
+    const deliveryTime = new Date(deliveryDateStr).getTime();
+    if (isNaN(deliveryTime)) return 7;
+    const daysPassed = (Date.now() - deliveryTime) / (1000 * 60 * 60 * 24);
+    return Math.max(0, Math.ceil(7 - daysPassed));
+  })();
+
   // Handlers for Opening Modals
   const handleOpenReviewModal = (item = null) => {
     const targetItem = item || order.items?.[0] || null;
@@ -341,6 +370,10 @@ export default function CustomerOrderDetails() {
   };
 
   const handleOpenExchangeModal = (item = null) => {
+    if (!isEligibleForReturnOrExchange) {
+      if (addToast) addToast('The 7-day exchange window has expired for this order.', 'warning');
+      return;
+    }
     const targetItem = item || order.items?.[0] || null;
     setSelectedItemForAction(targetItem);
 
@@ -377,6 +410,10 @@ export default function CustomerOrderDetails() {
   };
 
   const handleOpenReturnModal = (item = null) => {
+    if (!isEligibleForReturnOrExchange) {
+      if (addToast) addToast('The 7-day return window has expired for this order.', 'warning');
+      return;
+    }
     const targetItem = item || order.items?.[0] || null;
     setSelectedItemForAction(targetItem);
     setActiveModal('return');
@@ -784,15 +821,45 @@ export default function CustomerOrderDetails() {
     if (!order || isCancellingOrder) return;
     setIsCancellingOrder(true);
     try {
+      const isPaidOnline = order.paymentStatus === 'paid';
       const cancelStatus = 'CANCELLED';
+      let finalPaymentStatus = isPaidOnline ? 'refund_pending' : 'cancelled';
+      let refundNote = '';
+
+      if (isPaidOnline) {
+        const paymentId = order.razorpayPaymentId || order.paymentInfo?.razorpay_payment_id || order.paymentId;
+        if (paymentId) {
+          try {
+            const refundRes = await initiateRazorpayRefund({
+              paymentId,
+              amount: Number(order.total || 0),
+              notes: {
+                orderId: order.orderNumber || order.id,
+                reason: 'Customer cancelled prior to dispatch'
+              }
+            });
+            if (refundRes && refundRes.success) {
+              finalPaymentStatus = 'refunded';
+              refundNote = ` | Razorpay Refund Processed (ID: ${refundRes.refund?.id || refundRes.id || 'Confirmed'})`;
+            } else {
+              refundNote = ` | Refund Pending Gateway Confirmation (${refundRes?.message || 'Processing'})`;
+            }
+          } catch (refundErr) {
+            console.warn('Gateway refund initiation notice:', refundErr);
+            refundNote = ' | Refund queued for manual payment settlement';
+          }
+        } else {
+          refundNote = ' | Refund queued for administrator review';
+        }
+      }
+
       const historyEntry = {
         status: cancelStatus,
         timestamp: new Date().toISOString(),
-        note: 'Order cancelled by customer prior to warehouse dispatch'
+        note: `Order cancelled by customer prior to warehouse dispatch${refundNote}`
       };
 
       const updatedHistory = [...(order.statusHistory || []), historyEntry];
-      const isPaidOnline = order.paymentStatus === 'paid';
 
       // 1. First attempt authoritative direct Postgres write via security definer RPC
       let rpcResult = null;
@@ -818,7 +885,7 @@ export default function CustomerOrderDetails() {
         id: order.id,
         patch: {
           status: cancelStatus,
-          paymentStatus: isPaidOnline ? 'refunded' : 'cancelled',
+          paymentStatus: finalPaymentStatus,
           isRestocked: true,
           restockedAt: new Date().toISOString(),
           shippingAddress: {
@@ -835,7 +902,7 @@ export default function CustomerOrderDetails() {
         ...order,
         ...(typeof effectiveResult === 'object' ? effectiveResult : {}),
         status: cancelStatus,
-        paymentStatus: isPaidOnline ? 'refunded' : 'cancelled',
+        paymentStatus: finalPaymentStatus,
         isRestocked: true,
         shippingAddress: {
           ...(order.shippingAddress || {}),
@@ -1039,7 +1106,9 @@ export default function CustomerOrderDetails() {
               </h2>
             </div>
             <p className="text-[11px] text-slate-500 font-medium">
-              Rate your fit, swap sizes, or request hassle-free returns.
+              {isEligibleForReturnOrExchange
+                ? `7-Day Return/Exchange Window: ${returnDaysRemaining} ${returnDaysRemaining === 1 ? 'day' : 'days'} remaining.`
+                : 'The 7-day return and exchange window has closed. You can still leave a product review!'}
             </p>
           </div>
 
@@ -1067,42 +1136,60 @@ export default function CustomerOrderDetails() {
             </div>
 
             {/* Action 2: Exchange */}
-            <div className="bg-white rounded-xl p-2.5 border border-indigo-200/80 hover:border-[#5B2E89] hover:shadow-xs transition-all flex items-center justify-between gap-2.5 group">
+            <div className={`bg-white rounded-xl p-2.5 border transition-all flex items-center justify-between gap-2.5 group ${
+              isEligibleForReturnOrExchange ? 'border-indigo-200/80 hover:border-[#5B2E89] hover:shadow-xs' : 'border-slate-200 opacity-60'
+            }`}>
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#5B2E89] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <RefreshCw className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-black text-slate-900 text-xs md:text-sm truncate">2. Exchange Item</h3>
-                  <p className="text-[11px] text-slate-500 truncate">Free size or color swap</p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {isEligibleForReturnOrExchange ? `Free swap (${returnDaysRemaining}d left)` : '7-day window closed'}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => handleOpenExchangeModal()}
-                className="shrink-0 py-1.5 px-3 bg-[#5B2E89] hover:bg-[#48246d] text-white font-extrabold text-xs rounded-lg transition-all shadow-2xs flex items-center gap-1 active:scale-95"
+                disabled={!isEligibleForReturnOrExchange}
+                className={`shrink-0 py-1.5 px-3 font-extrabold text-xs rounded-lg transition-all shadow-2xs flex items-center gap-1 ${
+                  isEligibleForReturnOrExchange
+                    ? 'bg-[#5B2E89] hover:bg-[#48246d] text-white active:scale-95'
+                    : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                }`}
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Exchange</span>
+                <span>{isEligibleForReturnOrExchange ? 'Exchange' : 'Expired'}</span>
               </button>
             </div>
 
             {/* Action 3: Return */}
-            <div className="bg-white rounded-xl p-2.5 border border-rose-200/80 hover:border-[#EF4A45] hover:shadow-xs transition-all flex items-center justify-between gap-2.5 group">
+            <div className={`bg-white rounded-xl p-2.5 border transition-all flex items-center justify-between gap-2.5 group ${
+              isEligibleForReturnOrExchange ? 'border-rose-200/80 hover:border-[#EF4A45] hover:shadow-xs' : 'border-slate-200 opacity-60'
+            }`}>
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-rose-50 text-[#EF4A45] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <RotateCcw className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="font-black text-slate-900 text-xs md:text-sm truncate">3. Easy Return</h3>
-                  <p className="text-[11px] text-slate-500 truncate">100% refund guarantee</p>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    {isEligibleForReturnOrExchange ? `Full refund (${returnDaysRemaining}d left)` : '7-day window closed'}
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => handleOpenReturnModal()}
-                className="shrink-0 py-1.5 px-3 bg-white border border-rose-300 hover:border-[#EF4A45] text-[#EF4A45] hover:bg-rose-50 font-extrabold text-xs rounded-lg transition-all shadow-2xs flex items-center gap-1 active:scale-95"
+                disabled={!isEligibleForReturnOrExchange}
+                className={`shrink-0 py-1.5 px-3 font-extrabold text-xs rounded-lg transition-all shadow-2xs flex items-center gap-1 ${
+                  isEligibleForReturnOrExchange
+                    ? 'bg-white border border-rose-300 hover:border-[#EF4A45] text-[#EF4A45] hover:bg-rose-50 active:scale-95'
+                    : 'bg-slate-100 border border-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Return</span>
+                <span>{isEligibleForReturnOrExchange ? 'Return' : 'Expired'}</span>
               </button>
             </div>
 

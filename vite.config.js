@@ -43,6 +43,17 @@ function razorpayDevApiPlugin() {
             return;
           }
         }
+        if (url === '/api/razorpay/refund' || url.startsWith('/api/razorpay/refund?')) {
+          try {
+            const { default: handler } = await import('./api/razorpay/refund.js');
+            return await handler(req, res);
+          } catch (err) {
+            console.error('Error in dev razorpay refund:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, message: err.message }));
+            return;
+          }
+        }
         if (url === '/api/shipping/webhook' || url.startsWith('/api/shipping/webhook?')) {
           try {
             const { default: handler } = await import('./api/shipping/webhook.js');

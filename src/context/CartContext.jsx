@@ -291,8 +291,16 @@ export function CartProvider({ children }) {
   const cartGrandTotal = Math.max(0, cartSubtotal - discountAmount + shippingFee);
 
   const updatePromoMut = useUpdatePromotion();
-  const recordCouponUsage = () => {
+  const recordCouponUsage = async () => {
     if (activeDiscount?.id) {
+      try {
+        const { error } = await supabase.rpc('record_coupon_usage_atomic', {
+          promo_id: activeDiscount.id
+        });
+        if (!error) return;
+      } catch {
+        // Fallback to updatePromoMut if RPC not yet deployed
+      }
       const promos = promosData?.data || [];
       const promo = promos.find(p => p.id === activeDiscount.id);
       if (promo) {

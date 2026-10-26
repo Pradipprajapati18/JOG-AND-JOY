@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useOrdersList } from '../queries/useOrders';
+import { useOrder } from '../queries/useOrders';
 import { useSettingsContext } from '../context/SettingsContext';
 import { getColorName, formatColorName } from '../utils/helpers';
 import { ordersApi } from '../api/endpoints/orders';
@@ -10,11 +10,6 @@ export default function Invoice() {
   const { orderId: paramOrderId } = useParams();
   const searchParams = new URLSearchParams(window.location.search);
   const isPackingSlip = searchParams.get('type') === 'packing_slip';
-  const { data: ordersData, isLoading: isListLoading } = useOrdersList({ pageSize: 1000 });
-  const { settings } = useSettingsContext();
-  const [directOrder, setDirectOrder] = useState(null);
-  const [isDirectLoading, setIsDirectLoading] = useState(false);
-
   // Extract orderId from URL param, hash fragment (e.g. #JJ-17276), or query param (?id=... or ?orderId=...)
   const hashOrderId = typeof window !== 'undefined' && window.location.hash ? window.location.hash.replace(/^[#/]+/, '') : '';
   const queryOrderId = searchParams.get('id') || searchParams.get('orderId') || '';
@@ -22,16 +17,15 @@ export default function Invoice() {
   const cleanOrderId = rawOrderId.replace(/^#/, '').trim();
   const cleanTargetId = cleanOrderId.toUpperCase();
 
-  // 1. Try to find in ordersData matching either id or orderNumber (with or without #)
-  const orderFromList = ordersData?.data?.find((o) => {
-    const oId = String(o.id || '').replace(/^#/, '').trim().toUpperCase();
-    const oNum = String(o.orderNumber || '').replace(/^#/, '').trim().toUpperCase();
-    return oId === cleanTargetId || oNum === cleanTargetId;
-  });
+  // Targeted single-order fetch - avoids loading other customers' orders into memory
+  const { data: orderFromHook, isLoading: isHookLoading } = useOrder(cleanOrderId);
+  const { settings } = useSettingsContext();
+  const [directOrder, setDirectOrder] = useState(null);
+  const [isDirectLoading, setIsDirectLoading] = useState(false);
 
-  // 2. If not found in list, attempt direct fetch from API / local storage / demo fallback
+  // 2. If not found in hook, attempt direct fetch from API / local storage / demo fallback
   useEffect(() => {
-    if (!orderFromList && cleanOrderId) {
+    if (!orderFromHook && cleanOrderId) {
       let isMounted = true;
       setIsDirectLoading(true);
 
@@ -184,10 +178,10 @@ export default function Invoice() {
 
       return () => { isMounted = false; };
     }
-  }, [orderFromList, cleanOrderId, cleanTargetId]);
+  }, [orderFromHook, cleanOrderId, cleanTargetId]);
 
-  const order = orderFromList || directOrder;
-  const isLoading = !order && (isListLoading || isDirectLoading);
+  const order = orderFromHook || directOrder;
+  const isLoading = !order && (isHookLoading || isDirectLoading);
 
   if (isLoading) {
     return (

@@ -106,11 +106,12 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password, role = 'CUSTOMER', phone = '', address = '', addresses = null) => {
     try {
       console.log('Starting registration for:', email);
+      // Security: Strictly enforce 'CUSTOMER' role on self-registration to prevent privilege escalation
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { name, role }
+          data: { name, role: 'CUSTOMER' }
         }
       });
 

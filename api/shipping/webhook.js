@@ -45,8 +45,8 @@ export default async function handler(req, res) {
     return sendJson(res, 405, { success: false, message: 'Method Not Allowed' });
   }
 
-  // Security Verification: If webhook secret is set in environment, enforce authentication
-  const webhookSecret = process.env.SHIPPING_WEBHOOK_SECRET;
+  // Security Verification: Enforce webhook token authentication
+  const webhookSecret = process.env.SHIPPING_WEBHOOK_SECRET || process.env.RAZORPAY_WEBHOOK_SECRET;
   if (webhookSecret) {
     const providedSecret = req.headers['x-webhook-token'] || req.headers['x-api-key'] || req.headers['x-shiprocket-signature'] || (req.query && req.query.secret);
     if (!providedSecret || providedSecret !== webhookSecret) {
@@ -55,6 +55,8 @@ export default async function handler(req, res) {
         message: 'Unauthorized: Invalid or missing shipping webhook token.'
       });
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    console.warn('[Security Warning] SHIPPING_WEBHOOK_SECRET is not configured in production.');
   }
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;

@@ -6,6 +6,7 @@ import { useOrdersList, useUpdateOrder } from '../../queries/useOrders';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSettingsContext } from '../../context/SettingsContext';
 import { restockOrderItems, deductInventoryItem, restockInventoryItem } from '../../utils/inventory';
+import { initiateRazorpayRefund } from '../../utils/razorpay';
 
 import { useSearchParams, Link } from 'react-router-dom';
 import { getColorName, formatColorName, formatColorHex } from '../../utils/helpers';
@@ -170,7 +171,7 @@ export default function AdminOrders() {
   };
 
   // Unified Order Status & Restocking Controller (eliminates code duplication)
-  const handleUpdateOrderStatus = (orderToUpdate, newStatus, customNote = null, extraPatch = {}) => {
+  const handleUpdateOrderStatus = async (orderToUpdate, newStatus, customNote = null, extraPatch = {}) => {
     if (!orderToUpdate) return;
     const hasTracking = Boolean(
       orderToUpdate.shippingAddress?.trackingNumber ||
@@ -281,13 +282,43 @@ export default function AdminOrders() {
       };
     }
 
-    // Auto-sync payment status
+    // Auto-sync payment status and process real gateway refund if online paid
     if (newStatus === 'DELIVERED') {
       patchData.paymentStatus = 'paid';
-    } else if (newStatus === 'REFUNDED') {
-      patchData.paymentStatus = 'refunded';
+    } else if (newStatus === 'REFUNDED' || (newStatus === 'CANCELLED' && orderToUpdate.paymentStatus === 'paid')) {
+      const isOnlinePaid = orderToUpdate.paymentStatus === 'paid';
+      const paymentId = orderToUpdate.razorpayPaymentId || orderToUpdate.paymentInfo?.razorpay_payment_id || orderToUpdate.paymentId;
+
+      if (isOnlinePaid && paymentId) {
+        try {
+          const refundRes = await initiateRazorpayRefund({
+            paymentId,
+            amount: Number(orderToUpdate.total || 0),
+            notes: {
+              orderId: orderToUpdate.orderNumber || orderToUpdate.id,
+              reason: `Admin marked order ${newStatus}`
+            }
+          });
+          if (refundRes && refundRes.success) {
+            patchData.paymentStatus = 'refunded';
+            historyEntry.note = `${historyEntry.note} (Razorpay refund executed: ID ${refundRes.refund?.id || refundRes.id || 'Confirmed'})`;
+            addToast('Razorpay refund processed successfully.', 'success');
+          } else {
+            patchData.paymentStatus = 'refund_pending';
+            historyEntry.note = `${historyEntry.note} (Refund pending gateway response: ${refundRes?.message || 'Processing'})`;
+            addToast('Order status updated. Razorpay returned: ' + (refundRes?.message || 'Pending gateway verification'), 'warning');
+          }
+        } catch (refErr) {
+          console.warn('Admin gateway refund note:', refErr);
+          patchData.paymentStatus = 'refund_pending';
+          historyEntry.note = `${historyEntry.note} (Refund pending manual processing: ${refErr.message})`;
+          addToast('Order status updated. Manual refund verification recommended.', 'warning');
+        }
+      } else {
+        patchData.paymentStatus = newStatus === 'REFUNDED' ? 'refunded' : (isOnlinePaid ? 'refunded' : 'cancelled');
+      }
     } else if (newStatus === 'CANCELLED') {
-      patchData.paymentStatus = orderToUpdate.paymentStatus === 'paid' ? 'refunded' : 'cancelled';
+      patchData.paymentStatus = 'cancelled';
     }
 
     // Multi-layer double-restock protection (persisted across DB reloads in shippingAddress & history)

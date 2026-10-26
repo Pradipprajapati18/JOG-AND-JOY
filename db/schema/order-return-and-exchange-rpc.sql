@@ -53,9 +53,9 @@ BEGIN
   END IF;
 
   -- 4. Check user authorization & ownership
-  SELECT role, email INTO v_user_role, v_user_email FROM public.users WHERE id = auth_uid;
+  SELECT role, email INTO v_user_role, v_user_email FROM public.users WHERE id::text = auth_uid::text;
   IF (v_user_role IS DISTINCT FROM 'ADMIN' AND v_user_role IS DISTINCT FROM 'admin') THEN
-    IF v_order."customerId" IS DISTINCT FROM auth_uid::text AND
+    IF v_order."customerId"::text IS DISTINCT FROM auth_uid::text AND
        (v_order."shippingAddress"->>'email' IS DISTINCT FROM v_user_email OR v_user_email IS NULL) THEN
       RAISE EXCEPTION 'Unauthorized: You can only request an exchange for your own orders.';
     END IF;
@@ -186,9 +186,9 @@ BEGIN
   END IF;
 
   -- 4. Check user authorization & ownership
-  SELECT role, email INTO v_user_role, v_user_email FROM public.users WHERE id = auth_uid;
+  SELECT role, email INTO v_user_role, v_user_email FROM public.users WHERE id::text = auth_uid::text;
   IF (v_user_role IS DISTINCT FROM 'ADMIN' AND v_user_role IS DISTINCT FROM 'admin') THEN
-    IF v_order."customerId" IS DISTINCT FROM auth_uid::text AND
+    IF v_order."customerId"::text IS DISTINCT FROM auth_uid::text AND
        (v_order."shippingAddress"->>'email' IS DISTINCT FROM v_user_email OR v_user_email IS NULL) THEN
       RAISE EXCEPTION 'Unauthorized: You can only request a return for your own orders.';
     END IF;

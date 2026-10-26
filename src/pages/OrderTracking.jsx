@@ -6,6 +6,12 @@ import { list, get } from '../api/mockApi';
 import { createSlug } from '../utils/helpers';
 import { resolveOrderTracking } from '../utils/shipping';
 
+function maskCustomerName(name) {
+  if (!name) return 'Customer';
+  const parts = name.trim().split(/\s+/);
+  return parts.map(p => p.length > 1 ? `${p[0]}${'*'.repeat(Math.max(p.length - 1, 2))}` : p).join(' ');
+}
+
 export default function OrderTracking() {
   const [orderId, setOrderId] = useState('');
   const [email, setEmail] = useState('');
@@ -43,13 +49,34 @@ export default function OrderTracking() {
       }
 
       if (data) {
+        const orderEmail = (data.customerInfo?.email || data.shippingAddress?.email || data.email || '').toLowerCase().trim();
+        const providedEmail = email.trim().toLowerCase();
+
+        let isVerified = false;
+        if (providedEmail) {
+          if (orderEmail && orderEmail !== providedEmail) {
+            setError('The email entered does not match this order. Please verify your email.');
+            setLoading(false);
+            return;
+          }
+          isVerified = true;
+        }
+
+        const safeShippingAddress = data.shippingAddress ? {
+          ...data.shippingAddress,
+          name: isVerified ? data.shippingAddress.name : maskCustomerName(data.shippingAddress.name),
+          line1: isVerified ? data.shippingAddress.line1 : '•••••••• (Enter matching email to view full address)',
+        } : null;
+
         setOrder({
           ...data,
+          isEmailVerified: isVerified,
+          shippingAddress: safeShippingAddress,
           date: new Date(data.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
           totalAmount: data.total ? `₹${data.total}` : (Array.isArray(data.items) ? `₹${data.items.reduce((s, i) => s + ((i.unitPrice || 0) * (i.quantity || 1)), 0)}` : '₹0')
         });
       } else {
-        // Fallback for guest users blocked by RLS: Check localStorage
+        // Fallback for guest users: Check localStorage for user's own orders
         const localOrders = JSON.parse(localStorage.getItem('jj_orders') || '[]');
         const localMatch = localOrders.find(o =>
           String(o.id || '').replace(/^#+/, '') === cleanOrderId ||
@@ -59,6 +86,7 @@ export default function OrderTracking() {
         if (localMatch) {
           setOrder({
             ...localMatch,
+            isEmailVerified: true,
             id: String(localMatch.id || '').replace(/^#+/, ''),
             orderNumber: String(localMatch.orderNumber || localMatch.id || '').replace(/^#+/, ''),
             date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -191,8 +219,13 @@ export default function OrderTracking() {
 
                 {/* Footer Actions */}
                 <div className="mt-1 pt-3 border-t border-amber-200/50 flex flex-wrap items-center justify-between gap-2">
+                  {!order.isEmailVerified && (
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Enter your order email above to unlock full address & invoice.
+                    </span>
+                  )}
                   <div className="flex gap-2 w-full sm:w-auto ml-auto">
-                    {order.status !== 'CANCELLED' && (
+                    {order.status !== 'CANCELLED' && order.isEmailVerified && (
                       <button
                         onClick={() => {
                           const cleanId = String(order.orderNumber || order.id || '').replace(/^#/, '');
