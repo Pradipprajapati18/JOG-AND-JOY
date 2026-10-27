@@ -51,14 +51,14 @@ export default function CustomerOrders() {
         {orders.map((order) => {
           let orderItems = [];
           if (Array.isArray(order.items)) {
-            orderItems = order.items;
+            orderItems = order.items.flat ? order.items.flat() : order.items;
           } else if (typeof order.items === 'string') {
             try {
               const parsed = JSON.parse(order.items);
-              if (Array.isArray(parsed)) orderItems = parsed;
+              if (Array.isArray(parsed)) orderItems = parsed.flat ? parsed.flat() : parsed;
               else if (parsed && typeof parsed === 'object') orderItems = Object.values(parsed);
             } catch {
-              orderItems = [{ titleSnapshot: order.items, quantity: 1 }];
+              orderItems = [{ titleSnapshot: typeof order.items === 'string' ? order.items : 'Order Item', quantity: 1 }];
             }
           } else if (order.items && typeof order.items === 'object') {
             orderItems = Object.values(order.items);
@@ -145,18 +145,18 @@ export default function CustomerOrders() {
                         <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] text-slate-400 shrink-0">IMG</div>
                       )}
                       <span className="text-sm text-slate-600 group-hover:text-[#EF4A45] transition-colors truncate max-w-[200px] md:max-w-[300px]">
-                        {firstItem.titleSnapshot} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
+                        {typeof firstItem.titleSnapshot === 'string' ? firstItem.titleSnapshot : (firstItem.name || firstItem.title || 'Product')} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
                       </span>
                     </Link>
                   ) : (
                     <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100/60">
                       {firstItem.image ? (
-                        <img src={firstItem.image} alt={firstItem.titleSnapshot || 'Product'} className="w-10 h-10 rounded border border-slate-200 object-cover" />
+                        <img src={firstItem.image} alt={typeof firstItem.titleSnapshot === 'string' ? firstItem.titleSnapshot : 'Product'} className="w-10 h-10 rounded border border-slate-200 object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-[8px] text-slate-400">IMG</div>
                       )}
                       <span className="text-sm text-slate-600 truncate max-w-[200px] md:max-w-[300px]">
-                        {firstItem.titleSnapshot} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
+                        {typeof firstItem.titleSnapshot === 'string' ? firstItem.titleSnapshot : (firstItem.name || firstItem.title || 'Product')} {itemCount > 1 && <span className="text-slate-400 font-medium ml-1">and {itemCount - 1} other items</span>}
                       </span>
                     </div>
                   );

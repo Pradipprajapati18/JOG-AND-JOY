@@ -107,7 +107,7 @@ function AdminLayoutContent() {
       )}
 
       {/* Sidebar */}
-      <div className={`w-64 bg-white border-r border-slate-200 flex flex-col fixed h-full z-50 transition-transform duration-300 md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`w-64 bg-white border-r border-slate-200 flex flex-col fixed inset-y-0 left-0 z-50 md:sticky md:top-0 md:h-screen md:shrink-0 md:z-30 transition-transform duration-300 md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 pb-4 border-b border-slate-200 flex flex-col items-start shrink-0 relative">
           <BrandLogo className="h-10 mb-0" linkTo="/admin" showTagline={false} animate={true} />
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors" title="Close Menu">
@@ -165,7 +165,7 @@ function AdminLayoutContent() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-64 relative min-h-screen flex flex-col w-full min-w-0 bg-slate-50">
+      <div className="flex-1 relative min-h-screen flex flex-col w-full min-w-0 bg-slate-50">
         {/* Top Navbar */}
         <header className="h-16 bg-white border-b border-slate-100 shadow-sm flex items-center justify-between px-3 sm:px-4 md:px-6 sticky top-0 z-20">
           <div className="flex items-center gap-2 sm:gap-3">

@@ -14,13 +14,16 @@ export const getCanonicalOrderId = (order) => {
 };
 
 export const normalizeOrderItems = (rawItems) => {
-  if (Array.isArray(rawItems)) return rawItems;
-  if (!rawItems) return [];
-  if (typeof rawItems === 'string') {
+  let list = [];
+  if (Array.isArray(rawItems)) {
+    list = rawItems.flat ? rawItems.flat() : rawItems;
+  } else if (!rawItems) {
+    return [];
+  } else if (typeof rawItems === 'string') {
     try {
       const parsed = JSON.parse(rawItems);
-      if (Array.isArray(parsed)) return parsed;
-      if (parsed && typeof parsed === 'object') return Object.values(parsed);
+      if (Array.isArray(parsed)) list = parsed.flat ? parsed.flat() : parsed;
+      else if (parsed && typeof parsed === 'object') list = Object.values(parsed);
     } catch {
       return rawItems.split(',').filter(Boolean).map((s, idx) => {
         const m = s.trim().match(/^(.*?)\s*\(x(\d+)\)$/);
@@ -33,11 +36,31 @@ export const normalizeOrderItems = (rawItems) => {
         };
       });
     }
+  } else if (typeof rawItems === 'object') {
+    list = Object.values(rawItems);
   }
-  if (typeof rawItems === 'object') {
-    return Object.values(rawItems);
-  }
-  return [];
+
+  // Ensure titleSnapshot is strictly a string primitive and never an object or array
+  return list.map((item, idx) => {
+    if (!item || typeof item !== 'object') {
+      return {
+        id: `item-${idx}`,
+        titleSnapshot: String(item || 'Item'),
+        quantity: 1,
+        unitPrice: 0
+      };
+    }
+    let titleStr = item.titleSnapshot;
+    if (Array.isArray(titleStr)) {
+      titleStr = titleStr[0]?.titleSnapshot || titleStr[0]?.name || titleStr[0]?.title || 'Product';
+    } else if (titleStr && typeof titleStr === 'object') {
+      titleStr = titleStr.titleSnapshot || titleStr.name || titleStr.title || 'Product';
+    }
+    return {
+      ...item,
+      titleSnapshot: typeof titleStr === 'string' ? titleStr : (item.name || item.title || 'Product')
+    };
+  });
 };
 
 export const DEFAULT_DEMO_ORDERS = [

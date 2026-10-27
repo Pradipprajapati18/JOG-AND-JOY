@@ -902,7 +902,7 @@ export default function AdminOrders() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-text-dark text-sm sm:text-base">{item.titleSnapshot}</p>
+                          <p className="font-bold text-text-dark text-sm sm:text-base">{typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Item')}</p>
                           {o.returnRequest?.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (o.returnRequest.originalItem?.id === item.id || o.returnRequest.originalItem?.productId === item.productId || o.returnRequest.originalItem?.title === item.titleSnapshot) && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
                               ⇄ Exchanged for {o.returnRequest.exchangeItem.title} ({o.returnRequest.exchangeItem.size})
@@ -1117,12 +1117,12 @@ export default function AdminOrders() {
         {/* Edit Modal */}
         {showEditModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-3 sm:p-4">
-            <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95">
-              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 sticky top-0 bg-white z-10">
+            <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] shadow-2xl animate-in zoom-in-95 flex flex-col overflow-hidden">
+              <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 shrink-0 bg-white">
                 <h2 className="text-lg sm:text-xl font-bold text-text-dark">Edit Order Details</h2>
                 <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors"><X className="w-5 h-5 text-text-muted" /></button>
               </div>
-              <form onSubmit={handleEditSubmit} className="p-4 sm:p-6 space-y-4">
+              <form onSubmit={handleEditSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
                 <div>
                   <label className="block text-xs sm:text-sm font-bold text-text-muted mb-1">Customer Name</label>
                   <input required type="text" value={editFormData.name || ''} onChange={e => setEditFormData({ ...editFormData, name: e.target.value })} className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-green-500 text-sm" />

@@ -173,7 +173,7 @@ export default function AdminDashboard() {
   const productStats = {};
   validOrders.forEach(o => {
     o.items?.forEach(item => {
-      const title = item.titleSnapshot || 'Unknown';
+      const title = typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Unknown');
       if (!productStats[title]) productStats[title] = { name: title, units: 0, rev: 0 };
       productStats[title].units += item.quantity || 1;
       productStats[title].rev += (item.unitPrice || 0) * (item.quantity || 1);

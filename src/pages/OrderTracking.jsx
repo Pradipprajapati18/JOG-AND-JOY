@@ -190,7 +190,7 @@ export default function OrderTracking() {
                       <div key={idx} className="flex justify-between items-center text-xs text-slate-700 font-semibold">
                         <span className="flex-1 truncate pr-4">
                           <span className="text-slate-400 mr-2">{item.quantity}x</span>
-                          {item.titleSnapshot || item.name || 'Item'}
+                          {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Item')}
                           {item.size && <span className="text-slate-400 ml-1">({item.size})</span>}
                         </span>
                         <span className="font-bold">₹{item.unitPrice * item.quantity}</span>

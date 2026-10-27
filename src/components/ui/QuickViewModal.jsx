@@ -102,17 +102,18 @@ export default function QuickViewModal({ product, onClose }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 100, scale: 0.98 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-3xl bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl overflow-hidden border border-slate-100 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-3xl bg-white rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl border border-slate-100 max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden"
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-slate-100/80 backdrop-blur-md hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+            className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-slate-100/80 backdrop-blur-md hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex flex-col md:flex-row w-full h-full p-4 sm:p-6 md:p-8 gap-5 md:gap-8 mt-6 sm:mt-0">
+          <div className="overflow-y-auto w-full h-full p-4 sm:p-6 md:p-8 pt-10 sm:pt-6 flex-1">
+            <div className="flex flex-col md:flex-row w-full h-full gap-5 md:gap-8">
             {/* Left Column: Image Section & Button */}
             <div className="w-full md:w-1/2 flex flex-col gap-3 sm:gap-4 shrink-0">
               {/* Image Row */}
@@ -229,6 +230,7 @@ export default function QuickViewModal({ product, onClose }) {
 
             </div>
           </div>
+        </div>
         </motion.div>
       </div>
     </AnimatePresence>

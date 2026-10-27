@@ -149,7 +149,7 @@ export default function Footer() {
                   <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" title="LinkedIn" className="hover:scale-110 transition-transform">
                     <LinkedInSquareIcon />
                   </a>
-                  <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" title="YouTube" className="hover:scale-110 transition-transform">
+                  <a href="https://www.youtube.com/@JognJoy_official" target="_blank" rel="noopener noreferrer" title="YouTube" className="hover:scale-110 transition-transform">
                     <YouTubeSquareIcon />
                   </a>
                 </div>

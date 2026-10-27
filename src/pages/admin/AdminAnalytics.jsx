@@ -102,7 +102,7 @@ export default function AdminAnalytics() {
       }
 
       itemsList.forEach(item => {
-        const title = item.titleSnapshot || item.title || item.name || 'Unknown Product';
+        const title = typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.title || item.name || 'Unknown Product');
         const key = item.productId || title;
         const qty = parseInt(item.quantity, 10) || 1;
         const itemPrice = parseNumericAmount(item.unitPrice || item.price || 0);

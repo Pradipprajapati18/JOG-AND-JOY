@@ -42,6 +42,7 @@ export default function NewsletterSection() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (email.trim()) {
+      window.location.href = `mailto:jogjoy85@gmail.com?subject=Inquiry from ${encodeURIComponent(email)}&body=Inquiry Email: ${encodeURIComponent(email)}`;
       setSubscribed(true);
       setEmail('');
     }
@@ -106,16 +107,17 @@ export default function NewsletterSection() {
           <div className="relative z-10 text-center max-w-xl mx-auto space-y-5">
 
             {/* Top Mail Icon Badge */}
-            <motion.div
+            <motion.a
+              href="mailto:jogjoy85@gmail.com"
               whileHover={{ scale: 1.1, rotate: 5 }}
-              className="w-14 h-14 rounded-2xl bg-white text-[#EF4A45] flex items-center justify-center mx-auto shadow-md border-2 border-emerald-100"
+              className="w-14 h-14 rounded-2xl bg-white text-[#EF4A45] flex items-center justify-center mx-auto shadow-md border-2 border-emerald-100 cursor-pointer"
             >
               <Mail className="w-7 h-7" />
-            </motion.div>
+            </motion.a>
 
             {/* Headline */}
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-emerald-950 leading-tight">
-              Get <span className="text-[#EF4A45]">₹200 OFF</span> Your First Order!
+              Have an Inquiry? <span className="text-[#EF4A45]">Connect With Us!</span>
             </h2>
 
             {/* Subtitle */}
@@ -131,7 +133,7 @@ export default function NewsletterSection() {
                 className="p-5 rounded-3xl bg-white text-emerald-900 font-extrabold text-sm flex items-center justify-center gap-3 shadow-lg border-2 border-emerald-200"
               >
                 <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-                <span>🎉 Hurray! You're subscribed. Use code <span className="bg-emerald-100 px-2.5 py-1 rounded-lg text-emerald-800 font-black tracking-wider">WELCOME200</span> on checkout!</span>
+                <span>✨ Thank you for reaching out! We've received your inquiry and will connect with you shortly.</span>
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-3 pt-2 max-w-lg mx-auto">

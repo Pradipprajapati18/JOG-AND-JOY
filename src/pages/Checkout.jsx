@@ -95,6 +95,8 @@ export default function Checkout() {
     paymentMethod: 'upi' // 'upi' | 'card' | 'cod'
   });
 
+  const finalOrderTotal = formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal;
+
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showManualAddress, setShowManualAddress] = useState(true);
 
@@ -483,6 +485,8 @@ export default function Checkout() {
   const handlePlaceOrder = async () => {
     setIsProcessingPayment(true);
 
+    const finalOrderTotal = formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal;
+
     // Fast pre-payment live stock check to prevent customer being charged for depleted items
     const stockCheck = await validateLiveStock();
     if (!stockCheck.valid) {
@@ -511,7 +515,6 @@ export default function Checkout() {
     }
 
     // 2. Online Payment via Razorpay
-    const finalOrderTotal = formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal;
     const tempReceipt = `JJ-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90) + 10}`;
 
     try {
@@ -1030,7 +1033,7 @@ export default function Checkout() {
 
           {/* Right Column: Order Summary Sidebar (Sticky) */}
           <div className="lg:col-span-5 relative">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100/50 space-y-5 sticky top-24">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100/50 space-y-5 sticky top-24 overflow-hidden">
               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-4">
                 <ShoppingBag className="w-5 h-5 text-[#EF4A45]" /> Order Summary ({checkoutItems.length} items)
               </h3>
@@ -1110,7 +1113,7 @@ export default function Checkout() {
                 )}
                 <div className="flex justify-between pt-4 mt-2 border-t border-slate-100 text-lg font-black text-slate-900 items-end">
                   <span>Total Payable</span>
-                  <span className="text-[#EF4A45] text-2xl leading-none">₹{formData.shippingMethod === 'express' ? activeGrandTotal + expressShippingRate : activeGrandTotal}</span>
+                  <span className="text-[#EF4A45] text-2xl leading-none">₹{finalOrderTotal}</span>
                 </div>
               </div>
 

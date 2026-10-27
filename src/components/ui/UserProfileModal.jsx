@@ -148,70 +148,73 @@ export default function UserProfileModal({ isOpen, onClose }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-100 max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-xl bg-white rounded-3xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden"
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+            className="absolute top-5 right-5 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors z-20"
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* User Profile Header */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 shadow-sm border border-slate-200 text-xl font-black uppercase">
-              {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+          {/* User Profile Header & Tabs (Fixed at Top) */}
+          <div className="p-6 sm:p-8 pb-0 shrink-0">
+            <div className="flex items-center gap-4 mb-6 pr-10">
+              <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0 shadow-sm border border-slate-200 text-xl font-black uppercase">
+                {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              </div>
+              <div>
+                {!isEditing ? (
+                  <>
+                    <h3 className="text-xl font-black text-slate-900">
+                      {user?.name || 'Jog & Joy Member'}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-bold">{user?.email}</p>
+                  </>
+                ) : (
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value.replace(/[^A-Za-z\s]/g, '') }))}
+                    className="text-xl font-black text-slate-900 bg-slate-50 border border-slate-200 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-red-500"
+                    placeholder="Your Name"
+                  />
+                )}
+              </div>
             </div>
-            <div>
-              {!isEditing ? (
-                <>
-                  <h3 className="text-xl font-black text-slate-900">
-                    {user?.name || 'Jog & Joy Member'}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-bold">{user?.email}</p>
-                </>
-              ) : (
-                <input
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value.replace(/[^A-Za-z\s]/g, '') }))}
-                  className="text-xl font-black text-slate-900 bg-slate-50 border border-slate-200 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-red-500"
-                  placeholder="Your Name"
-                />
-              )}
+
+            {/* Navigation Tabs */}
+            <div className="flex border-b border-slate-100 text-xs sm:text-sm font-extrabold text-slate-500 space-x-6 overflow-x-auto hide-scrollbar">
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 whitespace-nowrap ${activeTab === 'orders' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
+                  }`}
+              >
+                <Package className="w-4 h-4" /> My Orders ({orders.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('addresses')}
+                className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 whitespace-nowrap ${activeTab === 'addresses' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
+                  }`}
+              >
+                <MapPin className="w-4 h-4" /> Saved Addresses
+              </button>
+
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 whitespace-nowrap ${activeTab === 'profile' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
+                  }`}
+              >
+                <User className="w-4 h-4" /> Account Info
+              </button>
             </div>
           </div>
 
-          {/* Navigation Tabs */}
-          <div className="flex border-b border-slate-100 mb-6 text-xs sm:text-sm font-extrabold text-slate-500 space-x-6">
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${activeTab === 'orders' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
-                }`}
-            >
-              <Package className="w-4 h-4" /> My Orders ({orders.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab('addresses')}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${activeTab === 'addresses' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
-                }`}
-            >
-              <MapPin className="w-4 h-4" /> Saved Addresses
-            </button>
-
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`pb-3 flex items-center gap-1.5 transition-colors border-b-2 ${activeTab === 'profile' ? 'border-[#EF4A45] text-[#EF4A45]' : 'border-transparent hover:text-slate-900'
-                }`}
-            >
-              <User className="w-4 h-4" /> Account Info
-            </button>
-          </div>
-
-          {/* Tab Contents */}
-          {activeTab === 'orders' && (
+          {/* Scrollable Tab Contents */}
+          <div className="overflow-y-auto p-6 sm:p-8 pt-4 flex-1">
+            {activeTab === 'orders' && (
             <div className="space-y-4">
               {orders.length > 0 ? (
                 orders.map((order, i) => (
@@ -243,7 +246,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
                             <div className="flex flex-col truncate">
                               <span className="truncate">
                                 <span className="text-slate-400 mr-1">{item.quantity}x</span>
-                                {item.titleSnapshot || item.name || 'Item'}
+                                {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Item')}
                               </span>
                               <span className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
                                 <span>Size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')} | Color:</span>
@@ -550,6 +553,7 @@ export default function UserProfileModal({ isOpen, onClose }) {
               </button>
             </div>
           )}
+          </div>
 
         </motion.div>
       </div>

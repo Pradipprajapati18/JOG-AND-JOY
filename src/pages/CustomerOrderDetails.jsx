@@ -187,13 +187,13 @@ export default function CustomerOrderDetails() {
       : (orderData?.items || ordersData?.data?.find(o => String(o.id || o.orderNumber || '').replace(/^#+/, '') === cleanId)?.items || resolved.items);
 
     if (Array.isArray(sourceItems)) {
-      items = sourceItems;
+      items = sourceItems.flat ? sourceItems.flat() : sourceItems;
     } else if (typeof sourceItems === 'string') {
       try {
         const parsed = JSON.parse(sourceItems);
-        items = Array.isArray(parsed) ? parsed : (parsed ? Object.values(parsed) : []);
+        items = Array.isArray(parsed) ? (parsed.flat ? parsed.flat() : parsed) : (parsed ? Object.values(parsed) : []);
       } catch {
-        items = [{ titleSnapshot: sourceItems, quantity: 1, unitPrice: resolved.total || 0 }];
+        items = [{ titleSnapshot: typeof sourceItems === 'string' ? sourceItems : 'Order Item', quantity: 1, unitPrice: resolved.total || 0 }];
       }
     } else if (sourceItems && typeof sourceItems === 'object') {
       items = Object.values(sourceItems);
@@ -1297,8 +1297,7 @@ export default function CustomerOrderDetails() {
                 <>
                   <div className="mt-4 p-4 bg-white rounded-2xl border border-amber-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="border-r sm:border-slate-100 pr-2">
-                      <p className="text-[10px] font-black uppercase text-slate-400 mb-1">Item Being Exchanged</p>
-                      <p className="font-bold text-slate-800 text-sm">{order.returnRequest.originalItem?.title || order.items?.[0]?.titleSnapshot}</p>
+                      <p className="font-bold text-slate-800 text-sm">{order.returnRequest.originalItem?.title || (typeof order.items?.[0]?.titleSnapshot === 'string' ? order.items[0].titleSnapshot : (order.items?.[0]?.name || 'Product'))}</p>
                       <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
                         <span>Size: {typeof (order.returnRequest.originalItem?.size || order.items?.[0]?.size) === 'object' ? ((order.returnRequest.originalItem?.size || order.items?.[0]?.size)?.name || 'N/A') : String(order.returnRequest.originalItem?.size || order.items?.[0]?.size || 'N/A')}</span>
                         <span>•</span>
@@ -1495,10 +1494,10 @@ export default function CustomerOrderDetails() {
                       <div className="flex flex-wrap items-center gap-2">
                         {productUrl ? (
                           <Link to={productUrl} className="hover:text-[#EF4A45] transition-colors truncate max-w-full" title="View product details">
-                            <p className="font-black text-slate-900 truncate text-base md:text-lg hover:text-[#EF4A45] transition-colors">{item.titleSnapshot}</p>
+                            <p className="font-black text-slate-900 truncate text-base md:text-lg hover:text-[#EF4A45] transition-colors">{typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Product')}</p>
                           </Link>
                         ) : (
-                          <p className="font-black text-slate-900 truncate text-base md:text-lg">{item.titleSnapshot}</p>
+                          <p className="font-black text-slate-900 truncate text-base md:text-lg">{typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Product')}</p>
                         )}
                         {isReviewed && (
                           <span className="text-[10px] font-black uppercase text-amber-800 bg-amber-100/90 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-amber-200">
@@ -1723,9 +1722,9 @@ export default function CustomerOrderDetails() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto"
+              className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between p-6 md:p-8 pb-4 border-b border-slate-100 shrink-0">
                 <div>
                   <h3 className="text-xl font-black text-slate-900">Write a Product Review</h3>
                   <p className="text-xs text-slate-500">Order #{order?.orderNumber || cleanOrderNumber}</p>
@@ -1738,7 +1737,8 @@ export default function CustomerOrderDetails() {
                 </button>
               </div>
 
-              {reviewSuccess ? (
+              <div className="p-6 md:p-8 pt-4 overflow-y-auto flex-1">
+                {reviewSuccess ? (
                 <div className="py-12 text-center space-y-3">
                   <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                     <Check className="w-8 h-8 stroke-[3]" />
@@ -1763,7 +1763,7 @@ export default function CustomerOrderDetails() {
                         className="w-full p-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 focus:outline-none focus:border-amber-500"
                       >
                         {order.items.map((it, idx) => (
-                          <option key={idx} value={it.id}>{it.titleSnapshot} ({it.size})</option>
+                          <option key={idx} value={it.id}>{typeof it.titleSnapshot === 'string' ? it.titleSnapshot : (it.name || 'Product')} ({typeof it.size === 'object' ? (it.size?.name || 'N/A') : String(it.size || 'N/A')})</option>
                         ))}
                       </select>
                     </div>
@@ -1776,7 +1776,7 @@ export default function CustomerOrderDetails() {
                         <img src={selectedItemForAction.image} alt="Preview" className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
                       )}
                       <div>
-                        <p className="font-bold text-slate-800 text-sm truncate">{selectedItemForAction.titleSnapshot}</p>
+                        <p className="font-bold text-slate-800 text-sm truncate">{typeof selectedItemForAction.titleSnapshot === 'string' ? selectedItemForAction.titleSnapshot : (selectedItemForAction.name || selectedItemForAction.title || 'Product')}</p>
                         <p className="text-xs text-slate-500 font-semibold flex items-center gap-1 flex-wrap">
                           <span>Size: {selectedItemForAction.size}</span>
                           <span>•</span>
@@ -1869,6 +1869,7 @@ export default function CustomerOrderDetails() {
                   </button>
                 </form>
               )}
+              </div>
             </motion.div>
           </div>
         )}
@@ -1884,9 +1885,9 @@ export default function CustomerOrderDetails() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white w-full max-w-2xl rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto space-y-6"
+              className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between p-6 md:p-8 pb-4 border-b border-slate-100 shrink-0">
                 <div>
                   <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                     <RefreshCw className="w-5 h-5 text-[#5B2E89]" />
@@ -1902,7 +1903,8 @@ export default function CustomerOrderDetails() {
                 </button>
               </div>
 
-              <form onSubmit={handleExchangeSubmit} className="space-y-6">
+              <div className="p-6 md:p-8 pt-4 overflow-y-auto flex-1 space-y-6">
+                <form onSubmit={handleExchangeSubmit} className="space-y-6">
 
                 {/* 1. Item being exchanged */}
                 {selectedItemForAction && (
@@ -1913,7 +1915,7 @@ export default function CustomerOrderDetails() {
                         <img src={selectedItemForAction.image} alt="Original" className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 text-sm truncate">{selectedItemForAction.titleSnapshot}</p>
+                        <p className="font-bold text-slate-900 text-sm truncate">{typeof selectedItemForAction.titleSnapshot === 'string' ? selectedItemForAction.titleSnapshot : (selectedItemForAction.name || selectedItemForAction.title || 'Product')}</p>
                         <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 flex-wrap">
                           <span>Current Size: <span className="font-bold text-slate-800">{selectedItemForAction.size}</span></span>
                           <span>•</span>
@@ -2257,7 +2259,8 @@ export default function CustomerOrderDetails() {
                     </button>
                   );
                 })()}
-              </form>
+                </form>
+              </div>
             </motion.div>
           </div>
         )}
@@ -2273,9 +2276,9 @@ export default function CustomerOrderDetails() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto space-y-6"
+              className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center justify-between p-6 md:p-8 pb-4 border-b border-slate-100 shrink-0">
                 <div>
                   <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                     <RotateCcw className="w-5 h-5 text-[#EF4A45]" />
@@ -2291,7 +2294,8 @@ export default function CustomerOrderDetails() {
                 </button>
               </div>
 
-              <form onSubmit={handleReturnSubmit} className="space-y-5">
+              <div className="p-6 md:p-8 pt-4 overflow-y-auto flex-1 space-y-6">
+                <form onSubmit={handleReturnSubmit} className="space-y-5">
                 {/* Item snippet */}
                 {selectedItemForAction && (
                   <div className="flex items-center gap-3 p-3.5 bg-red-50/50 rounded-2xl border border-red-100">
@@ -2299,7 +2303,7 @@ export default function CustomerOrderDetails() {
                       <img src={selectedItemForAction.image} alt="Return Item" className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-900 text-sm truncate">{selectedItemForAction.titleSnapshot}</p>
+                      <p className="font-bold text-slate-900 text-sm truncate">{typeof selectedItemForAction.titleSnapshot === 'string' ? selectedItemForAction.titleSnapshot : (selectedItemForAction.name || selectedItemForAction.title || 'Product')}</p>
                       <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
                         <span>Size: {selectedItemForAction.size}</span>
                         <span>•</span>
@@ -2461,6 +2465,7 @@ export default function CustomerOrderDetails() {
                   {isSubmittingReturn ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm & Request Return'}
                 </button>
               </form>
+              </div>
             </motion.div>
           </div>
         )}

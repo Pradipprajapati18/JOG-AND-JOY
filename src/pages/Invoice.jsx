@@ -51,27 +51,43 @@ export default function Invoice() {
               ? Number(localMatch.total.replace(/[^0-9.]/g, '')) || 1898
               : Number(localMatch.total || 1898);
 
-            setDirectOrder({
-              id: cleanOrderId,
-              orderNumber: cleanOrderId,
-              createdAt: localMatch.date ? new Date().toISOString() : new Date().toISOString(),
-              status: localMatch.status || 'CONFIRMED',
-              paymentStatus: 'paid',
-              paymentMethod: 'UPI / Prepaid',
-              subtotal: subtotalMatch,
-              shippingCost: 0,
-              total: subtotalMatch,
-              items: [
+            let resolvedLocalItems = [];
+            if (Array.isArray(localMatch.items) && localMatch.items.length > 0) {
+              resolvedLocalItems = localMatch.items.flat ? localMatch.items.flat() : localMatch.items;
+            } else if (typeof localMatch.items === 'string') {
+              try {
+                const parsed = JSON.parse(localMatch.items);
+                if (Array.isArray(parsed)) resolvedLocalItems = parsed.flat ? parsed.flat() : parsed;
+                else resolvedLocalItems = [{ titleSnapshot: localMatch.items, unitPrice: subtotalMatch, quantity: 1 }];
+              } catch {
+                resolvedLocalItems = [{ titleSnapshot: localMatch.items, unitPrice: subtotalMatch, quantity: 1 }];
+              }
+            } else {
+              resolvedLocalItems = [
                 {
-                  titleSnapshot: localMatch.items || 'Jog & Joy Kids Everyday Track & Jogger Set',
+                  titleSnapshot: 'Jog & Joy Kids Everyday Track & Jogger Set',
                   unitPrice: subtotalMatch,
                   quantity: 1,
                   size: 'Standard Fit',
                   color: '#1E293B',
                   colorName: 'Midnight Navy'
                 }
-              ],
-              shippingAddress: {
+              ];
+            }
+
+            setDirectOrder({
+              ...localMatch,
+              id: cleanOrderId,
+              orderNumber: cleanOrderId,
+              createdAt: localMatch.createdAt || (localMatch.date ? new Date().toISOString() : new Date().toISOString()),
+              status: localMatch.status || 'CONFIRMED',
+              paymentStatus: localMatch.paymentStatus || 'paid',
+              paymentMethod: localMatch.paymentMethod || 'UPI / Prepaid',
+              subtotal: localMatch.subtotal !== undefined ? Number(localMatch.subtotal) : subtotalMatch,
+              shippingCost: localMatch.shippingCost !== undefined ? Number(localMatch.shippingCost) : 0,
+              total: localMatch.total !== undefined ? Number(localMatch.total) : subtotalMatch,
+              items: resolvedLocalItems,
+              shippingAddress: localMatch.shippingAddress || {
                 name: 'Customer',
                 city: 'Ahmedabad',
                 state: 'Gujarat',
@@ -357,7 +373,7 @@ export default function Invoice() {
                         <div>colour: {formatColorName(exchangeItem.colorName, exchangeItem.color)}</div>
                         <div>size: {typeof exchangeItem.size === 'object' ? (exchangeItem.size?.name || 'N/A') : String(exchangeItem.size)}</div>
                         <div className="text-[10px] text-gray-500 italic mt-0.5">
-                          (Swapped with original: {item.titleSnapshot} - Size: {item.size})
+                          (Swapped with original: {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || 'Original Item')} - Size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')})
                         </div>
                       </td>
                       <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{repPrice}</td>
@@ -370,7 +386,7 @@ export default function Invoice() {
                 return (
                   <tr key={index}>
                     <td className="py-3 px-2 border-[3px] border-black text-sm font-medium">
-                      {item.titleSnapshot || item.name || 'Product'}
+                      {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Product')}
                       {isSwapped && (
                         <span className="block text-[10px] font-bold text-purple-700 mt-0.5">
                           (⇄ Swapped for {exchangeItem.title} - Size: {exchangeItem.size})
