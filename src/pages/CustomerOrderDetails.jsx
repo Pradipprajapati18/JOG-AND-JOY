@@ -988,7 +988,7 @@ export default function CustomerOrderDetails() {
             </a>
           )}
           {/* Pre-Fulfillment Cancellation Button */}
-          {['PROCESSING', 'CONFIRMED'].includes(order.status) && !order.returnRequest && (
+          {['PROCESSING', 'CONFIRMED', 'PENDING', 'PLACED'].includes((order.status || '').toUpperCase()) && !order.returnRequest && (
             <button
               onClick={() => setShowCancelModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs hover:bg-rose-100 transition-colors shadow-2xs"
@@ -1369,13 +1369,47 @@ export default function CustomerOrderDetails() {
                         </div>
                       );
                     } else if (diff < 0) {
+                      const diffRefund = order.returnRequest?.differentialRefund;
+                      const diffPay = order.returnRequest?.differentialPayment;
+                      const isDiffRefunded = 
+                        diffRefund?.status === 'REFUNDED' || 
+                        diffRefund?.refunded === true ||
+                        diffPay?.status === 'REFUNDED' || 
+                        Boolean(diffRefund?.refundId) || 
+                        Boolean(diffPay?.refundId) || 
+                        order.paymentStatus === 'refunded' ||
+                        order.statusHistory?.some(h => /exchange.*difference.*refund/i.test(h.note || ''));
+
+                      const refundId = diffRefund?.refundId || diffPay?.refundId;
+
+                      if (isDiffRefunded) {
+                        return (
+                          <div className="mt-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-950 text-xs flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                              <div>
+                                <p className="font-bold text-emerald-950">
+                                  Exchange Difference Refunded: ₹{diffRefund?.amount || diffPay?.refundAmount || Math.abs(diff)}
+                                </p>
+                                <p className="text-[11px] text-emerald-700">
+                                  Refund has been credited back to your original payment method {refundId ? `(Ref: ${refundId})` : ''}.
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-emerald-200 text-emerald-800 shrink-0 font-mono">
+                              Refunded
+                            </span>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div className="mt-3 p-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-950 text-xs flex items-center justify-between gap-3">
                           <div>
                             <p className="font-bold">Refund Due: ₹{Math.abs(diff)}</p>
                             <p className="text-[11px] text-blue-700">Refund will be processed to original payment method once replacement is delivered.</p>
                           </div>
-                          <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-200 text-blue-800">
+                          <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-200 text-blue-800 shrink-0 font-mono">
                             Refund Pending
                           </span>
                         </div>
@@ -1656,10 +1690,118 @@ export default function CustomerOrderDetails() {
               <div className="flex justify-between text-slate-600 font-medium">
                 <p>Estimated GST</p><p className="font-bold text-slate-800">₹{order.tax || 0}</p>
               </div>
-              <div className="border-t-2 border-dashed border-amber-200/80 pt-3 flex justify-between font-black text-lg text-slate-900">
-                <p>Total Paid</p>
-                <p className="text-[#EF4A45]">₹{order.total || order.subtotal}</p>
-              </div>
+              {/* Receipt Breakdown & Adjustments */}
+              {(() => {
+                const isExchange = order.returnRequest?.type === 'EXCHANGE';
+                const isReturn = order.returnRequest?.type === 'RETURN';
+
+                // Exchange price difference calculation
+                const origP = Number(order.returnRequest?.originalPrice || order.returnRequest?.originalItem?.unitPrice || 0);
+                const repP = Number(order.returnRequest?.replacementPrice || order.returnRequest?.exchangeItem?.price || origP);
+                const diff = isExchange
+                  ? (typeof order.returnRequest?.priceDifference === 'number' ? order.returnRequest.priceDifference : (repP - origP))
+                  : 0;
+
+                const hasExchangeAdj = isExchange && diff !== 0;
+
+                // Status of exchange refund / payment
+                const diffRefund = order.returnRequest?.differentialRefund;
+                const diffPay = order.returnRequest?.differentialPayment;
+                const isDiffRefunded = Boolean(
+                  diffRefund?.status === 'REFUNDED' ||
+                  diffRefund?.refunded ||
+                  diffPay?.status === 'REFUNDED' ||
+                  diffRefund?.refundId ||
+                  diffPay?.refundId ||
+                  order.paymentStatus === 'refunded' ||
+                  order.statusHistory?.some(h => /exchange.*difference.*refund/i.test(h.note || ''))
+                );
+                const isDiffPaid = Boolean(
+                  diffPay?.status === 'PAID' ||
+                  diffPay?.paymentId
+                );
+
+                // Full Order Refund (Returns or Cancelled Orders)
+                const isFullRefund = order.status === 'REFUNDED' || 
+                  (order.status === 'CANCELLED' && (order.paymentStatus === 'refunded' || Boolean(order.refundId))) ||
+                  (isReturn && (order.status === 'REFUNDED' || order.paymentStatus === 'refunded' || order.returnRequest?.status === 'COMPLETED'));
+
+                const fullRefundAmount = Number(order.returnRequest?.refundAmount || order.total || order.subtotal || 0);
+
+                // Net / Adjusted Total calculation
+                let netTotal = Number(order.total || order.subtotal || 0);
+                if (isFullRefund) {
+                  netTotal = 0;
+                } else if (hasExchangeAdj) {
+                  netTotal = Math.max(0, Number(order.total || order.subtotal || 0) + diff);
+                }
+
+                const hasAdjustment = hasExchangeAdj || isFullRefund;
+
+                return (
+                  <>
+                    <div className="border-t-2 border-dashed border-amber-200/80 pt-3 flex justify-between font-bold text-sm text-slate-800">
+                      <p>{hasAdjustment ? 'Original Total Paid' : 'Total Paid'}</p>
+                      <p className={hasAdjustment ? 'line-through text-slate-400 font-semibold' : 'text-lg font-black text-[#EF4A45]'}>
+                        ₹{order.total || order.subtotal}
+                      </p>
+                    </div>
+
+                    {/* Exchange Adjustment (Replacement is Cheaper / Refund) */}
+                    {hasExchangeAdj && diff < 0 && (
+                      <div className="flex justify-between items-center text-xs text-blue-900 bg-blue-50/90 px-3 py-2 rounded-xl border border-blue-200 font-medium">
+                        <div>
+                          <p className="font-bold">Exchange Difference Adjustment</p>
+                          <p className="text-[10px] text-blue-700">
+                            {isDiffRefunded ? 'Refunded to original payment method ✓' : 'Refund processing once delivered'}
+                          </p>
+                        </div>
+                        <span className="font-extrabold text-blue-800 shrink-0 text-sm">
+                          -₹{Math.abs(diff)}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Exchange Difference (Upgrade / Additional Paid) */}
+                    {hasExchangeAdj && diff > 0 && (
+                      <div className="flex justify-between items-center text-xs text-purple-900 bg-purple-50/90 px-3 py-2 rounded-xl border border-purple-200 font-medium">
+                        <div>
+                          <p className="font-bold">Exchange Difference (Upgrade)</p>
+                          <p className="text-[10px] text-purple-700">
+                            {isDiffPaid ? 'Paid online ✓' : diffPay?.method === 'COD' ? 'Payable on delivery' : 'Balance payable'}
+                          </p>
+                        </div>
+                        <span className="font-extrabold text-purple-800 shrink-0 text-sm">
+                          +₹{diff}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Full Refund / Cancellation Refund */}
+                    {isFullRefund && (
+                      <div className="flex justify-between items-center text-xs text-rose-900 bg-rose-50/90 px-3 py-2 rounded-xl border border-rose-200 font-medium">
+                        <div>
+                          <p className="font-bold">Refund Credited</p>
+                          <p className="text-[10px] text-rose-700">
+                            {order.refundId ? `Gateway Ref: ${order.refundId}` : 'Returned to original payment source ✓'}
+                          </p>
+                        </div>
+                        <span className="font-extrabold text-rose-700 shrink-0 text-sm">
+                          -₹{fullRefundAmount}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Net Adjusted Total */}
+                    {hasAdjustment && (
+                      <div className="border-t border-slate-200/80 pt-2.5 flex justify-between font-black text-lg text-emerald-800 bg-emerald-50/70 -mx-2 px-3 py-1.5 rounded-xl border border-emerald-200/60">
+                        <p>{isFullRefund ? 'Net Amount Retained' : 'Net Final Amount'}</p>
+                        <p>₹{netTotal}</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {order.status !== 'CANCELLED' && (
                 <div className="pt-3">

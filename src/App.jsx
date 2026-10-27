@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import AnnouncementBar from './components/layout/AnnouncementBar';
@@ -8,7 +8,6 @@ import BottomNav from './components/layout/BottomNav';
 import FloatingActions from './components/layout/FloatingActions';
 import CartPage from './pages/CartPage';
 import LiveChatDrawer from './components/ui/LiveChatDrawer';
-import UserProfileModal from './components/ui/UserProfileModal';
 import CustomerLoginModal from './components/ui/CustomerLoginModal';
 import Footer from './components/layout/Footer';
 import { useAuth } from './context/AuthContext';
@@ -77,17 +76,24 @@ function ScrollToTop() {
 
 function StoreLayout({ isLiveChatOpen, setIsLiveChatOpen, isProfileOpen, setIsProfileOpen }) {
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleOpenProfile = () => {
+    if (isAuthenticated) {
+      navigate('/account');
+    } else {
+      setIsProfileOpen(true);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full relative bg-white text-slate-800 flex flex-col font-sans selection:bg-[#AEE6FF] selection:text-slate-900 pb-16 md:pb-0">
       <AnnouncementBar />
-      <Navbar onOpenProfile={() => setIsProfileOpen(true)} />
+      <Navbar onOpenProfile={handleOpenProfile} />
 
       <LiveChatDrawer isOpen={isLiveChatOpen} onClose={() => setIsLiveChatOpen(false)} />
       
-      {isAuthenticated ? (
-        <UserProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-      ) : (
+      {!isAuthenticated && (
         <CustomerLoginModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
       )}
       
@@ -96,7 +102,7 @@ function StoreLayout({ isLiveChatOpen, setIsLiveChatOpen, isProfileOpen, setIsPr
       </div>
 
       <Footer />
-      <BottomNav onOpenProfile={() => setIsProfileOpen(true)} />
+      <BottomNav onOpenProfile={handleOpenProfile} />
       <FloatingActions onOpenLiveChat={() => setIsLiveChatOpen(true)} />
     </div>
   );

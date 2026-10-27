@@ -23,6 +23,9 @@ export default function AdminOrders() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showCancelRefundModal, setShowCancelRefundModal] = useState(false);
+  const [isProcessingCancelRefund, setIsProcessingCancelRefund] = useState(false);
+  const [isProcessingDiffRefund, setIsProcessingDiffRefund] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [searchParams, setSearchParams] = useSearchParams();
   const [trackingForm, setTrackingForm] = useState({ carrier: 'shiprocket', awb: '', customUrl: '' });
@@ -365,6 +368,167 @@ export default function AdminOrders() {
   const handleQuickStatusChange = (orderToUpdate, newStatus) => handleUpdateOrderStatus(orderToUpdate, newStatus);
   const executeRefund = () => handleUpdateOrderStatus(selectedOrder, 'REFUNDED', 'Order refunded by admin');
 
+  // Dedicated Cancellation Refund: Prevent duplicate refunds & update status ONLY after gateway confirmation
+  const executeCancellationRefund = async () => {
+    if (!selectedOrder || isProcessingCancelRefund) return;
+    const orderToRefund = selectedOrder;
+
+    // 1. Prevent duplicate refunds
+    const isAlreadyRefunded = orderToRefund.paymentStatus === 'refunded' || Boolean(orderToRefund.refundId) || Boolean(orderToRefund.paymentInfo?.refund_id);
+    if (isAlreadyRefunded) {
+      addToast('Cancellation refund has already been processed for this order.', 'warning');
+      setShowCancelRefundModal(false);
+      return;
+    }
+
+    setIsProcessingCancelRefund(true);
+    try {
+      const paymentId = orderToRefund.razorpayPaymentId || orderToRefund.paymentInfo?.razorpay_payment_id || orderToRefund.paymentId;
+      const isOnlinePaid = orderToRefund.paymentStatus === 'paid' || orderToRefund.paymentStatus === 'refund_pending' || Boolean(paymentId);
+      const refundAmount = Number(orderToRefund.total || 0);
+
+      let executedRefundId = null;
+
+      if (isOnlinePaid && paymentId) {
+        const refundRes = await initiateRazorpayRefund({
+          paymentId,
+          amount: refundAmount,
+          orderNumber: orderToRefund.orderNumber || orderToRefund.id,
+          reason: 'Cancellation refund processed by admin'
+        });
+
+        if (!refundRes || !refundRes.success) {
+          // GATEWAY NOT CONFIRMED - DO NOT UPDATE PAYMENT STATUS TO REFUNDED
+          throw new Error(refundRes?.message || 'Payment gateway returned unconfirmed response.');
+        }
+
+        executedRefundId = refundRes.refundId || refundRes.refund?.id || refundRes.id || 'Confirmed';
+      } else {
+        executedRefundId = `MANUAL-${Date.now()}`;
+      }
+
+      // STRICT GATEWAY CONFIRMATION GATING: Update status ONLY after gateway confirmation
+      const updatedHistory = [
+        ...(orderToRefund.statusHistory || []),
+        {
+          status: orderToRefund.status,
+          timestamp: new Date().toISOString(),
+          note: `Cancellation refund of ₹${refundAmount} confirmed by gateway (ID: ${executedRefundId})`
+        }
+      ];
+
+      updateMut.mutate({
+        id: orderToRefund.id,
+        patch: {
+          paymentStatus: 'refunded',
+          refundId: executedRefundId,
+          refundedAt: new Date().toISOString(),
+          statusHistory: updatedHistory
+        }
+      }, {
+        onSuccess: (updated) => {
+          setSelectedOrder(prev => (prev ? { ...prev, ...updated, paymentStatus: 'refunded', refundId: executedRefundId } : updated));
+          setShowCancelRefundModal(false);
+          addToast(`Cancellation refund of ₹${refundAmount} processed successfully (ID: ${executedRefundId})!`, 'success');
+        },
+        onError: (dbErr) => {
+          addToast(`Refund succeeded at gateway (ID: ${executedRefundId}) but DB update note: ${dbErr.message}`, 'warning');
+        }
+      });
+    } catch (err) {
+      console.error('Cancellation refund error:', err);
+      addToast(`Gateway refund error: ${err.message}. Order status not updated.`, 'error');
+    } finally {
+      setIsProcessingCancelRefund(false);
+    }
+  };
+
+  // Dedicated Exchange Refund Difference Handler
+  const handleRefundExchangeDifference = async (order, diffAmount) => {
+    if (!order || isProcessingDiffRefund) return;
+
+    if (order.returnRequest?.differentialRefund?.status === 'REFUNDED') {
+      addToast('Exchange price difference has already been refunded.', 'warning');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Refund Exchange Difference: Process refund of ₹${diffAmount} to customer for order #${order.orderNumber || order.id}?`
+    );
+    if (!confirmed) return;
+
+    setIsProcessingDiffRefund(true);
+    try {
+      const paymentId = order.razorpayPaymentId || order.paymentInfo?.razorpay_payment_id || order.paymentId;
+      const isOnlinePaid = order.paymentStatus === 'paid' || Boolean(paymentId);
+      let executedRefundId = null;
+
+      if (isOnlinePaid && paymentId) {
+        const refundRes = await initiateRazorpayRefund({
+          paymentId,
+          amount: Number(diffAmount),
+          orderNumber: order.orderNumber || order.id,
+          reason: 'Exchange replacement price difference refund'
+        });
+
+        if (!refundRes || !refundRes.success) {
+          throw new Error(refundRes?.message || 'Gateway failed to confirm exchange difference refund');
+        }
+
+        executedRefundId = refundRes.refundId || refundRes.refund?.id || refundRes.id || 'Confirmed';
+      } else {
+        executedRefundId = `MANUAL-EX-${Date.now()}`;
+      }
+
+      const updatedReturnRequest = {
+        ...(order.returnRequest || {}),
+        differentialRefund: {
+          status: 'REFUNDED',
+          amount: diffAmount,
+          refundId: executedRefundId,
+          method: isOnlinePaid ? 'Razorpay' : 'Manual / Store Credit',
+          refundedAt: new Date().toISOString()
+        },
+        differentialPayment: {
+          ...(order.returnRequest?.differentialPayment || {}),
+          status: 'REFUNDED',
+          refundId: executedRefundId,
+          refundedAt: new Date().toISOString()
+        }
+      };
+
+      const updatedHistory = [
+        ...(order.statusHistory || []),
+        {
+          status: order.status,
+          timestamp: new Date().toISOString(),
+          note: `Exchange difference of ₹${diffAmount} refunded (ID: ${executedRefundId})`
+        }
+      ];
+
+      updateMut.mutate({
+        id: order.id,
+        patch: {
+          returnRequest: updatedReturnRequest,
+          statusHistory: updatedHistory
+        }
+      }, {
+        onSuccess: (updated) => {
+          setSelectedOrder(prev => (prev ? { ...prev, ...updated, returnRequest: updatedReturnRequest } : updated));
+          addToast(`Exchange difference of ₹${diffAmount} refunded successfully (ID: ${executedRefundId})!`, 'success');
+        },
+        onError: (dbErr) => {
+          addToast(`Refund processed at gateway (ID: ${executedRefundId}) but DB update note: ${dbErr.message}`, 'warning');
+        }
+      });
+    } catch (err) {
+      console.error('Exchange difference refund error:', err);
+      addToast(`Failed to refund exchange difference: ${err.message}`, 'error');
+    } finally {
+      setIsProcessingDiffRefund(false);
+    }
+  };
+
   const handlePrintPackingSlip = () => {
     if (!selectedOrder) return;
     const cleanId = String(selectedOrder.orderNumber || selectedOrder.id || '').replace(/^#+/, '');
@@ -670,12 +834,38 @@ export default function AdminOrders() {
                 Ship Replacement 🚚
               </button>
             )}
-            <button
-              onClick={() => setShowRefundModal(true)}
-              className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-zinc-50 text-center"
-            >
-              Refund
-            </button>
+            {/* Cancellation Refund Button for Eligible Cancelled Orders */}
+            {o.status === 'CANCELLED' ? (
+              (() => {
+                const isAlreadyRefunded = o.paymentStatus === 'refunded' || Boolean(o.refundId) || Boolean(o.paymentInfo?.refund_id);
+                if (isAlreadyRefunded) {
+                  return (
+                    <div className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl shadow-2xs text-center flex items-center justify-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      Cancellation Refunded
+                    </div>
+                  );
+                }
+                return (
+                  <button
+                    onClick={() => setShowCancelRefundModal(true)}
+                    disabled={isProcessingCancelRefund}
+                    className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-sm transition-colors text-center flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="Process refund for this cancelled order"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Process Cancellation Refund
+                  </button>
+                );
+              })()
+            ) : (
+              <button
+                onClick={() => setShowRefundModal(true)}
+                className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-zinc-50 text-center"
+              >
+                Refund
+              </button>
+            )}
             <button
               onClick={() => {
                 setEditFormData(o.shippingAddress || {});
@@ -834,10 +1024,37 @@ export default function AdminOrders() {
                                 </div>
                               );
                             } else {
+                              const refundDifference = Math.abs(diff);
+                              const diffRefund = o.returnRequest?.differentialRefund;
+                              const isDiffRefunded = diffRefund?.status === 'REFUNDED' || diffRefund?.refunded;
+
+                              if (isDiffRefunded) {
+                                return (
+                                  <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span>Exchange Difference Refunded: ₹{diffRefund?.amount || refundDifference}</span>
+                                    <span className="text-[10px] text-emerald-700 font-normal">
+                                      ({diffRefund?.refundId ? `ID: ${diffRefund.refundId}` : 'Confirmed'})
+                                    </span>
+                                  </div>
+                                );
+                              }
+
                               return (
-                                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">
-                                  <span>Refund Due to Customer: ₹{Math.abs(diff)}</span>
-                                  <span className="text-[10px] text-blue-700 font-normal">(Credit / UPI Refund upon delivery)</span>
+                                <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-xs font-bold">
+                                    <span>Refund Due to Customer: ₹{refundDifference}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRefundExchangeDifference(o, refundDifference)}
+                                    disabled={isProcessingDiffRefund}
+                                    className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                                    title="Process refund for exchange price difference"
+                                  >
+                                    {isProcessingDiffRefund ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                                    Refund Exchange Difference (₹{refundDifference})
+                                  </button>
                                 </div>
                               );
                             }
@@ -948,9 +1165,117 @@ export default function AdminOrders() {
                 {o.discountAmount > 0 && <div className="flex justify-between text-text-muted"><p>Discount ({o.promotionCodeApplied})</p><p>-{formatCurrency(o.discountAmount)}</p></div>}
                 <div className="flex justify-between text-text-muted"><p>Shipping</p><p>{formatCurrency(o.shippingCost)}</p></div>
                 <div className="flex justify-between text-text-muted"><p>Tax</p><p>{formatCurrency(o.tax)}</p></div>
-                <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between font-bold text-base sm:text-lg text-text-dark">
-                  <p>Total</p><p>{formatCurrency(o.total)}</p>
-                </div>
+                {/* Payment Breakdown & Adjustments */}
+                {(() => {
+                  const isExchange = o.returnRequest?.type === 'EXCHANGE';
+                  const isReturn = o.returnRequest?.type === 'RETURN';
+
+                  // Exchange difference calculation
+                  const origP = Number(o.returnRequest?.originalPrice || o.returnRequest?.originalItem?.unitPrice || 0);
+                  const repP = Number(o.returnRequest?.replacementPrice || o.returnRequest?.exchangeItem?.price || origP);
+                  const diff = isExchange
+                    ? (typeof o.returnRequest?.priceDifference === 'number' ? o.returnRequest.priceDifference : (repP - origP))
+                    : 0;
+
+                  const hasExchangeAdj = isExchange && diff !== 0;
+
+                  // Status of exchange refund / collection
+                  const diffRefund = o.returnRequest?.differentialRefund;
+                  const diffPay = o.returnRequest?.differentialPayment;
+                  const isDiffRefunded = Boolean(
+                    diffRefund?.status === 'REFUNDED' ||
+                    diffRefund?.refunded ||
+                    diffPay?.status === 'REFUNDED' ||
+                    diffRefund?.refundId ||
+                    diffPay?.refundId ||
+                    o.statusHistory?.some(h => /exchange.*difference.*refund/i.test(h.note || ''))
+                  );
+                  const isDiffPaid = Boolean(
+                    diffPay?.status === 'PAID' ||
+                    diffPay?.paymentId
+                  );
+
+                  // Full Order Refund (Returns or Cancelled Orders)
+                  const isFullRefund = o.status === 'REFUNDED' || 
+                    (o.status === 'CANCELLED' && (o.paymentStatus === 'refunded' || Boolean(o.refundId))) ||
+                    (isReturn && (o.status === 'REFUNDED' || o.paymentStatus === 'refunded' || o.returnRequest?.status === 'COMPLETED'));
+
+                  const fullRefundAmount = Number(o.returnRequest?.refundAmount || o.total || 0);
+
+                  // Net / Adjusted Total calculation
+                  let netTotal = Number(o.total || 0);
+                  if (isFullRefund) {
+                    netTotal = 0;
+                  } else if (hasExchangeAdj) {
+                    netTotal = Math.max(0, Number(o.total || 0) + diff);
+                  }
+
+                  const hasAdjustment = hasExchangeAdj || isFullRefund;
+
+                  return (
+                    <>
+                      <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between font-bold text-sm text-text-dark">
+                        <p>{hasAdjustment ? 'Original Total' : 'Total'}</p>
+                        <p className={hasAdjustment ? 'line-through text-slate-400 font-semibold' : 'text-base sm:text-lg font-bold'}>
+                          {formatCurrency(o.total)}
+                        </p>
+                      </div>
+
+                      {/* Exchange Adjustment (Downgrade / Refund Due) */}
+                      {hasExchangeAdj && diff < 0 && (
+                        <div className="flex justify-between items-center text-xs text-blue-700 bg-blue-50/80 px-2.5 py-1.5 rounded-lg border border-blue-200 font-medium">
+                          <div>
+                            <span className="font-bold">Exchange Adjustment:</span>
+                            <span className="ml-1 text-[11px] font-bold">
+                              {isDiffRefunded ? '(Refunded ✓)' : '(Refund Pending)'}
+                            </span>
+                          </div>
+                          <p className="font-bold text-blue-800">
+                            -{formatCurrency(Math.abs(diff))}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Exchange Difference (Upgrade / Extra Due) */}
+                      {hasExchangeAdj && diff > 0 && (
+                        <div className="flex justify-between items-center text-xs text-purple-700 bg-purple-50/80 px-2.5 py-1.5 rounded-lg border border-purple-200 font-medium">
+                          <div>
+                            <span className="font-bold">Exchange Difference:</span>
+                            <span className="ml-1 text-[11px] font-bold">
+                              {isDiffPaid ? '(Paid Online ✓)' : diffPay?.method === 'COD' ? '(Collect on Delivery)' : '(Balance Due)'}
+                            </span>
+                          </div>
+                          <p className="font-bold text-purple-800">
+                            +{formatCurrency(diff)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Full Refund / Cancellation Refund */}
+                      {isFullRefund && (
+                        <div className="flex justify-between items-center text-xs text-rose-700 bg-rose-50/80 px-2.5 py-1.5 rounded-lg border border-rose-200 font-medium">
+                          <div>
+                            <span className="font-bold">Refunded Amount:</span>
+                            <span className="ml-1 text-[11px] font-bold">
+                              {o.refundId ? `(ID: ${o.refundId})` : '(Completed ✓)'}
+                            </span>
+                          </div>
+                          <p className="font-bold text-rose-800">
+                            -{formatCurrency(fullRefundAmount)}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Net Adjusted Total */}
+                      {hasAdjustment && (
+                        <div className="border-t border-slate-200 mt-2 pt-2 flex justify-between font-extrabold text-base sm:text-lg text-emerald-800 bg-emerald-50/50 -mx-2 px-2 py-1 rounded-lg">
+                          <p>{isFullRefund ? 'Net Amount Retained' : 'Net Adjusted Total'}</p>
+                          <p>{formatCurrency(netTotal)}</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
@@ -1166,6 +1491,40 @@ export default function AdminOrders() {
               <div className="flex gap-3">
                 <button onClick={() => setShowRefundModal(false)} className="flex-1 py-2.5 border border-slate-200 text-text-dark font-bold rounded-xl hover:bg-zinc-50 text-sm">Cancel</button>
                 <button onClick={executeRefund} className="flex-1 py-2.5 bg-error text-white font-bold rounded-xl hover:bg-red-600 text-sm">Refund</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancellation Refund Modal */}
+        {showCancelRefundModal && selectedOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 p-5 sm:p-6 text-center">
+              <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-amber-200">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-text-dark mb-2">Process Cancellation Refund?</h2>
+              <p className="text-xs sm:text-sm text-text-muted mb-4">
+                Process a cancellation refund of <span className="font-bold text-slate-800">₹{selectedOrder.total}</span> to the customer for cancelled order <span className="font-bold text-slate-800">#{selectedOrder.orderNumber || selectedOrder.id}</span>.
+              </p>
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mb-6 text-left">
+                🛡️ Status will only be marked as refunded after successful payment gateway verification. Duplicate attempts are prevented.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCancelRefundModal(false)}
+                  disabled={isProcessingCancelRefund}
+                  className="flex-1 py-2.5 border border-slate-200 text-text-dark font-bold rounded-xl hover:bg-zinc-50 text-sm disabled:opacity-50"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={executeCancellationRefund}
+                  disabled={isProcessingCancelRefund}
+                  className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {isProcessingCancelRefund ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Confirm Refund'}
+                </button>
               </div>
             </div>
           </div>

@@ -200,14 +200,14 @@ export default function ProductCard({ product, onQuickView }) {
 
         </div>
 
-        {/* Add to Bag Button */}
+        {/* View Product Button */}
         <Link
           to={`/product/${createSlug(activeProduct.name || activeProduct.title) || activeProduct.id}`}
-          aria-label="Add To Cart"
-          className="hidden sm:flex w-full py-1.5 sm:py-2.5 rounded-full bg-slate-900 hover:bg-[#FF7A59] text-white font-extrabold text-[10px] sm:text-xs shadow-md hover:shadow-lg transition-all duration-200 items-center justify-center gap-1.5 sm:gap-2 mt-2 active:scale-95 cursor-pointer"
+          aria-label="View Product"
+          className="flex w-full py-1.5 sm:py-2.5 rounded-full bg-slate-900 hover:bg-[#FF7A59] text-white font-extrabold text-[10px] sm:text-xs shadow-md hover:shadow-lg transition-all duration-200 items-center justify-center gap-1.5 sm:gap-2 mt-2 active:scale-95 cursor-pointer"
         >
-          <ShoppingBag className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-          <span>Add to Cart</span>
+          <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          <span>View Product</span>
         </Link>
 
       </div>

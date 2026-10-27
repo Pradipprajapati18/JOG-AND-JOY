@@ -1,8 +1,47 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight, Loader2, Phone, MapPin, Eye, EyeOff } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Loader2, Phone, MapPin, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import emailjs from '@emailjs/browser';
+
+const INDIAN_STATES = [
+  'Andaman and Nicobar Islands',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chandigarh',
+  'Chhattisgarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jammu and Kashmir',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Ladakh',
+  'Lakshadweep',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Puducherry',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal'
+];
 
 export default function CustomerLoginModal({ isOpen, onClose }) {
   const { login, register, resetPassword, updateUser } = useAuth();
@@ -172,10 +211,12 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
             </button>
           )}
 
-          <div className="overflow-y-auto p-6 sm:p-8 w-full relative">
+          <div className="overflow-y-auto overflow-x-hidden p-6 sm:p-8 w-full relative">
             {/* Decorative blurs */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFD5A1] rounded-full blur-3xl opacity-30 -z-10 -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-            <div className="absolute top-10 left-0 w-24 h-24 bg-[#AEE6FF] rounded-full blur-3xl opacity-30 -z-10 -translate-x-1/2 pointer-events-none"></div>
+            <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFD5A1] rounded-full blur-3xl opacity-30 -translate-y-1/2 translate-x-1/4"></div>
+              <div className="absolute top-10 left-0 w-24 h-24 bg-[#AEE6FF] rounded-full blur-3xl opacity-30 -translate-x-1/2"></div>
+            </div>
 
             <div className="mb-8 pr-8">
             <h2 className="text-3xl font-black text-[#1e293b] mb-2 tracking-tight">
@@ -269,15 +310,23 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                     </div>
                     <div>
                       <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">State</label>
-                      <input
-                        type="text"
-                        name="state"
-                        placeholder="State"
-                        value={formData.state}
-                        onChange={handleChange}
-                        required={view === 'register'}
-                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
-                      />
+                      <div className="relative">
+                        <select
+                          name="state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          required={view === 'register'}
+                          className={`w-full px-4 py-3.5 pr-10 rounded-2xl border-2 border-slate-100 bg-slate-50/50 ${formData.state ? 'text-slate-900' : 'text-slate-400'} text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200 appearance-none cursor-pointer`}
+                        >
+                          <option value="" disabled>Select State</option>
+                          {INDIAN_STATES.map((s) => (
+                            <option key={s} value={s} className="text-slate-900 bg-white">
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
@@ -334,15 +383,23 @@ export default function CustomerLoginModal({ isOpen, onClose }) {
                     </div>
                     <div>
                       <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1.5 ml-1">State</label>
-                      <input
-                        type="text"
-                        name="state"
-                        placeholder="State"
-                        value={formData.state}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 text-slate-900 text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200"
-                      />
+                      <div className="relative">
+                        <select
+                          name="state"
+                          value={formData.state}
+                          onChange={handleChange}
+                          required
+                          className={`w-full px-4 py-3.5 pr-10 rounded-2xl border-2 border-slate-100 bg-slate-50/50 ${formData.state ? 'text-slate-900' : 'text-slate-400'} text-sm font-semibold focus:outline-none focus:border-[#EF4A45] focus:ring-4 focus:ring-[#EF4A45]/10 focus:bg-white transition-all duration-200 appearance-none cursor-pointer`}
+                        >
+                          <option value="" disabled>Select State</option>
+                          {INDIAN_STATES.map((s) => (
+                            <option key={s} value={s} className="text-slate-900 bg-white">
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 

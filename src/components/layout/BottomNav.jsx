@@ -27,7 +27,7 @@ export default function BottomNav({ onOpenProfile }) {
     else if (currentPath === '/products') setActiveIndex(1);
     else if (currentPath === '/wishlist') setActiveIndex(2);
     else if (currentPath === '/cart' || currentPath === '/checkout') setActiveIndex(3);
-    // Profile is an action
+    else if (currentPath.startsWith('/account')) setActiveIndex(4);
   }, [location.pathname]);
 
   const handleNavClick = (index, item) => {

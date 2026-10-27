@@ -439,21 +439,9 @@
   outline-offset: 3px;
 }
 
-/* Floating Search Bar Overlay matching the brand styles */
+/* Floating Search Bar Overlay animation */
 .card-nav-search-overlay {
-  position: absolute;
-  top: 100%;
-  left: 5%;
-  right: 5%;
-  background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(239, 74, 69, 0.15);
-  border-radius: 1.25rem;
-  box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.1);
-  padding: 0.75rem;
-  z-index: 15;
-  animation: smSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: smSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   pointer-events: auto;
 }
 
@@ -467,60 +455,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.search-form {
-  display: flex;
-  align-items: center;
-  position: relative;
-  width: 100%;
-}
-
-.search-icon {
-  position: absolute;
-  left: 1rem;
-  width: 18px;
-  height: 18px;
-  color: #94a3b8;
-}
-
-.search-input {
-  width: 100%;
-  padding: 0.65rem 6.5rem 0.65rem 2.75rem;
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 9999px;
-  color: #1e293b;
-  font-size: 0.875rem;
-  font-weight: 700;
-  outline: none;
-  transition: all 0.2s ease;
-}
-
-.search-input:focus {
-  border-color: #EF4A45;
-  background-color: white;
-  box-shadow: 0 0 0 3px rgba(239, 74, 69, 0.1);
-}
-
-.search-submit {
-  position: absolute;
-  right: 0.35rem;
-  padding: 0.4rem 1.2rem;
-  font-size: 0.75rem;
-  font-weight: 800;
-  background-color: #EF4A45;
-  color: white;
-  border: none;
-  border-radius: 9999px;
-  cursor: pointer;
-  box-shadow: 0 2px 5px rgba(239, 74, 69, 0.2);
-  transition: all 0.2s ease;
-}
-
-.search-submit:hover {
-  background-color: #dc2626;
-  transform: translateY(-0.5px);
 }
 
 /* Mobile responsive sidebar width overrides */

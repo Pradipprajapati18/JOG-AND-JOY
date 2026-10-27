@@ -1,6 +1,6 @@
 import React from 'react';
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { Package, MapPin, User, Shield, LogOut, ChevronRight } from 'lucide-react';
+import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Package, MapPin, User, Shield, LogOut, ChevronRight, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import CustomerOrders from './CustomerOrders';
 import CustomerOrderDetails from './CustomerOrderDetails';
@@ -11,6 +11,7 @@ import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 export default function CustomerAccount() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isOrderDetailsPage = location.pathname.includes('/orders/');
   if (!user && !isOrderDetailsPage) {
@@ -34,6 +35,24 @@ export default function CustomerAccount() {
       <ClothDoodlesBackground />
 
       <div className="max-w-6xl mx-auto relative z-10">
+        {/* Back Button */}
+        <div className="mb-4 sm:mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1);
+              } else {
+                navigate('/');
+              }
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/90 hover:bg-white text-slate-700 hover:text-[#EF4A45] font-bold text-xs sm:text-sm shadow-xs border border-amber-100/80 transition-all hover:shadow-sm group cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500 group-hover:text-[#EF4A45] group-hover:-translate-x-0.5 transition-all" />
+            <span>Back</span>
+          </button>
+        </div>
+
         <div className="flex flex-col md:flex-row gap-8">
           
           {/* Sidebar Navigation */}

@@ -10,6 +10,18 @@ import { useWishlist } from '../../context/WishlistContext';
 import { useAuth } from '../../context/AuthContext';
 import { useOrdersList } from '../../queries/useOrders';
 import { usePromotionsList } from '../../queries/usePromotions';
+import { useCategoriesList } from '../../queries/useCategories';
+
+const POPULAR_SEARCH_CATEGORIES = [
+  { id: 'cat-1', label: 'Kids T-shirt', icon: '👕' },
+  { id: 'cat-2', label: 'Kids joggers and tracks', icon: '👖' },
+  { id: 'cat-3', label: 'Kids shorts and bermudas', icon: '🩳' },
+  { id: 'cat-4', label: 'Girl frocks', icon: '👗' },
+  { id: 'cat-5', label: 'Kids night suits', icon: '🌙' },
+  { id: 'cat-6', label: 'Men tracks and joggers', icon: '🏃' },
+  { id: 'cat-7', label: 'Men shorts and bermuda', icon: '🩳' },
+  { id: 'cat-8', label: 'Men boxers', icon: '🩲' },
+];
 
 import './CardNav.css';
 import './StaggeredMenu.css'; 
@@ -33,9 +45,41 @@ const CardNav = ({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const notifRef = useRef(null);
   const dropdownRef = useRef(null);
+  const searchRef = useRef(null);
+  const searchBtnRef = useRef(null);
   const [dropdownPos, setDropdownPos] = useState({ top: 80, right: 24 });
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 640 : false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { data: categoriesResponse } = useCategoriesList();
+  const dbCategories = categoriesResponse?.data || [];
+
+  const allCategories = useMemo(() => {
+    if (dbCategories && dbCategories.length > 0) {
+      const active = dbCategories.filter(c => c.status !== 'Inactive' && c.status !== 'Archived');
+      if (active.length > 0) return active;
+    }
+    return POPULAR_SEARCH_CATEGORIES;
+  }, [dbCategories]);
+
+  const displayedCategories = useMemo(() => {
+    if (!searchQuery.trim()) return allCategories;
+    const q = searchQuery.toLowerCase().trim();
+    const matched = allCategories.filter(c => (c.label || c.name || '').toLowerCase().includes(q));
+    return matched.length > 0 ? matched : allCategories;
+  }, [allCategories, searchQuery]);
+
+  const hasDirectCategoryMatch = useMemo(() => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return allCategories.some(c => (c.label || c.name || '').toLowerCase().includes(q));
+  }, [allCategories, searchQuery]);
+
+  const handleCategoryClick = (categoryLabel) => {
+    navigate(`/products?category=${encodeURIComponent(categoryLabel)}`);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  };
   const [isScrolled, setIsScrolled] = useState(false);
   const [textLines, setTextLines] = useState(['Menu', 'Close']);
 
@@ -161,10 +205,19 @@ const CardNav = ({
       ) {
         setIsNotifOpen(false);
       }
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(e.target) &&
+        searchBtnRef.current &&
+        !searchBtnRef.current.contains(e.target)
+      ) {
+        setIsSearchOpen(false);
+      }
     };
     const handleEscape = (e) => {
       if (e.key === 'Escape') {
         setIsNotifOpen(false);
+        setIsSearchOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -177,7 +230,7 @@ const CardNav = ({
       document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [isNotifOpen]);
+  }, [isNotifOpen, isSearchOpen]);
 
   const navRef = useRef(null);
   const cardsRef = useRef([]);
@@ -496,6 +549,7 @@ const CardNav = ({
             </Link>
 
             <button
+              ref={searchBtnRef}
               onClick={() => {
                 setIsSearchOpen(!isSearchOpen);
                 if (isNotifOpen) setIsNotifOpen(false);
@@ -752,23 +806,116 @@ const CardNav = ({
         </div>
       </nav>
 
-      {/* Floating Search Bar Overlay */}
+      {/* Backdrop for click outside dismiss */}
       {isSearchOpen && (
-        <div className="card-nav-search-overlay" style={{position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', padding: '16px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'}}>
-          <form onSubmit={handleSearchSubmit} className="search-form flex items-center gap-2">
-            <Search className="search-icon w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-              className="search-input flex-1 p-2 border border-slate-200 rounded outline-none font-medium"
-            />
-            <button type="submit" className="search-submit px-4 py-2 bg-slate-900 text-white rounded font-bold text-sm">
-              Search
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[99]"
+          onClick={() => setIsSearchOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Floating Search Bar Overlay with Categories */}
+      {isSearchOpen && (
+        <div 
+          ref={searchRef}
+          className="card-nav-search-overlay w-[calc(100%-24px)] max-w-2xl mx-auto"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 10px)',
+            left: '12px',
+            right: '12px',
+            margin: '0 auto',
+            background: '#ffffff',
+            borderRadius: '1.5rem',
+            padding: '16px 18px',
+            zIndex: 100,
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.06)',
+          }}
+        >
+          {/* Search Form */}
+          <div className="flex items-center gap-2">
+            <form onSubmit={handleSearchSubmit} className="flex-1 min-w-0 relative flex items-center bg-slate-50 hover:bg-slate-100/60 focus-within:bg-white border-2 border-slate-200 focus-within:border-[#EF4A45] focus-within:ring-4 focus-within:ring-[#EF4A45]/15 rounded-full transition-all duration-200 shadow-xs px-3 sm:px-4 py-1 sm:py-1.5">
+              <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[#EF4A45] shrink-0 mr-2 sm:mr-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search products by title, keyword..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+                style={{ outline: 'none', boxShadow: 'none' }}
+                className="w-full bg-transparent border-0 outline-none focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 font-medium sm:font-semibold text-xs sm:text-sm text-slate-800 placeholder-slate-400 min-w-0 py-1"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200/60 transition-colors mr-1 cursor-pointer shrink-0 focus:outline-none"
+                  title="Clear search"
+                  style={{ outline: 'none' }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-4 sm:px-5 py-1.5 sm:py-2 bg-[#EF4A45] hover:bg-[#d83d38] text-white rounded-full font-black text-xs sm:text-sm shadow-sm transition-all active:scale-95 shrink-0 cursor-pointer ml-1 focus:outline-none"
+                style={{ outline: 'none' }}
+              >
+                Search
+              </button>
+            </form>
+
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(false)}
+              className="p-2 sm:p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors shrink-0 cursor-pointer focus:outline-none"
+              title="Close search"
+              style={{ outline: 'none' }}
+            >
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-          </form>
+          </div>
+
+          {/* Categories Section */}
+          <div className="mt-3.5 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-2.5 px-0.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#EF4A45]" />
+                {searchQuery.trim() && hasDirectCategoryMatch ? 'Matching Categories' : 'Popular Categories'}
+              </span>
+              <Link
+                to="/products"
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  setSearchQuery('');
+                }}
+                className="text-[11px] font-bold text-[#EF4A45] hover:underline"
+              >
+                View All Catalog →
+              </Link>
+            </div>
+
+            {searchQuery.trim() && !hasDirectCategoryMatch && (
+              <p className="text-[11px] text-slate-400 font-medium px-0.5 mb-2 italic">
+                Press Enter to search all products for "{searchQuery}". Or explore categories:
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto hide-scrollbar py-0.5">
+              {displayedCategories.map((cat) => (
+                <button
+                  key={cat.id || cat.label}
+                  type="button"
+                  onClick={() => handleCategoryClick(cat.label || cat.name)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-full bg-amber-50/80 hover:bg-[#EF4A45] text-slate-700 hover:text-white border border-amber-200/70 hover:border-[#EF4A45] text-xs font-bold transition-all hover:scale-103 shadow-2xs cursor-pointer group shrink-0"
+                >
+                  <span className="text-sm">{cat.icon || '🛍️'}</span>
+                  <span className="group-hover:text-white transition-colors">{cat.label || cat.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
