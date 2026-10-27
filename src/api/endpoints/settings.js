@@ -5,7 +5,14 @@ const TABLE = 'settings';
 export const settingsApi = {
   get: async () => {
     const list = await mockApi.list(TABLE);
-    return list.data[0] || null;
+    const item = list.data[0] || null;
+    if (item && !item.filterPanels && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const stored = localStorage.getItem('jj_filter_panels');
+        if (stored) item.filterPanels = JSON.parse(stored);
+      } catch {}
+    }
+    return item;
   },
   update: async (patch) => {
     const list = await mockApi.list(TABLE);

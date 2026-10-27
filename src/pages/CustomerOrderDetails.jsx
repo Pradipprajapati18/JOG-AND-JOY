@@ -987,8 +987,8 @@ export default function CustomerOrderDetails() {
               <Download className="w-3.5 h-3.5 text-slate-500" /> Invoice
             </a>
           )}
-          {/* Pre-Fulfillment Cancellation Button */}
-          {['PROCESSING', 'CONFIRMED', 'PENDING', 'PLACED'].includes((order.status || '').toUpperCase()) && !order.returnRequest && (
+          {/* Pre-Fulfillment Cancellation Button: Available while order is not shipped (before/during confirmation & packed) */}
+          {['PROCESSING', 'CONFIRMED', 'PENDING', 'PLACED', 'PACKED', 'ON_HOLD'].includes((order.status || '').toUpperCase()) && !order.returnRequest && (
             <button
               onClick={() => setShowCancelModal(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs hover:bg-rose-100 transition-colors shadow-2xs"

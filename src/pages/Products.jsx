@@ -157,12 +157,13 @@ export default function Products({ pageCategory = null }) {
 
   const ageGroupOptions = useMemo(() => {
     if (effectiveFilterPanels?.ageGroups && effectiveFilterPanels.ageGroups.length > 0) {
-      return effectiveFilterPanels.ageGroups;
+      return effectiveFilterPanels.ageGroups.map(a => typeof a === 'string' ? a : (a.label || a.name || String(a)));
     }
     const ages = new Set(['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years']);
     combinedProducts.forEach(p => {
       if (p.ageGroup) {
-        ages.add(p.ageGroup.replace('–', '-'));
+        const agStr = typeof p.ageGroup === 'string' ? p.ageGroup.replace('–', '-') : (p.ageGroup.label || String(p.ageGroup));
+        ages.add(agStr);
       }
     });
     return Array.from(ages).sort();
@@ -466,17 +467,21 @@ export default function Products({ pageCategory = null }) {
                 </button>
                 {expandedSections.ageGroup && (
                   <div className="p-5 space-y-3">
-                    {ageGroupOptions.map((age) => (
-                      <label key={age} className="flex items-center gap-3 group cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.ageGroups.includes(age)}
-                          onChange={() => handleFilterChange('ageGroups', age)}
-                          className="w-4 h-4 rounded border-slate-300 text-[#EF4A45] focus:ring-[#EF4A45] cursor-pointer"
-                        />
-                        <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{age}</span>
-                      </label>
-                    ))}
+                    {ageGroupOptions.map((age) => {
+                      const label = typeof age === 'string' ? age : (age.label || age.name || String(age));
+                      const key = typeof age === 'string' ? age : (age.id || label);
+                      return (
+                        <label key={key} className="flex items-center gap-3 group cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.ageGroups.includes(label)}
+                            onChange={() => handleFilterChange('ageGroups', label)}
+                            className="w-4 h-4 rounded border-slate-300 text-[#EF4A45] focus:ring-[#EF4A45] cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{label}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 )}
               </div>

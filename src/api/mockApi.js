@@ -970,6 +970,16 @@ export async function update(table, id, patch) {
     data = res.data;
     if (res.error) {
       console.warn(`Supabase Update Note [${table}]:`, res.error.message);
+      if (table === 'settings' && updateData.filterPanels && res.error.message?.includes('filterPanels')) {
+        const fallbackUpdate = { ...updateData };
+        delete fallbackUpdate.filterPanels;
+        try {
+          const retryRes = await supabase.from('settings').update(fallbackUpdate).eq('id', id).select();
+          if (retryRes.data && retryRes.data.length > 0) {
+            data = [{ ...retryRes.data[0], filterPanels: updateData.filterPanels }];
+          }
+        } catch {}
+      }
     }
   } catch (err) {
     console.warn(`Supabase Update Exception [${table}]:`, err?.message || err);

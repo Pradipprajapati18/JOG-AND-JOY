@@ -68,8 +68,8 @@ BEGIN
     END IF;
   END IF;
 
-  -- 5. Order eligibility check: Can ONLY cancel pre-dispatch orders
-  IF v_order.status NOT IN ('PROCESSING', 'CONFIRMED', 'PENDING', 'ON_HOLD') THEN
+  -- 5. Order eligibility check: Can ONLY cancel pre-dispatch orders (before order is shipped)
+  IF v_order.status NOT IN ('PROCESSING', 'CONFIRMED', 'PENDING', 'PLACED', 'PACKED', 'ON_HOLD') THEN
     IF v_order.status = 'CANCELLED' THEN
       RAISE EXCEPTION 'This order has already been cancelled.';
     ELSIF v_order.status IN ('SHIPPED', 'DELIVERED') THEN

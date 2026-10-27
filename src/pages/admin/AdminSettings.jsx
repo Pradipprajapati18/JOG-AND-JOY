@@ -153,7 +153,7 @@ export default function AdminSettings() {
     e?.preventDefault();
     const trimmed = newAgeGroup.trim();
     if (!trimmed) return;
-    if ((currentFilters.ageGroups || []).some(a => a.toLowerCase() === trimmed.toLowerCase())) {
+    if ((currentFilters.ageGroups || []).some(a => (typeof a === 'string' ? a : (a.label || a.name || '')).toLowerCase() === trimmed.toLowerCase())) {
       addToast('This age group already exists', 'error');
       return;
     }
@@ -165,12 +165,15 @@ export default function AdminSettings() {
     addToast(`Added "${trimmed}" to age groups`, 'success');
   };
 
-  const handleDeleteAgeGroup = (age) => {
+  const handleDeleteAgeGroup = (targetKey) => {
     updateFilterPanels(prev => ({
       ...prev,
-      ageGroups: (prev.ageGroups || []).filter(a => a !== age)
+      ageGroups: (prev.ageGroups || []).filter(a => {
+        const key = typeof a === 'string' ? a : (a.id || a.label);
+        return key !== targetKey && a !== targetKey;
+      })
     }));
-    addToast(`Removed "${age}"`, 'info');
+    addToast(`Removed age group`, 'info');
   };
 
   const handleAddPriceRange = (e) => {
@@ -400,22 +403,26 @@ export default function AdminSettings() {
                       {(currentFilters.ageGroups || []).length === 0 ? (
                         <span className="text-xs text-slate-400 italic">No age groups configured. Add one below.</span>
                       ) : (
-                        (currentFilters.ageGroups || []).map((age) => (
-                          <div 
-                            key={age}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-2xs group"
-                          >
-                            <span>{age}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteAgeGroup(age)}
-                              className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-0.5 rounded transition-colors cursor-pointer"
-                              title={`Delete ${age}`}
+                        (currentFilters.ageGroups || []).map((age) => {
+                          const label = typeof age === 'string' ? age : (age.label || age.name || 'Age Group');
+                          const key = typeof age === 'string' ? age : (age.id || age.label);
+                          return (
+                            <div 
+                              key={key}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 shadow-2xs group"
                             >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))
+                              <span>{label}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAgeGroup(key)}
+                                className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-0.5 rounded transition-colors cursor-pointer"
+                                title={`Delete ${label}`}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })
                       )}
                     </div>
 
