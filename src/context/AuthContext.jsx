@@ -14,7 +14,11 @@ export const AuthProvider = ({ children }) => {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error("Error getting session:", sessionError);
+          console.warn("Session expired or invalid, clearing stale credentials:", sessionError.message);
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch {}
+          setUser(null);
           setLoading(false);
           return;
         }
@@ -22,10 +26,15 @@ export const AuthProvider = ({ children }) => {
         if (session?.user) {
           await fetchUserProfile(session.user.id);
         } else {
+          setUser(null);
           setLoading(false);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.warn('Error initializing auth:', error);
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch {}
+        setUser(null);
         setLoading(false);
       }
     };
@@ -37,8 +46,15 @@ export const AuthProvider = ({ children }) => {
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           await fetchUserProfile(session.user.id);
-        } else if (event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
           setUser(null);
+          setLoading(false);
+        } else if (event === 'TOKEN_REFRESHED' && !session) {
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch {}
+          setUser(null);
+          setLoading(false);
         }
       }
     );

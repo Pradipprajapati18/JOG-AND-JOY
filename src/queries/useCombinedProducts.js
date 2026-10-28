@@ -4,7 +4,7 @@ import { useCategoriesList } from './useCategories';
 import { normalizeColor } from '../utils/helpers';
 
 export function useCombinedProducts() {
-  const { data: productsData, isLoading: isProductsLoading } = useProductsList();
+  const { data: productsData, isLoading: isProductsLoading } = useProductsList({ pageSize: 1000 });
   const { data: categoriesResponse, isLoading: isCategoriesLoading } = useCategoriesList();
   
   const combinedProducts = useMemo(() => {

@@ -7,11 +7,11 @@ import CustomDropdown from '../components/ui/CustomDropdown';
 import ClothDoodlesBackground from '../components/ui/ClothDoodlesBackground';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCategoriesList } from '../queries/useCategories';
+import { useSettings } from '../queries/useSettings';
 import ShopByAge from '../components/home/ShopByAge';
 import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
 import { normalizeColor } from '../utils/helpers';
-
-
+import { matchesAge, matchesColor, matchesCategory, matchesPrice } from '../utils/filterHelpers';
 
 const kidsSortOptions = [
   { label: 'Recommended', value: 'Recommended' },
@@ -23,39 +23,76 @@ const kidsSortOptions = [
 
 export default function KidsPage() {
   const [searchParams] = useSearchParams();
-  const initialGender = searchParams.get('gender');
-  const ageParam = searchParams.get('age');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     productType: true,
     price: true,
     ageGroup: true,
-    gender: true,
-    size: true,
     color: true
   });
 
   const [filters, setFilters] = useState({
     types: [],
     prices: [],
-    ageGroups: ageParam ? [ageParam.replace('–', '-')] : [],
-    sizes: [],
+    ageGroups: [],
     colors: []
   });
-
-  useEffect(() => {
-    setCurrentPage(1);
-    const newAge = searchParams.get('age');
-    if (newAge) {
-      setFilters(prev => ({ ...prev, ageGroups: [newAge.replace('–', '-')] }));
-    }
-  }, [searchParams]);
 
   const [sortBy, setSortBy] = useState('Recommended');
   const [currentPage, setCurrentPage] = useState(1);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const productsPerPage = 12;
   const topControlsRef = useRef(null);
+
+  // Settings & Custom Filter Panels
+  const { data: settingsData } = useSettings();
+  const [localFilterPanels, setLocalFilterPanels] = useState(() => {
+    try {
+      const stored = localStorage.getItem('jj_filter_panels');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail) {
+        setLocalFilterPanels(e.detail);
+      } else {
+        try {
+          const stored = localStorage.getItem('jj_filter_panels');
+          if (stored) setLocalFilterPanels(JSON.parse(stored));
+        } catch {}
+      }
+    };
+    window.addEventListener('jj_filter_panels_updated', handleUpdate);
+    return () => window.removeEventListener('jj_filter_panels_updated', handleUpdate);
+  }, []);
+
+  const effectiveFilterPanels = settingsData?.filterPanels || localFilterPanels || null;
+
+  useEffect(() => {
+    setCurrentPage(1);
+    const newAge = searchParams.get('age');
+    const cat = searchParams.get('category');
+    const color = searchParams.get('color');
+
+    setFilters(prev => {
+      const updated = { ...prev };
+      if (newAge) {
+        const norm = newAge.replace('–', '-');
+        if (!updated.ageGroups.includes(norm)) updated.ageGroups = [norm];
+      }
+      if (cat && cat !== 'All') {
+        if (!updated.types.includes(cat)) updated.types = [cat];
+      }
+      if (color) {
+        if (!updated.colors.includes(color)) updated.colors = [color];
+      }
+      return updated;
+    });
+  }, [searchParams]);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -78,106 +115,153 @@ export default function KidsPage() {
         : [...prev[category], value];
       return { ...prev, [category]: updated };
     });
-    setCurrentPage(1); // Reset page on filter change
+    setCurrentPage(1);
   };
 
   const { combinedProducts, isLoading } = useCombinedProducts();
-
   const kidsProducts = combinedProducts;
+
+  const { data: categoriesResponse } = useCategoriesList();
+  const dbCategories = useMemo(() => categoriesResponse?.data || [], [categoriesResponse?.data]);
+
+  const productTypes = useMemo(() => {
+    if (effectiveFilterPanels?.categories && effectiveFilterPanels.categories.length > 0) {
+      return effectiveFilterPanels.categories.map(c => {
+        const label = typeof c === 'string' ? c : c.label;
+        const id = typeof c === 'string' ? c : (c.id || c.label);
+        const count = kidsProducts.filter(p => 
+          p.categoryId === id || 
+          p.category === label || 
+          p.categoryLabel === label ||
+          (p.category || '').toLowerCase() === label.toLowerCase()
+        ).length;
+        return { id, label, count };
+      });
+    }
+
+    if (dbCategories && dbCategories.length > 0) {
+      return dbCategories.map(c => ({
+        id: c.label,
+        label: c.label,
+        count: kidsProducts.filter(p => p.categoryId === c.id || p.category === c.label).length
+      }));
+    }
+    const catMap = new Map();
+    kidsProducts.forEach(p => {
+      const cat = p.category || p.categoryLabel;
+      if (cat) {
+        catMap.set(cat, (catMap.get(cat) || 0) + 1);
+      }
+    });
+    return Array.from(catMap.entries()).map(([label, count]) => ({
+      id: label,
+      label,
+      count
+    }));
+  }, [effectiveFilterPanels, dbCategories, kidsProducts]);
+
+  const priceOptions = useMemo(() => {
+    if (effectiveFilterPanels?.priceRanges && effectiveFilterPanels.priceRanges.length > 0) {
+      return effectiveFilterPanels.priceRanges;
+    }
+    return [
+      { id: 'low', label: 'Under ₹499', min: 0, max: 499 },
+      { id: 'mid', label: '₹500 - ₹999', min: 500, max: 999 },
+      { id: 'high', label: 'Over ₹1000', min: 1000, max: 999999 }
+    ];
+  }, [effectiveFilterPanels]);
+
+  const ageGroupOptions = useMemo(() => {
+    if (effectiveFilterPanels?.ageGroups && effectiveFilterPanels.ageGroups.length > 0) {
+      return effectiveFilterPanels.ageGroups.map(a => typeof a === 'string' ? a : (a.label || a.name || String(a)));
+    }
+    const ages = new Set(['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years']);
+    kidsProducts.forEach(p => {
+      if (p.ageGroup) {
+        const agStr = typeof p.ageGroup === 'string' ? p.ageGroup.replace('–', '-') : (p.ageGroup.label || String(p.ageGroup));
+        ages.add(agStr);
+      }
+    });
+    return Array.from(ages).sort();
+  }, [effectiveFilterPanels, kidsProducts]);
+
+  const colorOptions = useMemo(() => {
+    if (effectiveFilterPanels?.colors && effectiveFilterPanels.colors.length > 0) {
+      return effectiveFilterPanels.colors.map(c => typeof c === 'string' ? { name: c, hex: null } : c);
+    }
+    const colors = new Set();
+    kidsProducts.forEach(p => {
+      p.colors?.forEach(c => {
+        const colorName = normalizeColor(c).name;
+        if (colorName && colorName !== 'Standard') colors.add(colorName);
+      });
+      p.variants?.forEach(v => {
+        const colorName = normalizeColor({ hex: v.colorHex, name: v.colorName }).name;
+        if (colorName && colorName !== 'Standard') colors.add(colorName);
+      });
+    });
+    return Array.from(colors).sort().map(name => ({ name, hex: null }));
+  }, [effectiveFilterPanels, kidsProducts]);
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.types.length > 0 ||
+      filters.prices.length > 0 ||
+      filters.ageGroups.length > 0 ||
+      filters.colors.length > 0
+    );
+  }, [filters]);
+
+  const resetAllFilters = () => {
+    setFilters({
+      types: [],
+      prices: [],
+      ageGroups: [],
+      colors: []
+    });
+    setCurrentPage(1);
+  };
 
   const filteredProducts = useMemo(() => {
     let result = kidsProducts.filter((p) => {
-      const nameLower = p.name.toLowerCase();
-
       // Type Filter
-      let matchType = filters.types.length === 0;
-      if (!matchType) {
-        if (
-          filters.types.includes(p.categoryId) || 
-          filters.types.includes(p.categoryLabel) || 
-          filters.types.includes(p.category)
-        ) {
-          matchType = true;
-        }
-      }
+      if (!matchesCategory(p, filters.types, dbCategories)) return false;
 
       // Price Filter
-      let matchPrice = filters.prices.length === 0;
-      if (!matchPrice) {
-        if (filters.prices.includes('low') && p.price < 500) matchPrice = true;
-        if (filters.prices.includes('mid') && p.price >= 500 && p.price <= 999) matchPrice = true;
-        if (filters.prices.includes('high') && p.price > 999) matchPrice = true;
-      }
-
-
-
-      // Size Filter
-      let matchSize = filters.sizes.length === 0;
-      if (!matchSize) {
-        const productSizes = p.sizes || [];
-        const variantSizes = (p.variants || []).map(v => v.size).filter(Boolean);
-        const allSizes = [...new Set([...productSizes, ...variantSizes])];
-        matchSize = allSizes.some(s => filters.sizes.includes(s));
-      }
-
-      // Color Filter
-      let matchColor = filters.colors.length === 0;
-      if (!matchColor) {
-        const productColors = (p.colors || []).map(c => normalizeColor(c).name).filter(Boolean);
-        const variantColors = (p.variants || []).map(v => normalizeColor({ hex: v.colorHex, name: v.colorName }).name).filter(Boolean);
-        const allColors = [...new Set([...productColors, ...variantColors])];
-        matchColor = allColors.some(c => filters.colors.some(fc => fc.toLowerCase() === c.toLowerCase()));
-      }
+      if (!matchesPrice(p, filters.prices, priceOptions)) return false;
 
       // Age Group Filter
-      let matchAge = filters.ageGroups.length === 0;
-      if (!matchAge) {
-        matchAge = filters.ageGroups.some(selectedAge => {
-          const normAge = selectedAge.toLowerCase().replace('–', '-');
-          
-          if (p.ageGroup && p.ageGroup.toLowerCase().replace('–', '-') === normAge) {
-            return true;
-          }
+      if (!matchesAge(p, filters.ageGroups)) return false;
 
-          const allSizes = [
-            ...(p.sizes || []),
-            ...(p.variants || []).map(v => v.size)
-          ].filter(Boolean).map(s => s.toLowerCase().replace('–', '-'));
+      // Color Filter
+      if (!matchesColor(p, filters.colors)) return false;
 
-          if (normAge.includes('0-2')) {
-            return allSizes.some(s => s.includes('0-3') || s.includes('3-6') || s.includes('6-12') || s.includes('1-2') || s.includes('2-3') || s.includes('months') || s.includes('0-2'));
-          }
-          if (normAge.includes('3-5')) {
-            return allSizes.some(s => s.includes('3-4') || s.includes('4-5') || s.includes('5-6') || s.includes('3-5'));
-          }
-          if (normAge.includes('6-8')) {
-            return allSizes.some(s => s.includes('6-7') || s.includes('7-8') || s.includes('8-9') || s.includes('6-8'));
-          }
-          if (normAge.includes('9-12')) {
-            return allSizes.some(s => s.includes('9-10') || s.includes('10-11') || s.includes('11-12') || s.includes('9-12'));
-          }
-
-          return false;
-        });
-      }
-
-      return matchType && matchPrice && matchSize && matchColor && matchAge;
+      return true;
     });
+
+    const getPrice = (p) => {
+      const val = p.price ?? p.basePrice ?? 0;
+      return typeof val === 'number' ? val : (Number(String(val).replace(/[^0-9.]/g, '')) || 0);
+    };
 
     // Sort Logic
     if (sortBy === 'Price: Low to High') {
-      result.sort((a, b) => a.price - b.price);
+      result.sort((a, b) => getPrice(a) - getPrice(b));
     } else if (sortBy === 'Price: High to Low') {
-      result.sort((a, b) => b.price - a.price);
+      result.sort((a, b) => getPrice(b) - getPrice(a));
     } else if (sortBy === 'Newest Arrivals') {
-      result.sort((a, b) => (a.isNew === b.isNew ? 0 : a.isNew ? -1 : 1));
+      result.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        }
+        return (a.isNew === b.isNew ? 0 : a.isNew ? -1 : 1);
+      });
     } else if (sortBy === 'Rating: High to Low') {
-      // Mock sorting: just reverse the ID or mock rating
-      result.sort((a, b) => b.id.localeCompare(a.id));
+      result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
     return result;
-  }, [kidsProducts, filters, sortBy]);
+  }, [kidsProducts, filters, sortBy, priceOptions, dbCategories]);
 
   // Pagination Logic
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
@@ -203,55 +287,6 @@ export default function KidsPage() {
     }
     return pages;
   };
-
-  const { data: categoriesResponse } = useCategoriesList();
-  const dbCategories = categoriesResponse?.data || [];
-
-  const productTypes = useMemo(() => {
-    return dbCategories.map(c => ({
-      id: c.label,
-      label: c.label,
-      count: kidsProducts.filter(p => p.categoryId === c.id || p.category === c.label).length
-    }));
-  }, [dbCategories, kidsProducts]);
-
-
-
-  const ageGroupOptions = useMemo(() => {
-    const ages = new Set(['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years']);
-    kidsProducts.forEach(p => {
-      if (p.ageGroup) {
-        ages.add(p.ageGroup.replace('–', '-'));
-      }
-    });
-    return Array.from(ages).sort();
-  }, [kidsProducts]);
-
-  const sizeOptions = useMemo(() => {
-    const sizes = new Set();
-    kidsProducts.forEach(p => {
-      p.sizes?.forEach(s => sizes.add(s));
-      p.variants?.forEach(v => {
-        if (v.size && v.size !== 'Standard') sizes.add(v.size);
-      });
-    });
-    return Array.from(sizes).sort();
-  }, [kidsProducts]);
-
-  const colorOptions = useMemo(() => {
-    const colors = new Set();
-    kidsProducts.forEach(p => {
-      p.colors?.forEach(c => {
-        const colorName = normalizeColor(c).name;
-        if (colorName && colorName !== 'Standard') colors.add(colorName);
-      });
-      p.variants?.forEach(v => {
-        const colorName = normalizeColor({ hex: v.colorHex, name: v.colorName }).name;
-        if (colorName && colorName !== 'Standard') colors.add(colorName);
-      });
-    });
-    return Array.from(colors).sort();
-  }, [kidsProducts]);
 
   return (
     <div className="min-h-screen bg-[#FFF8EC] relative overflow-hidden pb-20">
@@ -357,8 +392,6 @@ export default function KidsPage() {
             Shop Kids Wear →
           </a>
         </div>
-
-
       </div>
 
       {/* Products Section Anchor */}
@@ -377,8 +410,9 @@ export default function KidsPage() {
             </div>
             {/* Mobile Filter Toggle */}
             <button 
+              type="button"
               onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-700"
+              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-700 cursor-pointer"
             >
               <SlidersHorizontal className="w-3.5 h-3.5" /> {showMobileFilters ? 'Hide Filters' : 'Filters'}
             </button>
@@ -398,149 +432,152 @@ export default function KidsPage() {
           {/* Left Sidebar Filters */}
           <div className={`lg:col-span-1 space-y-4 ${showMobileFilters ? 'block' : 'hidden lg:block'}`}>
 
+            {/* Active Filters Reset Bar */}
+            {hasActiveFilters && (
+              <div className="flex items-center justify-between p-3.5 bg-emerald-50 rounded-xl border border-emerald-200/80">
+                <span className="text-xs font-bold text-slate-700">Filters Active</span>
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="text-xs font-extrabold text-emerald-800 hover:underline cursor-pointer"
+                >
+                  Reset All
+                </button>
+              </div>
+            )}
+
             {/* Product Type Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('productType')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Product type</span>
-                {expandedSections.productType ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.productType && (
-                <div className="p-5 space-y-3">
-                  {productTypes.map((type) => (
-                    <label key={type.id} className="flex items-center justify-between group cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={filters.types.includes(type.id)}
-                          onChange={() => handleFilterChange('types', type.id)}
-                          className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                        />
-                        <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{type.label}</span>
-                      </div>
-                      <span className="text-xs font-bold text-slate-300">{type.count < 10 ? `0${type.count}` : type.count}</span>
-                    </label>
-                  ))}
-                  <button className="text-xs font-black text-slate-800 underline pt-2 hover:text-[#A7DEB9]">
-                    See More
-                  </button>
-                </div>
-              )}
-            </div>
+            {productTypes.length > 0 && (
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('productType')}
+                  className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-black text-slate-800">Product type</span>
+                  {expandedSections.productType ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {expandedSections.productType && (
+                  <div className="p-5 space-y-3 max-h-64 overflow-y-auto hide-scrollbar">
+                    {productTypes.map((type) => (
+                      <label key={type.id} className="flex items-center justify-between group cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={filters.types.includes(type.id)}
+                            onChange={() => handleFilterChange('types', type.id)}
+                            className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{type.label}</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-300">{type.count < 10 ? `0${type.count}` : type.count}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Price Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('price')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Price</span>
-                {expandedSections.price ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.price && (
-                <div className="p-5 space-y-3">
-                  {[
-                    { id: 'low', label: 'Under ₹499' },
-                    { id: 'mid', label: '₹500 - ₹999' },
-                    { id: 'high', label: 'Over ₹1000' }
-                  ].map((price) => (
-                    <label key={price.id} className="flex items-center gap-3 group cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.prices.includes(price.id)}
-                        onChange={() => handleFilterChange('prices', price.id)}
-                        className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                      />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{price.label}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-
+            {priceOptions.length > 0 && (
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('price')}
+                  className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-black text-slate-800">Price</span>
+                  {expandedSections.price ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {expandedSections.price && (
+                  <div className="p-5 space-y-3">
+                    {priceOptions.map((price) => (
+                      <label key={price.id} className="flex items-center gap-3 group cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filters.prices.includes(price.id)}
+                          onChange={() => handleFilterChange('prices', price.id)}
+                          className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
+                        />
+                        <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{price.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Age Group Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('ageGroup')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Age Group</span>
-                {expandedSections.ageGroup ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.ageGroup && (
-                <div className="p-5 space-y-3">
-                  {ageGroupOptions.map((age) => (
-                    <label key={age} className="flex items-center gap-3 group cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.ageGroups.includes(age)}
-                        onChange={() => handleFilterChange('ageGroups', age)}
-                        className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                      />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{age}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Size Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('size')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Size</span>
-                {expandedSections.size ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.size && (
-                <div className="p-5 space-y-3">
-                  {sizeOptions.map((s) => (
-                    <label key={s} className="flex items-center gap-3 group cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.sizes.includes(s)}
-                        onChange={() => handleFilterChange('sizes', s)}
-                        className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                      />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{s}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+            {ageGroupOptions.length > 0 && (
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('ageGroup')}
+                  className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-black text-slate-800">Age Group</span>
+                  {expandedSections.ageGroup ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {expandedSections.ageGroup && (
+                  <div className="p-5 space-y-3">
+                    {ageGroupOptions.map((age) => {
+                      const label = typeof age === 'string' ? age : (age.label || age.name || String(age));
+                      const key = typeof age === 'string' ? age : (age.id || label);
+                      return (
+                        <label key={key} className="flex items-center gap-3 group cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.ageGroups.includes(label)}
+                            onChange={() => handleFilterChange('ageGroups', label)}
+                            className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
+                          />
+                          <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Color Accordion */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
-              <button
-                onClick={() => toggleSection('color')}
-                className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors"
-              >
-                <span className="text-sm font-black text-slate-800">Color</span>
-                {expandedSections.color ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              </button>
-              {expandedSections.color && (
-                <div className="p-5 space-y-3">
-                  {colorOptions.map((c) => (
-                    <label key={c} className="flex items-center gap-3 group cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.colors.includes(c)}
-                        onChange={() => handleFilterChange('colors', c)}
-                        className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
-                      />
-                      <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{c}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-
+            {colorOptions.length > 0 && (
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSection('color')}
+                  className="w-full px-5 py-4 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  <span className="text-sm font-black text-slate-800">Color</span>
+                  {expandedSections.color ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                </button>
+                {expandedSections.color && (
+                  <div className="p-5 space-y-3 max-h-60 overflow-y-auto hide-scrollbar">
+                    {colorOptions.map((c) => {
+                      const cName = typeof c === 'string' ? c : c.name;
+                      const cHex = (typeof c === 'object' && c.hex) ? c.hex : normalizeColor(cName)?.hex;
+                      return (
+                        <label key={cName} className="flex items-center gap-3 group cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={filters.colors.includes(cName)}
+                            onChange={() => handleFilterChange('colors', cName)}
+                            className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
+                          />
+                          {cHex && (
+                            <span 
+                              className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0 shadow-2xs" 
+                              style={{ backgroundColor: cHex }} 
+                            />
+                          )}
+                          <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{cName}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
           </div>
 
@@ -559,9 +596,10 @@ export default function KidsPage() {
                 {/* Pagination Controls */}
                 <div className="flex items-center justify-center gap-3 mt-12 pb-8">
                   <button
+                    type="button"
                     onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:shadow-md disabled:opacity-50 disabled:shadow-none text-slate-600 transition-all border border-slate-100"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:shadow-md disabled:opacity-50 disabled:shadow-none text-slate-600 transition-all border border-slate-100 cursor-pointer"
                   >
                     <ChevronLeft className="w-5 h-5 pointer-events-none" />
                   </button>
@@ -569,9 +607,10 @@ export default function KidsPage() {
                   <div className="flex items-center gap-2">
                     {getPageNumbers().map(pageNum => (
                       <button
+                        type="button"
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`w-10 h-10 rounded-xl text-sm font-bold transition-all flex items-center justify-center border border-slate-100 ${currentPage === pageNum
+                        className={`w-10 h-10 rounded-xl text-sm font-bold transition-all flex items-center justify-center border border-slate-100 cursor-pointer ${currentPage === pageNum
                           ? 'bg-emerald-800 text-white shadow-md'
                           : 'bg-white text-slate-600 hover:shadow-md shadow-sm'
                           }`}
@@ -582,19 +621,27 @@ export default function KidsPage() {
                   </div>
 
                   <button
+                    type="button"
                     onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:shadow-md disabled:opacity-50 disabled:shadow-none text-slate-600 transition-all border border-slate-100"
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow-sm hover:shadow-md disabled:opacity-50 disabled:shadow-none text-slate-600 transition-all border border-slate-100 cursor-pointer"
                   >
                     <ChevronRight className="w-5 h-5 pointer-events-none" />
                   </button>
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 bg-slate-50 rounded-2xl border border-slate-100">
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-3 bg-white rounded-3xl p-8 shadow-md border border-slate-100">
                 <span className="text-4xl">🔍</span>
                 <h3 className="text-lg font-black text-slate-800">No products found</h3>
-                <p className="text-sm text-slate-500 font-semibold">Try adjusting your filters.</p>
+                <p className="text-sm text-slate-500 font-semibold">Try adjusting your filters or resetting them.</p>
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="px-6 py-2.5 rounded-full bg-emerald-800 text-white font-extrabold text-xs shadow-sm hover:bg-emerald-900 cursor-pointer"
+                >
+                  Reset Filters
+                </button>
               </div>
             )}
           </div>

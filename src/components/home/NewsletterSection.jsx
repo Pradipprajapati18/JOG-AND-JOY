@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Send, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { supabase } from '../../lib/supabase';
 
 // Playful Hand-Drawn SVG Doodles
 const SparkleDoodle = ({ className = "w-6 h-6 text-emerald-500" }) => (
@@ -38,14 +39,73 @@ const StarDoodle = ({ className = "w-7 h-7 text-amber-400" }) => (
 export default function NewsletterSection() {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email.trim()) {
-      window.location.href = `mailto:jogjoy85@gmail.com?subject=Inquiry from ${encodeURIComponent(email)}&body=Inquiry Email: ${encodeURIComponent(email)}`;
-      setSubscribed(true);
-      setEmail('');
+    const cleanEmail = email.trim();
+    if (!cleanEmail) return;
+
+    setIsSubmitting(true);
+
+    const emailSubject = `Inquiry / Newsletter Subscription from ${cleanEmail}`;
+    const emailBody = `Inquiry / Newsletter Subscription:\nSubscriber Email: ${cleanEmail}\nRecipient: jogjoy85@gmail.com`;
+
+    // 1. Trigger mailto directly to jogjoy85@gmail.com
+    const mailtoUrl = `mailto:jogjoy85@gmail.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    try {
+      window.location.href = mailtoUrl;
+    } catch {
+      // ignore
     }
+
+    // 2. Persist subscriber in Supabase customers table so store owner can see them in Admin CRM
+    try {
+      const { data: existing } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('email', cleanEmail)
+        .maybeSingle();
+
+      if (!existing) {
+        const subscriberId = 'sub-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+        await supabase.from('customers').insert([{
+          id: subscriberId,
+          name: cleanEmail.split('@')[0],
+          email: cleanEmail,
+          phone: '',
+          address: 'Newsletter Subscriber',
+          totalOrders: 0,
+          totalSpent: 0,
+          isGuest: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }]);
+      }
+    } catch {
+      // ignore
+    }
+
+    // 3. Post to Google Script if configured
+    try {
+      if (import.meta.env.VITE_GOOGLE_SCRIPT_URL) {
+        const scriptData = new URLSearchParams();
+        scriptData.append('name', cleanEmail.split('@')[0]);
+        scriptData.append('email', cleanEmail);
+        scriptData.append('inquiryType', 'Newsletter Subscription');
+        scriptData.append('comment', `Newsletter Subscription request for ${cleanEmail} -> jogjoy85@gmail.com`);
+
+        fetch(import.meta.env.VITE_GOOGLE_SCRIPT_URL, {
+          method: 'POST',
+          body: scriptData,
+          mode: 'no-cors'
+        }).catch(() => {});
+      }
+    } catch {}
+
+    setIsSubmitting(false);
+    setSubscribed(true);
+    setEmail('');
   };
 
   return (
@@ -109,8 +169,9 @@ export default function NewsletterSection() {
             {/* Top Mail Icon Badge */}
             <motion.a
               href="mailto:jogjoy85@gmail.com"
+              title="Email jogjoy85@gmail.com"
               whileHover={{ scale: 1.1, rotate: 5 }}
-              className="w-14 h-14 rounded-2xl bg-white text-[#EF4A45] flex items-center justify-center mx-auto shadow-md border-2 border-emerald-100 cursor-pointer"
+              className="w-14 h-14 rounded-2xl bg-white text-[#EF4A45] flex items-center justify-center mx-auto shadow-md border-2 border-emerald-100 cursor-pointer transition-transform"
             >
               <Mail className="w-7 h-7" />
             </motion.a>
@@ -130,10 +191,16 @@ export default function NewsletterSection() {
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="p-5 rounded-3xl bg-white text-emerald-900 font-extrabold text-sm flex items-center justify-center gap-3 shadow-lg border-2 border-emerald-200"
+                className="p-5 rounded-3xl bg-white text-emerald-900 font-extrabold text-sm flex flex-col sm:flex-row items-center justify-center gap-3 shadow-lg border-2 border-emerald-200 text-center sm:text-left"
               >
                 <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0" />
-                <span>✨ Thank you for reaching out! We've received your inquiry and will connect with you shortly.</span>
+                <span>
+                  ✨ Thank you for reaching out! We've connected your inquiry with{' '}
+                  <a href="mailto:jogjoy85@gmail.com" className="text-[#EF4A45] underline font-black">
+                    jogjoy85@gmail.com
+                  </a>{' '}
+                  and will connect with you shortly.
+                </span>
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center gap-3 pt-2 max-w-lg mx-auto">
@@ -147,18 +214,30 @@ export default function NewsletterSection() {
                 />
                 <button
                   type="submit"
-                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-emerald-950 hover:bg-[#EF4A45] text-white font-black text-sm shadow-xl hover:scale-105 transition-all shrink-0 flex items-center justify-center gap-2 border-2 border-emerald-950"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-8 py-4 rounded-full bg-emerald-950 hover:bg-[#EF4A45] text-white font-black text-sm shadow-xl hover:scale-105 transition-all shrink-0 flex items-center justify-center gap-2 border-2 border-emerald-950 cursor-pointer disabled:opacity-75"
                 >
-                  <span>Subscribe</span>
+                  <span>{isSubmitting ? 'Subscribing...' : 'Subscribe'}</span>
                   <Send className="w-4 h-4" />
                 </button>
               </form>
             )}
 
-            {/* Anti-spam notice */}
-            <p className="text-[11px] text-emerald-800/70 font-extrabold tracking-wide pt-1">
-              🔒 No spam ever. Unsubscribe anytime with 1 click.
-            </p>
+            {/* Direct Email Link and Anti-Spam Notice */}
+            <div className="space-y-1.5 pt-1">
+              <p className="text-xs font-bold text-emerald-900/80">
+                Direct inquiry email:{' '}
+                <a
+                  href="mailto:jogjoy85@gmail.com"
+                  className="text-[#EF4A45] underline hover:text-red-600 font-black transition-colors"
+                >
+                  jogjoy85@gmail.com
+                </a>
+              </p>
+              <p className="text-[11px] text-emerald-800/70 font-extrabold tracking-wide">
+                🔒 No spam ever. Unsubscribe anytime with 1 click.
+              </p>
+            </div>
 
           </div>
 

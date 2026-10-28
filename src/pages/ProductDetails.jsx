@@ -26,7 +26,8 @@ import {
   Sparkles,
   CheckCircle2,
   Share2,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function ProductDetails() {
@@ -350,12 +351,45 @@ export default function ProductDetails() {
     <div className="min-h-screen bg-white py-4 sm:py-8 pb-24 sm:pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-2 text-sm font-medium text-slate-500 mb-4 sm:mb-8 md:px-2">
-          <Link to="/" className="text-[#301c56] hover:underline">Home</Link>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-700 line-clamp-1">{product.name}</span>
-        </nav>
+        {/* Top Navigation & Breadcrumb */}
+        <div className="flex items-center gap-3 mb-4 sm:mb-8 md:px-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1);
+              } else {
+                navigate('/products');
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-[#EF4A45]/10 text-slate-700 hover:text-[#EF4A45] font-bold text-xs sm:text-sm transition-all group cursor-pointer border border-slate-200/60 shadow-xs"
+            title="Go back"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 group-hover:text-[#EF4A45] group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+          </button>
+
+          <span className="text-slate-300">|</span>
+
+          {/* Breadcrumb Navigation */}
+          <nav className="flex items-center gap-2 text-xs sm:text-sm font-medium text-slate-500 min-w-0">
+            <Link to="/" className="text-[#301c56] hover:underline shrink-0">Home</Link>
+            <span className="text-slate-300">/</span>
+            {product.category && (
+              <>
+                <Link
+                  to={`/products?category=${encodeURIComponent(product.category)}`}
+                  className="text-[#301c56] hover:underline shrink-0 hidden sm:inline"
+                >
+                  {product.category}
+                </Link>
+                <span className="text-slate-300 hidden sm:inline">/</span>
+              </>
+            )}
+            <span className="text-slate-700 font-semibold truncate">{product.name}</span>
+          </nav>
+        </div>
 
         {/* Main Product Showcase Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-start">

@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useWishlist } from '../context/WishlistContext';
 import ProductCard from '../components/ui/ProductCard';
 import QuickViewModal from '../components/ui/QuickViewModal';
-import { Heart, Sparkles, ArrowRight, Trash2 } from 'lucide-react';
+import { Heart, ArrowRight, Trash2, ArrowLeft } from 'lucide-react';
 
 export default function Wishlist() {
+  const navigate = useNavigate();
   const { wishlist, clearWishlist } = useWishlist();
-  const { combinedProducts } = useCombinedProducts();
+  const { combinedProducts, isLoading } = useCombinedProducts();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
-  const favoritedProducts = wishlist.map(id => {
-    const p = combinedProducts.find(cp => String(cp.id) === String(id));
+  const favoritedProducts = wishlist.map((item) => {
+    const rawId = typeof item === 'object' && item !== null ? (item.id || item.productId || item._id) : item;
+    const p = combinedProducts.find((cp) => String(cp.id) === String(rawId));
     if (!p) return null;
     return p;
   }).filter(Boolean);
@@ -21,13 +23,33 @@ export default function Wishlist() {
     <div className="min-h-screen bg-[#FFF8EC] py-10 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.state && window.history.state.idx > 0) {
+                navigate(-1);
+              } else {
+                navigate('/products');
+              }
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white hover:bg-[#EF4A45]/10 text-slate-700 hover:text-[#EF4A45] font-bold text-xs sm:text-sm transition-all group cursor-pointer border border-slate-200/80 shadow-xs"
+            title="Go back"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 group-hover:text-[#EF4A45] group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back</span>
+          </button>
+        </div>
+        
         {/* Page Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 space-y-2">
           <span className="px-4 py-1.5 rounded-full bg-[#FFD6BA]/50 text-orange-900 text-xs font-black uppercase tracking-wider inline-flex items-center gap-1">
             <Heart className="w-3.5 h-3.5 text-[#EF4A45] fill-[#EF4A45]" /> Saved Outfits
           </span>
           <h1 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight">
-            My <span className="text-[#EF4A45]">Wishlist</span> ({favoritedProducts.length})
+            My <span className="text-[#EF4A45]">Wishlist</span> {!isLoading && `(${favoritedProducts.length})`}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium">
             Keep track of your favorite kids apparel and move them to bag whenever you're ready!
@@ -35,7 +57,11 @@ export default function Wishlist() {
         </div>
 
         {/* Wishlist Actions & Grid */}
-        {favoritedProducts.length > 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <div className="w-8 h-8 border-4 border-[#EF4A45] border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        ) : favoritedProducts.length > 0 ? (
           <div className="space-y-6">
             <div className="flex justify-end">
               <button 

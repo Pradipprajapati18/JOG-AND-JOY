@@ -106,7 +106,7 @@ export default function Products({ pageCategory = null }) {
 
   const { combinedProducts, isLoading } = useCombinedProducts();
   const { data: categoriesResponse } = useCategoriesList();
-  const dbCategories = categoriesResponse?.data || [];
+  const dbCategories = useMemo(() => categoriesResponse?.data || [], [categoriesResponse?.data]);
 
   const productTypes = useMemo(() => {
     if (effectiveFilterPanels?.categories && effectiveFilterPanels.categories.length > 0) {
