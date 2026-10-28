@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -24,10 +25,23 @@ export default function ResetPassword() {
     }
 
     setIsSubmitting(true);
-    // Mocking an API call delay for the prototype
-    await new Promise(r => setTimeout(r, 1200));
-    setSuccess(true);
-    setIsSubmitting(false);
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (updateError) {
+        setError(updateError.message || 'Failed to update password. Your reset link may have expired.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message || 'An unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (success) {

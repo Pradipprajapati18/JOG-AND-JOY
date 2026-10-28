@@ -248,9 +248,12 @@ export default function Invoice() {
   
   const total = order.total !== undefined ? Number(order.total) : (subtotal + shippingCharge + tax - discountAmount);
 
-  const hasApprovedExchange = order?.returnRequest?.type === 'EXCHANGE' && Boolean(order?.returnRequest?.exchangeItem) && ['EXCHANGE_APPROVED', 'SHIPPED', 'DELIVERED'].includes(order?.status);
+  const hasApprovedExchange = order?.returnRequest?.type === 'EXCHANGE' && Boolean(order?.returnRequest?.exchangeItem || order?.returnRequest?.items?.length) && ['EXCHANGE_APPROVED', 'SHIPPED', 'DELIVERED'].includes(order?.status);
   const exchangeItem = order?.returnRequest?.exchangeItem;
   const originalExchangeItem = order?.returnRequest?.originalItem;
+  const exchangeItemsList = (order?.returnRequest?.items && order.returnRequest.items.length > 0)
+    ? order.returnRequest.items
+    : (exchangeItem ? [{ originalItem: originalExchangeItem, exchangeItem, priceDifference: order?.returnRequest?.priceDifference }] : []);
   const origPrice = Number(order?.returnRequest?.originalPrice || originalExchangeItem?.unitPrice || 0);
   const repPrice = Number(order?.returnRequest?.replacementPrice || exchangeItem?.price || origPrice);
   const priceDiff = typeof order?.returnRequest?.priceDifference === 'number'
@@ -353,32 +356,39 @@ export default function Invoice() {
             </thead>
             <tbody>
               {orderItems.map((item, index) => {
-                const isSwapped = hasApprovedExchange && (
-                  originalExchangeItem?.id === item.id || 
-                  originalExchangeItem?.productId === item.productId || 
-                  originalExchangeItem?.title === item.titleSnapshot
+                const matchedPair = exchangeItemsList.find(p =>
+                  (p.originalItem?.id && p.originalItem.id === item.id) ||
+                  (p.originalItem?.productId && (p.originalItem.productId === item.productId || p.originalItem.productId === item.id)) ||
+                  (p.originalItem?.title && (p.originalItem.title === item.titleSnapshot || p.originalItem.title === item.title))
                 );
+                const currentRep = matchedPair?.exchangeItem || (
+                  (originalExchangeItem?.id === item.id || originalExchangeItem?.productId === item.productId || originalExchangeItem?.title === item.titleSnapshot)
+                    ? exchangeItem
+                    : null
+                );
+                const isSwapped = hasApprovedExchange && Boolean(currentRep);
+                const currentRepPrice = Number(currentRep?.price || repPrice);
 
                 // On Packing Slip: Display the replacement item to pack instead of the old returned item
                 if (isPackingSlip && isSwapped) {
                   return (
                     <tr key={index} className="bg-purple-50/40">
                       <td className="py-3 px-2 border-[3px] border-black text-sm font-bold text-purple-950">
-                        {exchangeItem.title}
+                        {currentRep.title}
                         <span className="block text-[10px] font-black uppercase text-purple-800 tracking-wider mt-0.5">
                           ★ REPLACEMENT ITEM TO PACK
                         </span>
                       </td>
                       <td className="py-3 px-2 border-[3px] border-black text-sm whitespace-pre-line text-center">
-                        <div>colour: {formatColorName(exchangeItem.colorName, exchangeItem.color)}</div>
-                        <div>size: {typeof exchangeItem.size === 'object' ? (exchangeItem.size?.name || 'N/A') : String(exchangeItem.size)}</div>
+                        <div>colour: {formatColorName(currentRep.colorName, currentRep.color)}</div>
+                        <div>size: {typeof currentRep.size === 'object' ? (currentRep.size?.name || 'N/A') : String(currentRep.size)}</div>
                         <div className="text-[10px] text-gray-500 italic mt-0.5">
                           (Swapped with original: {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || 'Original Item')} - Size: {typeof item.size === 'object' ? (item.size?.name || 'N/A') : String(item.size || 'N/A')})
                         </div>
                       </td>
-                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{repPrice}</td>
+                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{currentRepPrice}</td>
                       <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">{item.quantity || 1}</td>
-                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{repPrice * (item.quantity || 1)}</td>
+                      <td className="py-3 px-2 border-[3px] border-black text-sm font-bold">₹{currentRepPrice * (item.quantity || 1)}</td>
                     </tr>
                   );
                 }
@@ -389,7 +399,7 @@ export default function Invoice() {
                       {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Product')}
                       {isSwapped && (
                         <span className="block text-[10px] font-bold text-purple-700 mt-0.5">
-                          (⇄ Swapped for {exchangeItem.title} - Size: {exchangeItem.size})
+                          (⇄ Swapped for {currentRep.title} - Size: {typeof currentRep.size === 'object' ? (currentRep.size?.name || 'N/A') : String(currentRep.size)})
                         </span>
                       )}
                     </td>
@@ -424,19 +434,38 @@ export default function Invoice() {
                 Status: {order.status.replace('_', ' ')}
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-3 bg-white border border-slate-300 rounded-lg">
-                <p className="font-bold text-slate-500 uppercase text-[10px] tracking-wider mb-1">Original Returned Item:</p>
-                <p className="font-bold text-slate-900">{originalExchangeItem?.title || 'Original Item'}</p>
-                <p className="text-slate-600 mt-0.5">Size: {originalExchangeItem?.size || 'N/A'} • Color: {formatColorName(originalExchangeItem?.colorName, originalExchangeItem?.color)}</p>
-                <p className="font-mono text-slate-700 font-bold mt-1.5">Original Unit Price: ₹{origPrice}</p>
-              </div>
-              <div className="p-3 bg-white border border-purple-300 rounded-lg">
-                <p className="font-bold text-purple-800 uppercase text-[10px] tracking-wider mb-1">New Replacement Item Dispatched:</p>
-                <p className="font-bold text-purple-950">{exchangeItem.title}</p>
-                <p className="text-slate-700 mt-0.5">Size: {exchangeItem.size} • Color: {formatColorName(exchangeItem.colorName, exchangeItem.color)}</p>
-                <p className="font-mono text-purple-950 font-bold mt-1.5">Replacement Unit Price: ₹{repPrice}</p>
-              </div>
+            <div className="space-y-3">
+              {exchangeItemsList.map((pair, pIdx) => {
+                const rep = pair.exchangeItem || pair.replacement || exchangeItem;
+                const orig = pair.originalItem || originalExchangeItem;
+                if (!rep) return null;
+                const repUnit = Number(rep.price || repPrice);
+                const origUnit = Number(orig?.unitPrice || origPrice);
+                return (
+                  <div key={pIdx} className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="p-3 bg-white border border-slate-300 rounded-lg">
+                      <p className="font-bold text-slate-500 uppercase text-[10px] tracking-wider mb-1">
+                        Original Returned Item {exchangeItemsList.length > 1 ? `(#${pIdx + 1})` : ''}:
+                      </p>
+                      <p className="font-bold text-slate-900">{orig?.title || 'Original Item'}</p>
+                      <p className="text-slate-600 mt-0.5">
+                        Size: {typeof orig?.size === 'object' ? (orig?.size?.name || 'N/A') : String(orig?.size || 'N/A')} • Color: {formatColorName(orig?.colorName, orig?.color)}
+                      </p>
+                      <p className="font-mono text-slate-700 font-bold mt-1.5">Original Unit Price: ₹{origUnit}</p>
+                    </div>
+                    <div className="p-3 bg-white border border-purple-300 rounded-lg">
+                      <p className="font-bold text-purple-800 uppercase text-[10px] tracking-wider mb-1">
+                        New Replacement Item Dispatched {exchangeItemsList.length > 1 ? `(#${pIdx + 1})` : ''}:
+                      </p>
+                      <p className="font-bold text-purple-950">{rep.title}</p>
+                      <p className="text-slate-700 mt-0.5">
+                        Size: {typeof rep.size === 'object' ? (rep.size?.name || 'N/A') : String(rep.size || 'N/A')} • Color: {formatColorName(rep.colorName, rep.color)}
+                      </p>
+                      <p className="font-mono text-purple-950 font-bold mt-1.5">Replacement Unit Price: ₹{repUnit}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-3 pt-2.5 border-t border-dashed border-black/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs">
               <span className="font-bold text-slate-800">Exchange Price Adjustment:</span>

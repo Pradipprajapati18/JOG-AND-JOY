@@ -225,21 +225,24 @@ export default function AdminOrders() {
         newReqStatus = 'REJECTED';
       } else if (newStatus === 'SHIPPED' && isExchange) {
         newReqStatus = 'SHIPPED';
-        // Deduct replacement product variant from inventory upon shipping replacement package
-        const repItem = orderToUpdate.returnRequest?.exchangeItem;
+        // Deduct replacement product variants from inventory upon shipping replacement package
+        const repItems = (orderToUpdate.returnRequest?.items && orderToUpdate.returnRequest.items.length > 0)
+          ? orderToUpdate.returnRequest.items.map(it => it.exchangeItem || it.replacement).filter(Boolean)
+          : (orderToUpdate.returnRequest?.exchangeItem ? [orderToUpdate.returnRequest.exchangeItem] : []);
         const alreadyDeducted = Boolean(
           orderToUpdate.shippingAddress?._replacementDeducted ||
           orderToUpdate.returnRequest?._replacementDeducted ||
           orderToUpdate.statusHistory?.some(h => /replacement.*deducted/i.test(h.note || ''))
         );
-        if (repItem && !alreadyDeducted) {
-          deductInventoryItem(repItem, queryClient);
+        if (repItems.length > 0 && !alreadyDeducted) {
+          repItems.forEach(item => deductInventoryItem(item, queryClient));
           patchData.shippingAddress = {
             ...(patchData.shippingAddress || orderToUpdate.shippingAddress || {}),
             _replacementDeducted: true,
             _replacementDeductedAt: new Date().toISOString()
           };
-          historyEntry.note = `${note} (Replacement item ${repItem.title || ''} [${typeof repItem.size === 'object' ? (repItem.size?.name || 'M') : (repItem.size || 'M')}] deducted from stock)`;
+          const itemSummary = repItems.map(item => `${item.title || ''} [${typeof item.size === 'object' ? (item.size?.name || 'M') : (item.size || 'M')}]`).join(', ');
+          historyEntry.note = `${note} (Replacement item(s) ${itemSummary} deducted from stock)`;
         }
       } else if (newStatus === 'DELIVERED') {
         const hadInFlightExchange = isExchange && (
@@ -257,21 +260,24 @@ export default function AdminOrders() {
             };
           }
 
-          // Restock the returned original item upon exchange delivery confirmation
-          const origItem = orderToUpdate.returnRequest?.originalItem || orderToUpdate.items?.[0];
+          // Restock all returned original items upon exchange delivery confirmation
+          const origItems = (orderToUpdate.returnRequest?.items && orderToUpdate.returnRequest.items.length > 0)
+            ? orderToUpdate.returnRequest.items.map(it => it.originalItem).filter(Boolean)
+            : (orderToUpdate.returnRequest?.originalItem ? [orderToUpdate.returnRequest.originalItem] : (orderToUpdate.items?.[0] ? [orderToUpdate.items[0]] : []));
           const alreadyExRestocked = Boolean(
             orderToUpdate.shippingAddress?._exchangeRestocked ||
             orderToUpdate.returnRequest?._exchangeRestocked ||
             orderToUpdate.statusHistory?.some(h => /exchanged.*restocked/i.test(h.note || ''))
           );
-          if (origItem && !alreadyExRestocked) {
-            restockInventoryItem(origItem, queryClient);
+          if (origItems.length > 0 && !alreadyExRestocked) {
+            origItems.forEach(item => restockInventoryItem(item, queryClient));
             patchData.shippingAddress = {
               ...(patchData.shippingAddress || orderToUpdate.shippingAddress || {}),
               _exchangeRestocked: true,
               _exchangeRestockedAt: new Date().toISOString()
             };
-            historyEntry.note = `${note} (Returned item ${origItem.title || origItem.titleSnapshot || ''} restocked into inventory)`;
+            const origSummary = origItems.map(it => it.title || it.titleSnapshot || '').filter(Boolean).join(', ');
+            historyEntry.note = `${note} (Returned item(s) ${origSummary} restocked into inventory)`;
           }
         }
       } else if (newStatus === 'REFUNDED' && isReturn) {
@@ -967,27 +973,49 @@ export default function AdminOrders() {
                     )}
 
                     {/* Exchange Item Details */}
-                    {o.returnRequest.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (
-                      <div className="mt-3 p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 sm:gap-4">
-                        {o.returnRequest.exchangeItem.image && (
-                          <img src={o.returnRequest.exchangeItem.image} alt={o.returnRequest.exchangeItem.title} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[10px] font-black uppercase text-amber-700">Requested Replacement</p>
-                          <p className="font-bold text-slate-800 text-sm truncate">{o.returnRequest.exchangeItem.title}</p>
-                          <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
-                            <span>Size: <span className="font-semibold text-slate-700">{typeof o.returnRequest.exchangeItem.size === 'object' ? (o.returnRequest.exchangeItem.size.name || o.returnRequest.exchangeItem.size.label || 'N/A') : String(o.returnRequest.exchangeItem.size || 'N/A')}</span></span>
-                            {o.returnRequest.exchangeItem.color && (
-                              <span className="inline-flex items-center gap-1">
-                                • Color:
-                                <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(o.returnRequest.exchangeItem.color) }} />
-                                <span className="font-semibold text-slate-700">{formatColorName(o.returnRequest.exchangeItem.colorName, o.returnRequest.exchangeItem.color)}</span>
-                              </span>
-                            )}
-                            {o.returnRequest.exchangeItem.price ? ` • Price: ₹${o.returnRequest.exchangeItem.price}` : ''}
-                          </p>
+                    {o.returnRequest.type === 'EXCHANGE' && (o.returnRequest.items?.length > 0 || o.returnRequest.exchangeItem) && (
+                      <div className="mt-3 space-y-2">
+                        {((o.returnRequest.items && o.returnRequest.items.length > 0)
+                          ? o.returnRequest.items
+                          : [{ originalItem: o.returnRequest.originalItem, exchangeItem: o.returnRequest.exchangeItem }]
+                        ).map((pair, pIdx) => {
+                          const rep = pair.exchangeItem || pair.replacement || o.returnRequest.exchangeItem;
+                          const orig = pair.originalItem || o.returnRequest.originalItem;
+                          if (!rep) return null;
+                          return (
+                            <div key={pIdx} className="p-3 bg-white border border-amber-200 rounded-xl flex items-center gap-3 sm:gap-4">
+                              {rep.image && (
+                                <img src={rep.image} alt={rep.title} className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[10px] font-black uppercase text-amber-700">
+                                    Requested Replacement {o.returnRequest.items?.length > 1 ? `(#${pIdx + 1})` : ''}
+                                  </p>
+                                  {orig && (
+                                    <span className="text-[10px] text-slate-500 truncate">
+                                      for {orig.title || orig.titleSnapshot} ({orig.size})
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="font-bold text-slate-800 text-sm truncate">{rep.title}</p>
+                                <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
+                                  <span>Size: <span className="font-semibold text-slate-700">{typeof rep.size === 'object' ? (rep.size.name || rep.size.label || 'N/A') : String(rep.size || 'N/A')}</span></span>
+                                  {rep.color && (
+                                    <span className="inline-flex items-center gap-1">
+                                      • Color:
+                                      <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(rep.color) }} />
+                                      <span className="font-semibold text-slate-700">{formatColorName(rep.colorName, rep.color)}</span>
+                                    </span>
+                                  )}
+                                  {rep.price ? ` • Price: ₹${rep.price}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
 
-                          {/* Dynamic Price Difference Breakdown */}
+                        {/* Dynamic Price Difference Breakdown */}
                           {(() => {
                             const origP = Number(o.returnRequest.originalPrice || o.returnRequest.originalItem?.unitPrice || 0);
                             const repP = Number(o.returnRequest.replacementPrice || o.returnRequest.exchangeItem?.price || origP);
@@ -1059,7 +1087,6 @@ export default function AdminOrders() {
                               );
                             }
                           })()}
-                        </div>
                       </div>
                     )}
 
@@ -1120,11 +1147,26 @@ export default function AdminOrders() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-bold text-text-dark text-sm sm:text-base">{typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Item')}</p>
-                          {o.returnRequest?.type === 'EXCHANGE' && o.returnRequest.exchangeItem && (o.returnRequest.originalItem?.id === item.id || o.returnRequest.originalItem?.productId === item.productId || o.returnRequest.originalItem?.title === item.titleSnapshot) && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
-                              ⇄ Exchanged for {o.returnRequest.exchangeItem.title} ({o.returnRequest.exchangeItem.size})
-                            </span>
-                          )}
+                          {(() => {
+                            if (o.returnRequest?.type !== 'EXCHANGE') return null;
+                            const pair = (o.returnRequest.items || []).find(p => 
+                              (p.originalItem?.id && p.originalItem.id === item.id) ||
+                              (p.originalItem?.productId && (p.originalItem.productId === item.productId || p.originalItem.productId === item.id)) ||
+                              (p.originalItem?.title && (p.originalItem.title === item.titleSnapshot || p.originalItem.title === item.title))
+                            );
+                            const rep = pair?.exchangeItem || (
+                              (o.returnRequest.originalItem?.id === item.id || o.returnRequest.originalItem?.productId === item.productId || o.returnRequest.originalItem?.title === item.titleSnapshot)
+                                ? o.returnRequest.exchangeItem
+                                : null
+                            );
+                            if (!rep) return null;
+                            const repSizeStr = typeof rep.size === 'object' ? (rep.size?.name || rep.size?.label || 'N/A') : String(rep.size || 'N/A');
+                            return (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-800 border border-purple-200">
+                                ⇄ Exchanged for {rep.title} ({repSizeStr})
+                              </span>
+                            );
+                          })()}
                         </div>
                         <p className="text-xs text-text-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
                           <span>Size: <span className="font-medium text-slate-700">{typeof item.size === 'object' ? (item.size?.name || item.size?.label || 'N/A') : String(item.size || 'N/A')}</span></span>

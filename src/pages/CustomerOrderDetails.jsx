@@ -111,6 +111,9 @@ export default function CustomerOrderDetails() {
   const [exchangeReason, setExchangeReason] = useState('Size too small - Need bigger size');
   const [exchangeComments, setExchangeComments] = useState('');
   const [exchangeMode, setExchangeMode] = useState('same_product'); // 'same_product' | 'catalog'
+  const [selectedExchangeItemKeys, setSelectedExchangeItemKeys] = useState([]);
+  const [exchangeReplacements, setExchangeReplacements] = useState({});
+  const [activeCatalogItemKey, setActiveCatalogItemKey] = useState(null);
   const [replacementVariant, setReplacementVariant] = useState({
     product: null,
     size: '',
@@ -369,45 +372,228 @@ export default function CustomerOrderDetails() {
     setActiveModal('review');
   };
 
+  // Multi-item exchange helpers
+  const getItemKey = (item, index = 0) => {
+    return String(item?.id || `${item?.productId || 'item'}_${item?.size || ''}_${item?.color || ''}_${index}`);
+  };
+
+  const resolveCatalogProduct = (item) => {
+    const matched = combinedProducts.find(p =>
+      String(p.id) === String(item?.productId || item?.id) ||
+      (item?.titleSnapshot && createSlug(p.title || p.name) === createSlug(item?.titleSnapshot))
+    );
+    return matched || {
+      id: item?.productId || item?.id,
+      name: typeof item?.titleSnapshot === 'string' ? item.titleSnapshot : (item?.name || item?.title || 'Product'),
+      price: item?.unitPrice,
+      image: item?.image,
+      sizes: ['5-6 Year', '7-8 Year', '9-10 Year', '11-12 Year', 'S', 'M', 'L', 'XL'],
+      colors: ['Black', 'Navy Blue', 'Heather Grey', 'Royal Blue']
+    };
+  };
+
+  const getAvailableSizesForProduct = (prod) => {
+    if (prod?.sizes && prod.sizes.length > 0) {
+      return prod.sizes;
+    }
+    return ['2-3 Year', '3-4 Year', '5-6 Year', '7-8 Year', '9-10 Year', '11-12 Year', 'S', 'M', 'L', 'XL'];
+  };
+
+  const getInitialReplacementSize = (product, currentSize) => {
+    const productSizes = getAvailableSizesForProduct(product);
+    const inStockSize = productSizes.find(sz => {
+      if (sz === currentSize) return false;
+      const v = product?.variants?.find(varnt => String(varnt.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase());
+      return v ? Number(v.stock) > 0 : true;
+    }) || productSizes.find(sz => sz !== currentSize) || productSizes[0];
+    return inStockSize || 'M';
+  };
+
   const handleOpenExchangeModal = (item = null) => {
     if (!isEligibleForReturnOrExchange) {
       if (addToast) addToast('The 7-day exchange window has expired for this order.', 'warning');
       return;
     }
-    const targetItem = item || order.items?.[0] || null;
+
+    const items = order?.items || [];
+    const initialReplacements = {};
+
+    items.forEach((it, idx) => {
+      const k = getItemKey(it, idx);
+      const prod = resolveCatalogProduct(it);
+      const initSize = getInitialReplacementSize(prod, it.size);
+      initialReplacements[k] = {
+        product: prod,
+        size: initSize,
+        color: it.color || 'Black',
+        colorName: it.colorName || 'Black',
+        exchangeMode: 'same_product'
+      };
+    });
+
+    setExchangeReplacements(initialReplacements);
+
+    // By default, ALL items ordered are selected so customer can exchange all items ordered
+    const allKeys = items.map((it, idx) => getItemKey(it, idx));
+    setSelectedExchangeItemKeys(allKeys);
+
+    const targetItem = item || items[0] || null;
     setSelectedItemForAction(targetItem);
 
-    // Default replacement: find matched catalog product or same item
-    const matchedProduct = combinedProducts.find(p =>
-      String(p.id) === String(targetItem?.productId || targetItem?.id)
-    );
+    if (targetItem) {
+      const targetIdx = items.findIndex(it => (it.id && it.id === targetItem.id) || (it.productId && it.productId === targetItem.productId));
+      const targetKey = getItemKey(targetItem, targetIdx >= 0 ? targetIdx : 0);
+      const targetRep = initialReplacements[targetKey];
+      if (targetRep) {
+        setReplacementVariant({
+          product: targetRep.product,
+          size: targetRep.size,
+          color: targetRep.color
+        });
+      }
+    }
 
-    const activeProduct = matchedProduct || {
-      id: targetItem?.productId || targetItem?.id,
-      name: targetItem?.titleSnapshot,
-      price: targetItem?.unitPrice,
-      image: targetItem?.image,
-      sizes: ['5-6 Year', '7-8 Year', '9-10 Year', '11-12 Year', 'S', 'M', 'L', 'XL'],
-      colors: ['Black', 'Navy Blue', 'Heather Grey', 'Royal Blue']
-    };
-
-    // Find first available size that has stock > 0 and differs from targetItem.size
-    const productSizes = activeProduct.sizes || ['5-6 Year', '7-8 Year', '9-10 Year', 'S', 'M', 'L'];
-    const inStockSize = productSizes.find(sz => {
-      if (sz === targetItem?.size) return false;
-      const v = activeProduct.variants?.find(varnt => String(varnt.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase());
-      return v ? Number(v.stock) > 0 : true;
-    }) || productSizes.find(sz => sz !== targetItem?.size) || productSizes[0];
-
-    setReplacementVariant({
-      product: activeProduct,
-      size: inStockSize || 'M',
-      color: targetItem?.color || 'Black'
-    });
     setExchangeMode('same_product');
     setDiffPaymentMethod('razorpay');
+    setActiveCatalogItemKey(null);
     setActiveModal('exchange');
   };
+
+  const handleToggleItemSelection = (itemKey) => {
+    setSelectedExchangeItemKeys(prev => {
+      if (prev.includes(itemKey)) {
+        if (prev.length === 1) {
+          if (addToast) addToast('At least one item must remain selected for exchange.', 'info');
+          return prev;
+        }
+        return prev.filter(k => k !== itemKey);
+      } else {
+        return [...prev, itemKey];
+      }
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    const allKeys = (order?.items || []).map((it, idx) => getItemKey(it, idx));
+    if (selectedExchangeItemKeys.length === allKeys.length) {
+      if (allKeys.length > 0) {
+        setSelectedExchangeItemKeys([allKeys[0]]);
+      }
+    } else {
+      setSelectedExchangeItemKeys(allKeys);
+    }
+  };
+
+  const handleUpdateItemReplacementSize = (itemKey, newSize) => {
+    setExchangeReplacements(prev => ({
+      ...prev,
+      [itemKey]: {
+        ...(prev[itemKey] || {}),
+        size: newSize
+      }
+    }));
+  };
+
+  const handleUpdateItemExchangeMode = (itemKey, mode) => {
+    setExchangeReplacements(prev => {
+      const curr = prev[itemKey] || {};
+      let prod = curr.product;
+      if (mode === 'same_product') {
+        const itemIdx = (order?.items || []).findIndex((it, idx) => getItemKey(it, idx) === itemKey);
+        const originalItem = order?.items?.[itemIdx];
+        if (originalItem) {
+          prod = resolveCatalogProduct(originalItem);
+        }
+      }
+      const newSize = prod ? getInitialReplacementSize(prod, '') : 'M';
+      return {
+        ...prev,
+        [itemKey]: {
+          ...curr,
+          exchangeMode: mode,
+          product: prod,
+          size: newSize
+        }
+      };
+    });
+  };
+
+  const handleSelectItemCatalogProduct = (itemKey, prod) => {
+    const initSize = getAvailableSizesForProduct(prod)[0] || 'M';
+    setExchangeReplacements(prev => ({
+      ...prev,
+      [itemKey]: {
+        ...(prev[itemKey] || {}),
+        product: prod,
+        size: initSize,
+        color: prod.colors?.[0] || 'Default',
+        colorName: prod.colors?.[0] || 'Default'
+      }
+    }));
+    setActiveCatalogItemKey(null);
+  };
+
+  // Aggregated exchange summary for all selected items
+  const exchangeSummary = useMemo(() => {
+    if (!order?.items) return { origTotal: 0, repTotal: 0, diff: 0, selectedCount: 0, pairs: [] };
+
+    let origTotal = 0;
+    let repTotal = 0;
+    const pairs = [];
+
+    order.items.forEach((item, idx) => {
+      const key = getItemKey(item, idx);
+      if (!selectedExchangeItemKeys.includes(key)) return;
+
+      const rep = exchangeReplacements[key];
+      const repProd = rep?.product || resolveCatalogProduct(item);
+      const repSize = rep?.size || getInitialReplacementSize(repProd, item.size);
+      const repColor = rep?.color || item.color || 'Default';
+      const repColorName = rep?.colorName || item.colorName || repColor;
+
+      const qty = item.quantity || 1;
+      const oUnit = Number(item.unitPrice || 0);
+      const rUnit = Number(repProd?.price || oUnit);
+
+      origTotal += oUnit * qty;
+      repTotal += rUnit * qty;
+
+      pairs.push({
+        itemKey: key,
+        originalItem: {
+          id: item.id || item.productId,
+          productId: item.productId || item.id,
+          title: typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Product'),
+          size: item.size,
+          color: item.color,
+          colorName: formatColorName(item.colorName, item.color),
+          quantity: qty,
+          unitPrice: oUnit,
+          image: item.image
+        },
+        exchangeItem: {
+          productId: repProd.id || item.productId || item.id,
+          title: repProd.name || repProd.title || item.titleSnapshot || 'Replacement Product',
+          size: repSize,
+          color: repColor,
+          colorName: formatColorName(repColorName, repColor),
+          price: rUnit,
+          image: repProd.image || (repProd.images && repProd.images[0]) || item.image
+        },
+        originalPrice: oUnit * qty,
+        replacementPrice: rUnit * qty,
+        priceDifference: (rUnit - oUnit) * qty
+      });
+    });
+
+    return {
+      origTotal,
+      repTotal,
+      diff: repTotal - origTotal,
+      selectedCount: pairs.length,
+      pairs
+    };
+  }, [order?.items, selectedExchangeItemKeys, exchangeReplacements, combinedProducts]);
 
   const handleOpenReturnModal = (item = null) => {
     if (!isEligibleForReturnOrExchange) {
@@ -476,23 +662,20 @@ export default function CustomerOrderDetails() {
     e.preventDefault();
     if (isSubmittingExchange) return;
 
-    if (!selectedItemForAction || !replacementVariant.product) {
-      if (addToast) addToast('Please select a replacement product and size.', 'error');
+    if (exchangeSummary.selectedCount === 0) {
+      if (addToast) addToast('Please select at least one item to exchange.', 'error');
       return;
     }
 
-    if (!replacementVariant.size) {
-      if (addToast) addToast('Please select a replacement size.', 'error');
+    const invalidPair = exchangeSummary.pairs.find(p => !p.exchangeItem?.size);
+    if (invalidPair) {
+      if (addToast) addToast(`Please select a replacement size for ${invalidPair.originalItem.title}.`, 'error');
       return;
     }
 
     setIsSubmittingExchange(true);
     const newStatus = 'EXCHANGE_REQUESTED';
-    const repProd = replacementVariant.product;
-
-    const origPrice = Number(selectedItemForAction.unitPrice || 0);
-    const repPrice = Number(repProd.price || origPrice);
-    const priceDifference = repPrice - origPrice;
+    const priceDifference = exchangeSummary.diff;
 
     // Differential Payment calculation for upgrade/downgrade exchanges
     let differentialPayment = null;
@@ -582,34 +765,20 @@ export default function CustomerOrderDetails() {
       };
     }
 
+    const primaryPair = exchangeSummary.pairs[0];
+
     const exchangeData = {
       type: 'EXCHANGE',
       reason: exchangeReason,
       comments: exchangeComments,
-      originalPrice: origPrice,
-      replacementPrice: repPrice,
+      originalPrice: exchangeSummary.origTotal,
+      replacementPrice: exchangeSummary.repTotal,
       priceDifference: priceDifference,
       differentialPayment: differentialPayment,
-      originalItem: {
-        id: selectedItemForAction.id || selectedItemForAction.productId,
-        productId: selectedItemForAction.productId || selectedItemForAction.id,
-        title: selectedItemForAction.titleSnapshot,
-        size: selectedItemForAction.size,
-        color: selectedItemForAction.color,
-        colorName: formatColorName(selectedItemForAction.colorName, selectedItemForAction.color),
-        quantity: selectedItemForAction.quantity || 1,
-        unitPrice: selectedItemForAction.unitPrice,
-        image: selectedItemForAction.image
-      },
-      exchangeItem: {
-        productId: repProd.id,
-        title: repProd.name || repProd.title || selectedItemForAction.titleSnapshot,
-        size: replacementVariant.size || 'M',
-        color: replacementVariant.color || selectedItemForAction.color || 'Default',
-        colorName: formatColorName(replacementVariant.colorName, replacementVariant.color || selectedItemForAction.color),
-        price: repProd.price || selectedItemForAction.unitPrice,
-        image: repProd.image || (repProd.images && repProd.images[0]) || selectedItemForAction.image
-      },
+      items: exchangeSummary.pairs,
+      // Backward compatibility fields for single-item consumers & database RPC
+      originalItem: primaryPair.originalItem,
+      exchangeItem: primaryPair.exchangeItem,
       requestedAt: new Date().toISOString(),
       status: 'PENDING'
     };
@@ -620,10 +789,14 @@ export default function CustomerOrderDetails() {
         ? ` (Refund Due ₹${Math.abs(priceDifference)})`
         : '';
 
+    const itemsSummary = exchangeSummary.pairs.map(p =>
+      `${p.originalItem.title} (${p.originalItem.size} ➔ ${p.exchangeItem.size})`
+    ).join(', ');
+
     const newHistoryEntry = {
       status: newStatus,
       timestamp: new Date().toISOString(),
-      note: `Customer requested exchange: ${selectedItemForAction.titleSnapshot} (${selectedItemForAction.size}) for ${exchangeData.exchangeItem.title} (${exchangeData.exchangeItem.size}) - Reason: ${exchangeReason}${diffNote}`
+      note: `Customer requested exchange for ${exchangeSummary.pairs.length} item(s): ${itemsSummary} - Reason: ${exchangeReason}${diffNote}`
     };
 
     const updatedOrder = {
@@ -674,7 +847,7 @@ export default function CustomerOrderDetails() {
       queryClient.invalidateQueries({ queryKey: ['orders', cleanId] });
       queryClient.invalidateQueries({ queryKey: ['orders', id] });
 
-      if (addToast) addToast('Exchange request submitted successfully! Our team will process it.', 'success');
+      if (addToast) addToast(`Exchange request submitted for ${exchangeSummary.pairs.length} item(s)! Our team will process it.`, 'success');
       setActiveModal(null);
     } catch (err) {
       console.error('Exchange submission error:', err?.message || err);
@@ -685,7 +858,7 @@ export default function CustomerOrderDetails() {
         returnRequest: exchangeData,
         items: order.items || []
       });
-      if (addToast) addToast('Exchange request submitted successfully! Our team will process it.', 'success');
+      if (addToast) addToast(`Exchange request submitted for ${exchangeSummary.pairs.length} item(s)! Our team will process it.`, 'success');
       setActiveModal(null);
     } finally {
       setIsSubmittingExchange(false);
@@ -1144,7 +1317,9 @@ export default function CustomerOrderDetails() {
                   <RefreshCw className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="font-black text-slate-900 text-xs md:text-sm truncate">2. Exchange Item</h3>
+                  <h3 className="font-black text-slate-900 text-xs md:text-sm truncate">
+                    2. {order?.items?.length > 1 ? 'Exchange Items' : 'Exchange Item'}
+                  </h3>
                   <p className="text-[11px] text-slate-500 truncate">
                     {isEligibleForReturnOrExchange ? `Free swap (${returnDaysRemaining}d left)` : '7-day window closed'}
                   </p>
@@ -1160,7 +1335,11 @@ export default function CustomerOrderDetails() {
                 }`}
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>{isEligibleForReturnOrExchange ? 'Exchange' : 'Expired'}</span>
+                <span>
+                  {isEligibleForReturnOrExchange
+                    ? (order?.items?.length > 1 ? 'Exchange Items' : 'Exchange')
+                    : 'Expired'}
+                </span>
               </button>
             </div>
 
@@ -1293,45 +1472,64 @@ export default function CustomerOrderDetails() {
               )}
 
               {/* Exchange Item Breakdown */}
-              {order.returnRequest.type === 'EXCHANGE' && order.returnRequest.exchangeItem && (
+              {order.returnRequest.type === 'EXCHANGE' && (Boolean(order.returnRequest.exchangeItem) || Boolean(order.returnRequest.items?.length)) && (
                 <>
-                  <div className="mt-4 p-4 bg-white rounded-2xl border border-amber-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="border-r sm:border-slate-100 pr-2">
-                      <p className="font-bold text-slate-800 text-sm">{order.returnRequest.originalItem?.title || (typeof order.items?.[0]?.titleSnapshot === 'string' ? order.items[0].titleSnapshot : (order.items?.[0]?.name || 'Product'))}</p>
-                      <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
-                        <span>Size: {typeof (order.returnRequest.originalItem?.size || order.items?.[0]?.size) === 'object' ? ((order.returnRequest.originalItem?.size || order.items?.[0]?.size)?.name || 'N/A') : String(order.returnRequest.originalItem?.size || order.items?.[0]?.size || 'N/A')}</span>
-                        <span>•</span>
-                        <span className="inline-flex items-center gap-1">
-                          Color:
-                          {(order.returnRequest.originalItem?.color || order.items?.[0]?.color) && (
-                            <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: typeof (order.returnRequest.originalItem?.color || order.items?.[0]?.color) === 'object' ? ((order.returnRequest.originalItem?.color || order.items?.[0]?.color)?.hex || '#000') : String(order.returnRequest.originalItem?.color || order.items?.[0]?.color) }} />
+                  <div className="space-y-3 mt-4">
+                  {(order.returnRequest.items && order.returnRequest.items.length > 0
+                    ? order.returnRequest.items
+                    : [{ originalItem: order.returnRequest.originalItem, exchangeItem: order.returnRequest.exchangeItem }]
+                  ).map((pair, pIdx) => (
+                    <div key={pIdx} className="p-4 bg-white rounded-2xl border border-amber-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="border-r sm:border-slate-100 pr-2">
+                        <p className="text-[10px] font-black uppercase text-slate-400 font-mono mb-1">
+                          Original Item {order.returnRequest.items?.length > 1 ? `#${pIdx + 1}` : ''}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          {pair.originalItem?.image && (
+                            <img src={pair.originalItem.image} alt="Original" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
                           )}
-                          <span className="font-semibold text-slate-700">{formatColorName(order.returnRequest.originalItem?.colorName, order.returnRequest.originalItem?.color || order.items?.[0]?.color)}</span>
-                        </span>
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase text-emerald-600 font-mono mb-1">⇄ Requested Replacement</p>
-                      <div className="flex items-center gap-3">
-                        {order.returnRequest.exchangeItem.image && (
-                          <img src={order.returnRequest.exchangeItem.image} alt="Replacement" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
-                        )}
-                        <div>
-                          <p className="font-bold text-slate-900 text-sm">{order.returnRequest.exchangeItem.title}</p>
-                          <p className="text-xs text-slate-600 font-semibold flex items-center gap-1 flex-wrap">
-                            <span>Size: {typeof order.returnRequest.exchangeItem.size === 'object' ? (order.returnRequest.exchangeItem.size.name || 'N/A') : String(order.returnRequest.exchangeItem.size || 'N/A')}</span>
-                            {order.returnRequest.exchangeItem.color && (
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-800 text-sm truncate">{pair.originalItem?.title || (typeof order.items?.[0]?.titleSnapshot === 'string' ? order.items[0].titleSnapshot : 'Product')}</p>
+                            <p className="text-xs text-slate-500 flex items-center gap-1 flex-wrap">
+                              <span>Size: {typeof pair.originalItem?.size === 'object' ? (pair.originalItem?.size?.name || 'N/A') : String(pair.originalItem?.size || 'N/A')}</span>
+                              <span>•</span>
                               <span className="inline-flex items-center gap-1">
-                                • Color:
-                                <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(order.returnRequest.exchangeItem.color) }} />
-                                <span className="font-bold text-slate-800">{formatColorName(order.returnRequest.exchangeItem.colorName, order.returnRequest.exchangeItem.color)}</span>
+                                Color:
+                                {pair.originalItem?.color && (
+                                  <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: typeof pair.originalItem.color === 'object' ? (pair.originalItem.color?.hex || '#000') : String(pair.originalItem.color) }} />
+                                )}
+                                <span className="font-semibold text-slate-700">{formatColorName(pair.originalItem?.colorName, pair.originalItem?.color)}</span>
                               </span>
-                            )}
-                          </p>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-emerald-600 font-mono mb-1">
+                          ⇄ Requested Replacement {order.returnRequest.items?.length > 1 ? `#${pIdx + 1}` : ''}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          {pair.exchangeItem?.image && (
+                            <img src={pair.exchangeItem.image} alt="Replacement" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-900 text-sm truncate">{pair.exchangeItem?.title || 'Replacement Item'}</p>
+                            <p className="text-xs text-slate-600 font-semibold flex items-center gap-1 flex-wrap">
+                              <span>Size: {typeof pair.exchangeItem?.size === 'object' ? (pair.exchangeItem?.size.name || 'N/A') : String(pair.exchangeItem?.size || 'N/A')}</span>
+                              {pair.exchangeItem?.color && (
+                                <span className="inline-flex items-center gap-1">
+                                  • Color:
+                                  <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(pair.exchangeItem.color) }} />
+                                  <span className="font-bold text-slate-800">{formatColorName(pair.exchangeItem.colorName, pair.exchangeItem.color)}</span>
+                                </span>
+                              )}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
 
                   {/* Differential Payment Breakdown Pill */}
                   {(() => {
@@ -1561,6 +1759,25 @@ export default function CustomerOrderDetails() {
                         </span>
                         <span className="bg-slate-100 px-2 py-0.5 rounded-md">Qty: <strong className="text-slate-900">{item.quantity}</strong></span>
                       </div>
+
+                      {/* Swapped / Exchange Replacement Indicator */}
+                      {(() => {
+                        if (order.returnRequest?.type !== 'EXCHANGE') return null;
+                        const pair = order.returnRequest.items?.find(p =>
+                          (p.originalItem?.id && (p.originalItem.id === item.id || p.originalItem.id === item.productId)) ||
+                          (p.originalItem?.productId && (p.originalItem.productId === item.productId || p.originalItem.productId === item.id)) ||
+                          (p.originalItem?.title && (p.originalItem.title === item.titleSnapshot || p.originalItem.title === item.name))
+                        ) || ((order.returnRequest.originalItem?.id === item.id || order.returnRequest.originalItem?.productId === item.productId || order.returnRequest.originalItem?.title === item.titleSnapshot) ? { exchangeItem: order.returnRequest.exchangeItem } : null);
+                        if (!pair?.exchangeItem) return null;
+                        return (
+                          <div className="pt-1">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-900 border border-purple-200">
+                              <RefreshCw className="w-3 h-3 text-[#5B2E89]" />
+                              <span>⇄ Swapped for {pair.exchangeItem.title} (Size: {typeof pair.exchangeItem.size === 'object' ? (pair.exchangeItem.size.name || 'M') : pair.exchangeItem.size})</span>
+                            </span>
+                          </div>
+                        );
+                      })()}
 
                       {productUrl && (
                         <div className="pt-0.5">
@@ -2033,9 +2250,9 @@ export default function CustomerOrderDetails() {
                 <div>
                   <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                     <RefreshCw className="w-5 h-5 text-[#5B2E89]" />
-                    Exchange Product
+                    {order.items?.length > 1 ? 'Exchange Ordered Items' : 'Exchange Product'}
                   </h3>
-                  <p className="text-xs text-slate-500">Free doorstep pickup & replacement delivery</p>
+                  <p className="text-xs text-slate-500">Free doorstep pickup & replacement delivery • 7-day guarantee</p>
                 </div>
                 <button
                   onClick={() => setActiveModal(null)}
@@ -2048,34 +2265,285 @@ export default function CustomerOrderDetails() {
               <div className="p-6 md:p-8 pt-4 overflow-y-auto flex-1 space-y-6">
                 <form onSubmit={handleExchangeSubmit} className="space-y-6">
 
-                {/* 1. Item being exchanged */}
-                {selectedItemForAction && (
-                  <div>
-                    <label className="text-xs font-black uppercase text-slate-500 block mb-2 tracking-wider">Item You Want to Exchange</label>
-                    <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/80">
-                      {selectedItemForAction.image && (
-                        <img src={selectedItemForAction.image} alt="Original" className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 text-sm truncate">{typeof selectedItemForAction.titleSnapshot === 'string' ? selectedItemForAction.titleSnapshot : (selectedItemForAction.name || selectedItemForAction.title || 'Product')}</p>
-                        <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1 flex-wrap">
-                          <span>Current Size: <span className="font-bold text-slate-800">{selectedItemForAction.size}</span></span>
-                          <span>•</span>
-                          <span className="inline-flex items-center gap-1">
-                            Color:
-                            {selectedItemForAction.color && (
-                              <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(selectedItemForAction.color) }} />
-                            )}
-                            <span className="font-bold text-slate-800">{formatColorName(selectedItemForAction.colorName, selectedItemForAction.color)}</span>
-                          </span>
-                        </p>
-                      </div>
-                      <div className="text-right font-black text-slate-800 text-sm">
-                        ₹{selectedItemForAction.unitPrice}
-                      </div>
-                    </div>
+                {/* 1. Items being exchanged */}
+                <div>
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <label className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                      {order.items?.length > 1 ? `Items to Exchange (${exchangeSummary.selectedCount}/${order.items.length} Selected)` : 'Item You Want to Exchange'}
+                    </label>
+                    {order.items?.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={handleToggleSelectAll}
+                        className="text-xs font-extrabold text-[#5B2E89] hover:underline flex items-center gap-1.5"
+                      >
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${
+                          selectedExchangeItemKeys.length === order.items.length
+                            ? 'bg-[#5B2E89] border-[#5B2E89] text-white'
+                            : 'bg-white border-slate-300'
+                        }`}>
+                          {selectedExchangeItemKeys.length === order.items.length && <Check className="w-3 h-3 stroke-[3]" />}
+                        </span>
+                        <span>{selectedExchangeItemKeys.length === order.items.length ? 'Deselect Others' : 'Exchange All Items'}</span>
+                      </button>
+                    )}
                   </div>
-                )}
+
+                  <div className="space-y-3">
+                    {order.items?.map((item, idx) => {
+                      const itemKey = getItemKey(item, idx);
+                      const isSelected = selectedExchangeItemKeys.includes(itemKey);
+                      const repState = exchangeReplacements[itemKey] || {};
+                      const activeProduct = repState.product || resolveCatalogProduct(item);
+                      const currentMode = repState.exchangeMode || 'same_product';
+                      const selectedSize = repState.size || getInitialReplacementSize(activeProduct, item.size);
+                      const availableSizes = getAvailableSizesForProduct(activeProduct);
+
+                      const origPrice = Number(item.unitPrice || 0);
+                      const repPrice = Number(activeProduct?.price || origPrice);
+                      const itemDiff = repPrice - origPrice;
+
+                      return (
+                        <div
+                          key={itemKey}
+                          className={`rounded-2xl border transition-all overflow-hidden ${
+                            isSelected
+                              ? 'bg-purple-50/20 border-[#5B2E89]/40 shadow-xs'
+                              : 'bg-slate-50/60 border-slate-200 opacity-65'
+                          }`}
+                        >
+                          {/* Item Header */}
+                          <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3 bg-white">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              {order.items.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleItemSelection(itemKey)}
+                                  className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
+                                    isSelected
+                                      ? 'bg-[#5B2E89] border-[#5B2E89] text-white shadow-2xs'
+                                      : 'bg-white border-slate-300 hover:border-slate-400'
+                                  }`}
+                                  title={isSelected ? 'Unselect this item' : 'Select to exchange'}
+                                >
+                                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                </button>
+                              )}
+
+                              {item.image ? (
+                                <img src={item.image} alt={item.titleSnapshot} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                              ) : (
+                                <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-xs font-bold text-purple-700 shrink-0">
+                                  👕
+                                </div>
+                              )}
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-bold text-slate-900 text-sm truncate">
+                                    {typeof item.titleSnapshot === 'string' ? item.titleSnapshot : (item.name || item.title || 'Product')}
+                                  </p>
+                                  {order.items.length > 1 && (
+                                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                      Item {idx + 1} of {order.items.length}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                  <span>Current Size: <span className="font-bold text-slate-800">{item.size || 'N/A'}</span></span>
+                                  <span>•</span>
+                                  <span className="inline-flex items-center gap-1">
+                                    Color:
+                                    {item.color && (
+                                      <span className="inline-block w-2.5 h-2.5 rounded-full border border-slate-300 shrink-0" style={{ backgroundColor: formatColorHex(item.color) }} />
+                                    )}
+                                    <span className="font-bold text-slate-800">{formatColorName(item.colorName, item.color)}</span>
+                                  </span>
+                                  <span>•</span>
+                                  <span>Qty: <span className="font-bold text-slate-800">{item.quantity || 1}</span></span>
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <p className="font-black text-slate-900 text-sm">₹{origPrice}</p>
+                              {order.items.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleItemSelection(itemKey)}
+                                  className={`text-[11px] font-bold ${isSelected ? 'text-[#5B2E89]' : 'text-slate-500 hover:text-slate-800'} hover:underline`}
+                                >
+                                  {isSelected ? '✓ Selected' : '+ Exchange'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Item Replacement Configuration */}
+                          {isSelected ? (
+                            <div className="p-3.5 sm:p-4 pt-3 border-t border-slate-100 space-y-3">
+                              {/* Mode Selector */}
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider">
+                                  Select Replacement:
+                                </span>
+                                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateItemExchangeMode(itemKey, 'same_product')}
+                                    className={`px-2.5 py-1 rounded-md transition-colors ${
+                                      currentMode === 'same_product' ? 'bg-white shadow-2xs text-[#5B2E89]' : 'text-slate-500'
+                                    }`}
+                                  >
+                                    Same Item (New Size)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      handleUpdateItemExchangeMode(itemKey, 'catalog');
+                                      setActiveCatalogItemKey(itemKey);
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md transition-colors ${
+                                      currentMode === 'catalog' ? 'bg-white shadow-2xs text-[#5B2E89]' : 'text-slate-500'
+                                    }`}
+                                  >
+                                    Browse Catalog
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Mode A: Same product different size */}
+                              {currentMode === 'same_product' && (
+                                <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 space-y-2">
+                                  <p className="text-[11px] font-bold text-slate-700">Choose New Size for this product:</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {availableSizes.map((sz, sIdx) => {
+                                      const isCurrent = sz === item.size;
+                                      const isChoiceSelected = sz === selectedSize;
+                                      const matchedVariant = activeProduct.variants?.find(
+                                        v => String(v.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase()
+                                      );
+                                      const isOutOfStock = matchedVariant ? Number(matchedVariant.stock) <= 0 : false;
+
+                                      return (
+                                        <button
+                                          key={sIdx}
+                                          type="button"
+                                          disabled={isCurrent || isOutOfStock}
+                                          onClick={() => handleUpdateItemReplacementSize(itemKey, sz)}
+                                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border transition-all ${
+                                            isChoiceSelected
+                                              ? 'bg-[#5B2E89] text-white border-[#5B2E89] shadow-xs scale-105'
+                                              : isOutOfStock
+                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed line-through'
+                                                : isCurrent
+                                                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
+                                                  : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300'
+                                          }`}
+                                          title={isOutOfStock ? 'Currently out of stock' : isCurrent ? 'Current size' : `Select size ${sz}`}
+                                        >
+                                          {sz} {isCurrent ? '(Current)' : isOutOfStock ? '(Sold out)' : ''}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Mode B: Catalog Selection */}
+                              {currentMode === 'catalog' && (
+                                <div className="space-y-2.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                  <div className="relative">
+                                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                      type="text"
+                                      placeholder="Search products in catalog..."
+                                      value={exchangeSearchQuery}
+                                      onChange={(e) => setExchangeSearchQuery(e.target.value)}
+                                      className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#5B2E89] bg-white"
+                                    />
+                                  </div>
+
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-36 overflow-y-auto p-0.5">
+                                    {filteredCatalogProducts.map((prod) => {
+                                      const isProdSelected = activeProduct?.id === prod.id;
+                                      return (
+                                        <button
+                                          key={prod.id}
+                                          type="button"
+                                          onClick={() => handleSelectItemCatalogProduct(itemKey, prod)}
+                                          className={`p-1.5 rounded-lg border text-left transition-all ${
+                                            isProdSelected ? 'bg-purple-50 border-[#5B2E89] ring-2 ring-[#5B2E89]/20' : 'bg-white border-slate-200 hover:border-slate-300'
+                                          }`}
+                                        >
+                                          <img src={prod.image} alt={prod.name} className="w-full h-12 object-cover rounded mb-1" />
+                                          <p className="font-bold text-[10px] text-slate-800 truncate">{prod.name}</p>
+                                          <p className="text-[9px] font-black text-slate-500">₹{prod.price}</p>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Size for selected catalog product */}
+                                  <div className="pt-2 border-t border-slate-200">
+                                    <p className="text-[11px] font-bold text-slate-700 mb-1">
+                                      Size for {activeProduct?.name || 'Selected Item'}:
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {availableSizes.map((sz, sIdx) => {
+                                        const isChoiceSelected = sz === selectedSize;
+                                        return (
+                                          <button
+                                            key={sIdx}
+                                            type="button"
+                                            onClick={() => handleUpdateItemReplacementSize(itemKey, sz)}
+                                            className={`px-2.5 py-1 rounded-md text-xs font-bold border transition-colors ${
+                                              isChoiceSelected
+                                                ? 'bg-[#5B2E89] text-white border-[#5B2E89]'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                                            }`}
+                                          >
+                                            {sz}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Item-level Preview Tag */}
+                              <div className="flex items-center justify-between text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  <span className="font-bold text-slate-500">Exchange:</span>
+                                  <span className="font-semibold text-slate-700">{item.size}</span>
+                                  <span className="text-slate-400 font-bold">➔</span>
+                                  <span className="font-bold text-purple-900 bg-purple-100/80 px-2 py-0.5 rounded shadow-2xs">
+                                    {selectedSize} {activeProduct?.name !== item.titleSnapshot ? `(${activeProduct?.name})` : ''}
+                                  </span>
+                                </div>
+                                <span className="font-bold text-slate-600 shrink-0">
+                                  {itemDiff === 0 ? '₹0 diff' : itemDiff > 0 ? `+₹${itemDiff}` : `-₹${Math.abs(itemDiff)}`}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                              <span>This item will remain as is (not exchanged).</span>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleItemSelection(itemKey)}
+                                className="font-bold text-[#5B2E89] hover:underline"
+                              >
+                                + Click to exchange
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* 2. Reason for Exchange (MANDATORY) */}
                 <div>
@@ -2106,266 +2574,131 @@ export default function CustomerOrderDetails() {
                   />
                 </div>
 
-                {/* 3. Replacement Product Selection (CORE USER REQUIREMENT) */}
-                <div className="border-t border-slate-100 pt-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <label className="text-xs font-black uppercase text-slate-700 tracking-wider">
-                      Select Replacement Item <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
-                      <button
-                        type="button"
-                        onClick={() => setExchangeMode('same_product')}
-                        className={`px-3 py-1.5 rounded-lg transition-colors ${exchangeMode === 'same_product' ? 'bg-white shadow text-[#5B2E89]' : 'text-slate-500'}`}
-                      >
-                        Same Item (Different Size)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setExchangeMode('catalog')}
-                        className={`px-3 py-1.5 rounded-lg transition-colors ${exchangeMode === 'catalog' ? 'bg-white shadow text-[#5B2E89]' : 'text-slate-500'}`}
-                      >
-                        Browse Store Catalog
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Mode A: Same product different size */}
-                  {exchangeMode === 'same_product' && (
-                    <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100 space-y-3">
-                      <p className="text-xs font-bold text-slate-700">Choose New Size for this product:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {availableSizesForReplacement.map((sz, idx) => {
-                          const isCurrent = sz === selectedItemForAction?.size;
-                          const isSelected = sz === replacementVariant.size;
-                          const matchedVariant = replacementVariant.product?.variants?.find(v => String(v.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase());
-                          const isOutOfStock = matchedVariant ? Number(matchedVariant.stock) <= 0 : false;
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              disabled={isCurrent || isOutOfStock}
-                              onClick={() => setReplacementVariant(prev => ({ ...prev, size: sz }))}
-                              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold border transition-all ${
-                                isSelected
-                                  ? 'bg-[#5B2E89] text-white border-[#5B2E89] shadow-sm scale-105'
-                                  : isOutOfStock
-                                    ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed line-through'
-                                    : isCurrent
-                                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
-                                      : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300'
-                                }`}
-                              title={isOutOfStock ? 'Currently out of stock' : isCurrent ? 'Current size' : `Select size ${sz}`}
-                            >
-                              {sz} {isCurrent ? '(Current)' : isOutOfStock ? '(Out of stock)' : ''}
-                            </button>
-                          );
-                        })}
+                {/* 3. Realtime Exchange Summary Card */}
+                {(() => {
+                  const diff = exchangeSummary.diff;
+                  return (
+                    <div className={`p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border ${
+                      diff > 0 ? 'bg-amber-50/70 border-amber-200' : diff < 0 ? 'bg-blue-50/70 border-blue-200' : 'bg-emerald-50/70 border-emerald-200'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-500">Exchange Summary:</span>
+                        <span className="font-black text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                          {exchangeSummary.selectedCount} {exchangeSummary.selectedCount === 1 ? 'Item' : 'Items'} Selected
+                        </span>
+                        <span className="text-slate-500 font-semibold">
+                          (₹{exchangeSummary.origTotal} ➔ ₹{exchangeSummary.repTotal})
+                        </span>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Mode B: Browse store catalog */}
-                  {exchangeMode === 'catalog' && (
-                    <div className="space-y-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                      <div className="relative">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="text"
-                          placeholder="Search products in catalog..."
-                          value={exchangeSearchQuery}
-                          onChange={(e) => setExchangeSearchQuery(e.target.value)}
-                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#5B2E89] bg-white"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
-                        {filteredCatalogProducts.map((prod) => {
-                          const isSelected = replacementVariant.product?.id === prod.id;
-                          return (
-                            <button
-                              key={prod.id}
-                              type="button"
-                              onClick={() => {
-                                setReplacementVariant({
-                                  product: prod,
-                                  size: prod.sizes?.[0] || 'M',
-                                  color: prod.colors?.[0] || 'Default'
-                                });
-                              }}
-                              className={`p-2 rounded-xl border text-left transition-all ${isSelected ? 'bg-purple-50 border-[#5B2E89] ring-2 ring-[#5B2E89]/20' : 'bg-white border-slate-200 hover:border-slate-300'
-                                }`}
-                            >
-                              <img src={prod.image} alt={prod.name} className="w-full h-16 object-cover rounded-lg mb-1" />
-                              <p className="font-bold text-[11px] text-slate-800 truncate">{prod.name}</p>
-                              <p className="text-[10px] font-black text-slate-500">₹{prod.price}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Pick size for catalog item */}
-                      {replacementVariant.product && (
-                        <div className="pt-2 border-t border-slate-200">
-                          <p className="text-xs font-bold text-slate-700 mb-1.5">Size for {replacementVariant.product.name}:</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {(replacementVariant.product.sizes?.length ? replacementVariant.product.sizes : ['5-6 Year', '7-8 Year', '9-10 Year', 'S', 'M', 'L']).map((sz, i) => {
-                              const matchedVariant = replacementVariant.product?.variants?.find(v => String(v.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase());
-                              const isOutOfStock = matchedVariant ? Number(matchedVariant.stock) <= 0 : false;
-                              return (
-                                <button
-                                  key={i}
-                                  type="button"
-                                  disabled={isOutOfStock}
-                                  onClick={() => setReplacementVariant(prev => ({ ...prev, size: sz }))}
-                                  className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors ${
-                                    replacementVariant.size === sz
-                                      ? 'bg-[#5B2E89] text-white border-[#5B2E89]'
-                                      : isOutOfStock
-                                        ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed line-through'
-                                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                                  }`}
-                                  title={isOutOfStock ? 'Currently out of stock' : `Select size ${sz}`}
-                                >
-                                  {sz} {isOutOfStock ? '(Sold out)' : ''}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Realtime Exchange Comparison Card */}
-                  {(() => {
-                    const origP = Number(selectedItemForAction?.unitPrice || 0);
-                    const repP = Number(replacementVariant.product?.price || origP);
-                    const diff = repP - origP;
-                    return (
-                      <div className={`p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border ${diff > 0 ? 'bg-amber-50/70 border-amber-200' : diff < 0 ? 'bg-blue-50/70 border-blue-200' : 'bg-emerald-50/70 border-emerald-200'
-                        }`}>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-500">Exchange Preview:</span>
-                          <span className="font-bold text-slate-800">{selectedItemForAction?.size}</span>
-                          <span className="text-slate-400 font-black">➔</span>
-                          <span className="font-black text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs">
-                            {replacementVariant.size} {replacementVariant.product?.name ? `(${replacementVariant.product.name})` : ''}
-                          </span>
-                        </div>
-                        <span className={`font-black uppercase tracking-wider text-[11px] px-2.5 py-1 rounded-lg ${diff === 0
+                      <span className={`font-black uppercase tracking-wider text-[11px] px-2.5 py-1 rounded-lg ${
+                        diff === 0
                           ? 'text-emerald-800 bg-emerald-100'
                           : diff > 0
                             ? 'text-amber-800 bg-amber-100'
                             : 'text-blue-800 bg-blue-100'
-                          }`}>
-                          {diff === 0
-                            ? 'Equal Value Exchange (₹0)'
-                            : diff > 0
-                              ? `Extra to Pay: +₹${diff}`
-                              : `Refund / Credit Due: ₹${Math.abs(diff)}`}
+                      }`}>
+                        {diff === 0
+                          ? 'Equal Value Exchange (₹0)'
+                          : diff > 0
+                            ? `Extra to Pay: +₹${diff}`
+                            : `Refund / Credit Due: ₹${Math.abs(diff)}`}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* Differential Payment Method Selection when diff > 0 */}
+                {(() => {
+                  const diff = exchangeSummary.diff;
+
+                  if (diff <= 0) return null;
+
+                  return (
+                    <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl border border-amber-200 text-xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                          <CreditCard className="w-4 h-4 text-amber-600" />
+                          Differential Amount: +₹{diff}
+                        </span>
+                        <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-2 py-0.5 rounded-full">
+                          Upgrade Items
                         </span>
                       </div>
-                    );
-                  })()}
+                      <p className="text-slate-600 text-[11px]">
+                        The replacement items are priced higher than original items. Select how you would like to settle the ₹{diff} difference:
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <label
+                          onClick={() => setDiffPaymentMethod('razorpay')}
+                          className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                            diffPaymentMethod === 'razorpay'
+                              ? 'bg-white border-[#5B2E89] ring-2 ring-[#5B2E89]/20 shadow-xs'
+                              : 'bg-white/60 border-slate-200 hover:bg-white'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="diffPayment"
+                            value="razorpay"
+                            checked={diffPaymentMethod === 'razorpay'}
+                            onChange={() => setDiffPaymentMethod('razorpay')}
+                            className="mt-0.5 text-[#5B2E89] focus:ring-[#5B2E89]"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs flex items-center gap-1">
+                              Pay Online Now
+                              <span className="text-[9px] bg-purple-100 text-purple-700 font-extrabold px-1.5 py-0.2 rounded">Fastest</span>
+                            </p>
+                            <p className="text-[10px] text-slate-500">UPI, Cards, NetBanking (Razorpay)</p>
+                          </div>
+                        </label>
 
-                  {/* Differential Payment Method Selection when diff > 0 */}
-                  {(() => {
-                    const origP = Number(selectedItemForAction?.unitPrice || 0);
-                    const repP = Number(replacementVariant.product?.price || origP);
-                    const diff = repP - origP;
+                        <label
+                          onClick={() => setDiffPaymentMethod('cod')}
+                          className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                            diffPaymentMethod === 'cod'
+                              ? 'bg-white border-[#5B2E89] ring-2 ring-[#5B2E89]/20 shadow-xs'
+                              : 'bg-white/60 border-slate-200 hover:bg-white'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="diffPayment"
+                            value="cod"
+                            checked={diffPaymentMethod === 'cod'}
+                            onChange={() => setDiffPaymentMethod('cod')}
+                            className="mt-0.5 text-[#5B2E89] focus:ring-[#5B2E89]"
+                          />
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs">Pay on Delivery</p>
+                            <p className="text-[10px] text-slate-500">Cash / UPI to courier at doorstep</p>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })()}
 
-                    if (diff <= 0) return null;
+                {/* Refund Notice when diff < 0 */}
+                {(() => {
+                  const diff = exchangeSummary.diff;
 
-                    return (
-                      <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl border border-amber-200 text-xs space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-black text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                            <CreditCard className="w-4 h-4 text-amber-600" />
-                            Differential Amount: +₹{diff}
-                          </span>
-                          <span className="text-[10px] bg-amber-200/80 text-amber-900 font-extrabold px-2 py-0.5 rounded-full">
-                            Upgrade Item
-                          </span>
-                        </div>
-                        <p className="text-slate-600 text-[11px]">
-                          The replacement item is priced higher than your original item. Select how you would like to settle the ₹{diff} difference:
+                  if (diff >= 0) return null;
+
+                  return (
+                    <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 text-xs flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 font-bold">
+                        ₹
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-blue-950 text-xs">Refund Due: ₹{Math.abs(diff)}</p>
+                        <p className="text-[11px] text-blue-800">
+                          The replacement item(s) are priced lower. We will automatically initiate a refund of ₹{Math.abs(diff)} to your original payment method once the replacement is delivered.
                         </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                          <label
-                            onClick={() => setDiffPaymentMethod('razorpay')}
-                            className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                              diffPaymentMethod === 'razorpay'
-                                ? 'bg-white border-[#5B2E89] ring-2 ring-[#5B2E89]/20 shadow-xs'
-                                : 'bg-white/60 border-slate-200 hover:bg-white'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="diffPayment"
-                              value="razorpay"
-                              checked={diffPaymentMethod === 'razorpay'}
-                              onChange={() => setDiffPaymentMethod('razorpay')}
-                              className="mt-0.5 text-[#5B2E89] focus:ring-[#5B2E89]"
-                            />
-                            <div className="min-w-0">
-                              <p className="font-bold text-slate-900 text-xs flex items-center gap-1">
-                                Pay Online Now
-                                <span className="text-[9px] bg-purple-100 text-purple-700 font-extrabold px-1.5 py-0.2 rounded">Fastest</span>
-                              </p>
-                              <p className="text-[10px] text-slate-500">UPI, Cards, NetBanking (Razorpay)</p>
-                            </div>
-                          </label>
-
-                          <label
-                            onClick={() => setDiffPaymentMethod('cod')}
-                            className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                              diffPaymentMethod === 'cod'
-                                ? 'bg-white border-[#5B2E89] ring-2 ring-[#5B2E89]/20 shadow-xs'
-                                : 'bg-white/60 border-slate-200 hover:bg-white'
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name="diffPayment"
-                              value="cod"
-                              checked={diffPaymentMethod === 'cod'}
-                              onChange={() => setDiffPaymentMethod('cod')}
-                              className="mt-0.5 text-[#5B2E89] focus:ring-[#5B2E89]"
-                            />
-                            <div className="min-w-0">
-                              <p className="font-bold text-slate-900 text-xs">Pay on Delivery</p>
-                              <p className="text-[10px] text-slate-500">Cash / UPI to courier at doorstep</p>
-                            </div>
-                          </label>
-                        </div>
                       </div>
-                    );
-                  })()}
-
-                  {/* Refund Notice when diff < 0 */}
-                  {(() => {
-                    const origP = Number(selectedItemForAction?.unitPrice || 0);
-                    const repP = Number(replacementVariant.product?.price || origP);
-                    const diff = repP - origP;
-
-                    if (diff >= 0) return null;
-
-                    return (
-                      <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 text-xs flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-700 font-bold">
-                          ₹
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-bold text-blue-950 text-xs">Refund Due: ₹{Math.abs(diff)}</p>
-                          <p className="text-[11px] text-blue-800">
-                            The replacement item is priced lower. We will automatically initiate a refund of ₹{Math.abs(diff)} to your original payment method once the replacement is delivered.
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Pickup Address Confirmation */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1">
@@ -2378,14 +2711,11 @@ export default function CustomerOrderDetails() {
                 </div>
 
                 {(() => {
-                  const origP = Number(selectedItemForAction?.unitPrice || 0);
-                  const repP = Number(replacementVariant.product?.price || origP);
-                  const diff = repP - origP;
-
-                  let buttonLabel = 'Confirm & Request Exchange';
+                  const diff = exchangeSummary.diff;
+                  let buttonLabel = `Confirm & Request Exchange (${exchangeSummary.selectedCount} ${exchangeSummary.selectedCount === 1 ? 'Item' : 'Items'})`;
                   if (diff > 0) {
                     buttonLabel = diffPaymentMethod === 'razorpay'
-                      ? `Pay ₹${diff} via Razorpay & Request Exchange`
+                      ? `Pay ₹${diff} via Razorpay & Exchange (${exchangeSummary.selectedCount} ${exchangeSummary.selectedCount === 1 ? 'Item' : 'Items'})`
                       : `Confirm Exchange (Pay ₹${diff} on Delivery)`;
                   } else if (diff < 0) {
                     buttonLabel = `Confirm Exchange (₹${Math.abs(diff)} Refund Due)`;
@@ -2394,8 +2724,12 @@ export default function CustomerOrderDetails() {
                   return (
                     <button
                       type="submit"
-                      disabled={isSubmittingExchange}
-                      className="w-full py-4 bg-[#5B2E89] hover:bg-[#4a256e] text-white font-extrabold rounded-xl transition-colors shadow-md flex items-center justify-center gap-2"
+                      disabled={isSubmittingExchange || exchangeSummary.selectedCount === 0}
+                      className={`w-full py-4 text-white font-extrabold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 ${
+                        exchangeSummary.selectedCount === 0
+                          ? 'bg-slate-300 cursor-not-allowed'
+                          : 'bg-[#5B2E89] hover:bg-[#4a256e] active:scale-[0.99]'
+                      }`}
                     >
                       {isSubmittingExchange ? <Loader2 className="w-5 h-5 animate-spin" /> : buttonLabel}
                     </button>

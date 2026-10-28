@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth as useAdmin } from '../../context/AuthContext';
-import { ShieldCheck, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, User, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AdminLogin() {
+  const navigate = useNavigate();
   const { login } = useAdmin();
   const [formData, setFormData] = useState({
     email: '',
@@ -34,6 +36,22 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ backgroundColor: '#FAF6F0', color: '#1a1a1a' }}>
+      
+      {/* Back Button */}
+      <button
+        type="button"
+        onClick={() => {
+          if (window.history.length > 1) {
+            navigate(-1);
+          } else {
+            navigate('/');
+          }
+        }}
+        className="absolute top-5 left-5 sm:top-6 sm:left-6 z-30 inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white text-[#222222] font-black text-xs sm:text-sm rounded-xl border-2 border-[#222222] shadow-[3px_3px_0px_#222222] hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#222222] active:translate-y-0 active:shadow-[1px_1px_0px_#222222] transition-all cursor-pointer"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back</span>
+      </button>
       
       {/* Background Grid Pattern */}
       <div style={{
@@ -141,7 +159,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#EF4A45] text-white font-bold py-4 rounded-xl border-2 border-[#222222] shadow-[0px_4px_0px_#222222] hover:-translate-y-1 hover:shadow-[0px_6px_0px_#222222] active:translate-y-1  transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+              className="w-full bg-[#EF4A45] text-white font-bold py-4 rounded-xl border-2 border-[#222222] shadow-[0px_4px_0px_#222222] hover:-translate-y-1 hover:shadow-[0px_6px_0px_#222222] active:translate-y-1  transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4 cursor-pointer"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -152,6 +170,23 @@ export default function AdminLogin() {
                 </>
               )}
             </button>
+
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.history.length > 1) {
+                    navigate(-1);
+                  } else {
+                    navigate('/');
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-[#222222] transition-colors cursor-pointer py-1 px-2"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Store</span>
+              </button>
+            </div>
           </form>
         </div>
 

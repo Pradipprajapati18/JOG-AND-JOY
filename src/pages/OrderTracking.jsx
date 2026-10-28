@@ -304,7 +304,7 @@ export default function OrderTracking() {
 
                         steps = [
                           { label: 'Original Delivered', active: true, desc: 'Initial outfit successfully delivered.' },
-                          { label: 'Exchange Requested', active: true, desc: `Exchange requested: ${order.returnRequest.exchangeItem?.title || 'replacement variant'}.` },
+                          { label: 'Exchange Requested', active: true, desc: order.returnRequest.items?.length > 1 ? `Exchange requested for all ${order.returnRequest.items.length} items.` : `Exchange requested: ${order.returnRequest.exchangeItem?.title || 'replacement variant'}.` },
                           { label: 'Exchange Approved', active: isExchangeApproved, desc: isExchangeApproved ? 'Exchange verified & approved by fulfillment team.' : 'Awaiting review.' },
                           { label: 'Replacement Shipped', active: isExchangeShipped, desc: isExchangeShipped ? `Replacement package on the way via ${order.carrier || order.shippingAddress?.carrier || 'courier'}.` : 'Replacement package in preparation.' },
                           { label: 'Replacement Delivered', active: isExchangeDelivered, desc: isExchangeDelivered ? 'Replacement outfit delivered & smiles!' : 'Doorstep replacement delivery.' },

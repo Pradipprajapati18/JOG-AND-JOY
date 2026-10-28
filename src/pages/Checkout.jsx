@@ -581,7 +581,22 @@ export default function Checkout() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center relative">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/');
+            }
+          }}
+          className="absolute top-5 left-5 sm:top-8 sm:left-8 z-20 inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2 bg-white/90 hover:bg-white text-slate-700 hover:text-slate-900 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-xs text-xs font-black transition-all cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </button>
+
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95">
           <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mx-auto shadow-sm">
             <UserCircle className="w-8 h-8" />
@@ -590,12 +605,27 @@ export default function Checkout() {
           <p className="text-xs text-slate-500 font-semibold pb-4 leading-relaxed">
             To ensure the security of your order and to sync your cart, please log in or create an account to proceed with checkout.
           </p>
-          <button
-            onClick={() => setIsProfileOpen(true)}
-            className="block w-full py-3.5 rounded-full bg-slate-900 text-white font-extrabold text-xs shadow-md hover:bg-slate-800 transition-colors"
-          >
-            Log In / Create Account
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className="block w-full py-3.5 rounded-full bg-slate-900 text-white font-extrabold text-xs shadow-md hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Log In / Create Account
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate('/');
+                }
+              }}
+              className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -603,7 +633,22 @@ export default function Checkout() {
 
   if (!isOrderPlaced && checkoutItems.length === 0) {
     return (
-      <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center relative">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/');
+            }
+          }}
+          className="absolute top-5 left-5 sm:top-8 sm:left-8 z-20 inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2 bg-white/90 hover:bg-white text-slate-700 hover:text-slate-900 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-xs text-xs font-black transition-all cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </button>
+
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95">
           <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto shadow-sm">
             <ShoppingBag className="w-8 h-8" />
@@ -612,12 +657,27 @@ export default function Checkout() {
           <p className="text-xs text-slate-500 font-semibold pb-4">
             You need to add some products to your cart before you can checkout.
           </p>
-          <Link
-            to="/products"
-            className="block w-full py-3.5 rounded-full bg-[#EF4A45] text-white font-extrabold text-xs shadow-md hover:bg-red-600 transition-colors"
-          >
-            Start Shopping
-          </Link>
+          <div className="space-y-2">
+            <Link
+              to="/products"
+              className="block w-full py-3.5 rounded-full bg-[#EF4A45] text-white font-extrabold text-xs shadow-md hover:bg-red-600 transition-colors"
+            >
+              Start Shopping
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate('/');
+                }
+              }}
+              className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -625,7 +685,22 @@ export default function Checkout() {
 
   if (isOrderPlaced) {
     return (
-      <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center">
+      <div className="min-h-screen bg-[#FFF8EC] py-16 px-4 flex items-center justify-center relative">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) {
+              navigate(-1);
+            } else {
+              navigate('/');
+            }
+          }}
+          className="absolute top-5 left-5 sm:top-8 sm:left-8 z-20 inline-flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2 bg-white/90 hover:bg-white text-slate-700 hover:text-slate-900 rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-xs text-xs font-black transition-all cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back</span>
+        </button>
+
         <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-center space-y-4 animate-in zoom-in-95">
           <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
             <CheckCircle2 className="w-10 h-10" />
@@ -644,12 +719,27 @@ export default function Checkout() {
               <span className="font-bold text-emerald-600">Within 3-4 Days</span>
             </div>
           </div>
-          <Link
-            to="/products"
-            className="block w-full py-3.5 rounded-full bg-[#EF4A45] text-white font-extrabold text-xs shadow-md hover:bg-red-600 transition-colors"
-          >
-            Continue Shopping
-          </Link>
+          <div className="space-y-2 pt-1">
+            <Link
+              to="/products"
+              className="block w-full py-3.5 rounded-full bg-[#EF4A45] text-white font-extrabold text-xs shadow-md hover:bg-red-600 transition-colors"
+            >
+              Continue Shopping
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate('/');
+                }
+              }}
+              className="w-full py-3 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back
+            </button>
+          </div>
         </div>
       </div>
     );

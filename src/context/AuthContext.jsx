@@ -63,9 +63,37 @@ export const AuthProvider = ({ children }) => {
         setUser(data);
         return data;
       } else {
-        // If profile not found immediately, it might be due to the trigger delay.
-        // We can set a minimal user object based on Auth.
-        const fallback = { id: userId, role: 'CUSTOMER' };
+        // For OAuth users (e.g. Google), ensure profile exists in public.users
+        let authUser = null;
+        try {
+          const { data: userData } = await supabase.auth.getUser();
+          authUser = userData?.user;
+        } catch (_) {}
+
+        const name = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || authUser?.email?.split('@')[0] || 'Customer';
+        const email = authUser?.email || '';
+
+        try {
+          const { data: created } = await supabase
+            .from('users')
+            .upsert({
+              id: userId,
+              name,
+              email,
+              role: 'CUSTOMER'
+            }, { onConflict: 'id' })
+            .select()
+            .single();
+
+          if (created) {
+            setUser(created);
+            return created;
+          }
+        } catch (insertErr) {
+          console.warn('Could not auto-create users row for OAuth user:', insertErr);
+        }
+
+        const fallback = { id: userId, name, email, role: 'CUSTOMER' };
         setUser(fallback);
         return fallback;
       }
@@ -78,6 +106,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   const isAuthenticated = !!user;
+
+  const loginWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) {
+        console.error('Google OAuth error:', error.message);
+        return { success: false, message: error.message };
+      }
+      return { success: true, data };
+    } catch (err) {
+      console.error('Google OAuth exception:', err);
+      return { success: false, message: err.message || 'Failed to initiate Google sign in.' };
+    }
+  };
 
   const login = async (email, password) => {
     try {
@@ -173,7 +220,9 @@ export const AuthProvider = ({ children }) => {
 
   const resetPassword = async (email) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
       if (error) {
         return { success: false, message: error.message };
       }
@@ -213,6 +262,7 @@ export const AuthProvider = ({ children }) => {
         user,
         isAuthenticated,
         login,
+        loginWithGoogle,
         register,
         logout,
         resetPassword,
