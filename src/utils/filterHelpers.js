@@ -6,28 +6,49 @@ import { normalizeColor } from './helpers';
  */
 export function parseAgeRange(str) {
   if (!str) return null;
-  const s = String(str).toLowerCase().replace(/–/g, '-').trim();
+  const raw = typeof str === 'object' ? (str.label || str.name || str.value || '') : String(str);
+  if (!raw) return null;
+  const s = raw.toLowerCase().replace(/–/g, '-').trim();
 
   // Months e.g. 0-3 Months, 3-6m, 6-12 month
-  const mMatch = s.match(/(\d+)\s*-\s*(\d+)\s*(?:m|months|month)/);
+  const mMatch = s.match(/(\d+)\s*-\s*(\d+)\s*(?:m|months|month)\b/);
   if (mMatch) {
     return [parseInt(mMatch[1], 10) / 12, parseInt(mMatch[2], 10) / 12];
   }
-
-  // Years range e.g. 7-8 years, 10-12 year, 12-14y
-  const yMatch = s.match(/(\d+)\s*-\s*(\d+)/);
-  if (yMatch) {
-    return [parseInt(yMatch[1], 10), parseInt(yMatch[2], 10)];
+  const singleMMatch = s.match(/^(\d+)\s*(?:m|months|month)\b/);
+  if (singleMMatch) {
+    return [parseInt(singleMMatch[1], 10) / 12, parseInt(singleMMatch[1], 10) / 12];
   }
 
-  // Single year e.g. 4y, 4 year
-  const singleMatch = s.match(/(\d+)\s*(?:y|years|year)?/);
+  // Years range e.g. 7-8 years, 10-12 year, 12-14y, 0-2
+  const yMatch = s.match(/(\d+)\s*-\s*(\d+)\s*(?:y|yr|yrs|years|year)?\b/);
+  if (yMatch) {
+    const min = parseInt(yMatch[1], 10);
+    const max = parseInt(yMatch[2], 10);
+    if (min <= 20 && max <= 20) return [min, max];
+  }
+
+  // Single year e.g. 4y, 4yr, 4 years, 4 year (MUST have age unit so it doesn't match waist sizes like 32)
+  const singleMatch = s.match(/^(\d+)\s*(?:y|yr|yrs|years|year)\b/);
   if (singleMatch) {
     const val = parseInt(singleMatch[1], 10);
-    return [val, val];
+    if (val <= 20) return [val, val];
   }
 
   return null;
+}
+
+/**
+ * Checks if two parsed age ranges overlap meaningfully
+ */
+export function rangesOverlap(r1, r2) {
+  if (!r1 || !r2) return false;
+  const isPoint1 = r1[0] === r1[1];
+  const isPoint2 = r2[0] === r2[1];
+  if (isPoint1 && isPoint2) return r1[0] === r2[0];
+  if (isPoint1) return r1[0] >= r2[0] && r1[0] <= r2[1];
+  if (isPoint2) return r2[0] >= r1[0] && r2[0] <= r1[1];
+  return Math.max(r1[0], r2[0]) < Math.min(r1[1], r2[1]);
 }
 
 /**
@@ -42,28 +63,39 @@ export function matchesAge(product, selectedAges) {
   ].filter(Boolean);
 
   return selectedAges.some((selectedAge) => {
-    const fRange = parseAgeRange(selectedAge);
+    if (!selectedAge) return false;
+    const selLabel = typeof selectedAge === 'object' ? (selectedAge.label || selectedAge.name || '') : String(selectedAge);
+    const fRange = parseAgeRange(selLabel);
 
     // 1. Check product ageGroup
     if (product.ageGroup) {
-      const pRange = parseAgeRange(product.ageGroup);
+      const pGroupLabel = typeof product.ageGroup === 'object' ? (product.ageGroup.label || product.ageGroup.name || '') : String(product.ageGroup);
+      const pRange = parseAgeRange(pGroupLabel);
       if (fRange && pRange) {
-        if (Math.max(fRange[0], pRange[0]) <= Math.min(fRange[1], pRange[1])) return true;
+        if (rangesOverlap(fRange, pRange)) return true;
       }
-      const normSel = selectedAge.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
-      const normProd = product.ageGroup.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
-      if (normProd.includes(normSel) || normSel.includes(normProd)) return true;
+      const normSel = selLabel.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
+      const normGroup = pGroupLabel.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
+      if (normGroup && normSel) {
+        if (normGroup === normSel || normGroup.includes(normSel)) return true;
+        if (normGroup.length >= 3 && normSel.includes(normGroup)) return true;
+      }
     }
 
-    // 2. Check product sizes
+    // 2. Check product sizes & variant sizes
     return allSizes.some((size) => {
-      const sRange = parseAgeRange(size);
+      const sizeStr = typeof size === 'object' ? (size.label || size.name || size.size || '') : String(size);
+      const sRange = parseAgeRange(sizeStr);
       if (fRange && sRange) {
-        if (Math.max(fRange[0], sRange[0]) <= Math.min(fRange[1], sRange[1])) return true;
+        if (rangesOverlap(fRange, sRange)) return true;
       }
-      const normSel = selectedAge.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
-      const normSize = size.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
-      return normSize.includes(normSel) || normSel.includes(normSize);
+      const normSel = selLabel.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
+      const normSize = sizeStr.toLowerCase().replace(/–/g, '-').replace(/s\b/g, '').trim();
+      if (normSize && normSel) {
+        if (normSize === normSel || normSize.includes(normSel)) return true;
+        if (normSize.length >= 3 && normSel.includes(normSize)) return true;
+      }
+      return false;
     });
   });
 }

@@ -11,7 +11,13 @@ import { useSettings } from '../queries/useSettings';
 import ShopByAge from '../components/home/ShopByAge';
 import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
 import { normalizeColor } from '../utils/helpers';
-import { matchesAge, matchesColor, matchesCategory, matchesPrice } from '../utils/filterHelpers';
+import {
+  matchesAge,
+  matchesColor,
+  matchesCategory,
+  matchesPrice,
+  parseAgeRange
+} from '../utils/filterHelpers';
 
 const kidsSortOptions = [
   { label: 'Recommended', value: 'Recommended' },
@@ -172,18 +178,35 @@ export default function KidsPage() {
   }, [effectiveFilterPanels]);
 
   const ageGroupOptions = useMemo(() => {
+    const ages = new Set();
     if (effectiveFilterPanels?.ageGroups && effectiveFilterPanels.ageGroups.length > 0) {
-      return effectiveFilterPanels.ageGroups.map(a => typeof a === 'string' ? a : (a.label || a.name || String(a)));
+      effectiveFilterPanels.ageGroups.forEach(a => {
+        const val = typeof a === 'string' ? a : (a.label || a.name || String(a));
+        if (val) ages.add(val.replace('–', '-'));
+      });
+    } else {
+      ['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years'].forEach(a => ages.add(a));
     }
-    const ages = new Set(['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years']);
+    (filters.ageGroups || []).forEach(a => {
+      if (a) ages.add(String(a).replace('–', '-'));
+    });
     kidsProducts.forEach(p => {
       if (p.ageGroup) {
         const agStr = typeof p.ageGroup === 'string' ? p.ageGroup.replace('–', '-') : (p.ageGroup.label || String(p.ageGroup));
-        ages.add(agStr);
+        if (agStr) ages.add(agStr);
       }
     });
-    return Array.from(ages).sort();
-  }, [effectiveFilterPanels, kidsProducts]);
+
+    return Array.from(ages).sort((a, b) => {
+      const rA = parseAgeRange(a);
+      const rB = parseAgeRange(b);
+      if (rA && rB) {
+        if (rA[0] !== rB[0]) return rA[0] - rB[0];
+        return rA[1] - rB[1];
+      }
+      return a.localeCompare(b);
+    });
+  }, [effectiveFilterPanels, kidsProducts, filters.ageGroups]);
 
   const colorOptions = useMemo(() => {
     if (effectiveFilterPanels?.colors && effectiveFilterPanels.colors.length > 0) {

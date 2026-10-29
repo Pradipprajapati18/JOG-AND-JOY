@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Package, Truck, CheckCircle2, MapPin, CreditCard,
   Download, ExternalLink, Loader2, Star, RefreshCw, RotateCcw,
-  ShieldAlert, Check, X, Sparkles, Search, Clock
+  ShieldAlert, Check, X, Sparkles, Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { useOrder, useOrdersList, useUpdateOrder } from '../queries/useOrders';
 import { useCombinedProducts } from '../queries/useCombinedProducts';
 import { useCreateReview, useReviewsList } from '../queries/useReviews';
 import { useUIContext } from '../context/UIContext';
-import { formatColorName, formatColorHex, createSlug } from '../utils/helpers';
+import { formatColorName, formatColorHex, createSlug, normalizeColor } from '../utils/helpers';
 import { resolveOrderTracking } from '../utils/shipping';
 import { supabase } from '../lib/supabase';
 import { restockOrderItems } from '../utils/inventory';
@@ -110,16 +110,8 @@ export default function CustomerOrderDetails() {
   // Exchange Form state
   const [exchangeReason, setExchangeReason] = useState('Size too small - Need bigger size');
   const [exchangeComments, setExchangeComments] = useState('');
-  const [exchangeMode, setExchangeMode] = useState('same_product'); // 'same_product' | 'catalog'
   const [selectedExchangeItemKeys, setSelectedExchangeItemKeys] = useState([]);
   const [exchangeReplacements, setExchangeReplacements] = useState({});
-  const [activeCatalogItemKey, setActiveCatalogItemKey] = useState(null);
-  const [replacementVariant, setReplacementVariant] = useState({
-    product: null,
-    size: '',
-    color: ''
-  });
-  const [exchangeSearchQuery, setExchangeSearchQuery] = useState('');
   const [diffPaymentMethod, setDiffPaymentMethod] = useState('razorpay'); // 'razorpay' | 'cod'
   const [isSubmittingExchange, setIsSubmittingExchange] = useState(false);
 
@@ -219,22 +211,6 @@ export default function CustomerOrderDetails() {
     }
   }, [order, user]);
 
-  // Filtered products for catalog exchange search
-  const filteredCatalogProducts = useMemo(() => {
-    if (!exchangeSearchQuery.trim()) return combinedProducts.slice(0, 8);
-    const q = exchangeSearchQuery.toLowerCase();
-    return combinedProducts.filter(p =>
-      (p.name || '').toLowerCase().includes(q) ||
-      (p.category || '').toLowerCase().includes(q)
-    ).slice(0, 8);
-  }, [combinedProducts, exchangeSearchQuery]);
-
-  const availableSizesForReplacement = useMemo(() => {
-    if (replacementVariant.product?.sizes && replacementVariant.product.sizes.length > 0) {
-      return replacementVariant.product.sizes;
-    }
-    return ['2-3 Year', '3-4 Year', '5-6 Year', '7-8 Year', '9-10 Year', '11-12 Year', 'S', 'M', 'L', 'XL'];
-  }, [replacementVariant.product]);
 
   if (isLoading && !order) {
     return (
@@ -399,6 +375,78 @@ export default function CustomerOrderDetails() {
     return ['2-3 Year', '3-4 Year', '5-6 Year', '7-8 Year', '9-10 Year', '11-12 Year', 'S', 'M', 'L', 'XL'];
   };
 
+  // Find all colorways / sibling products for the exact same item
+  const getProductColorVariants = (prod, origItem) => {
+    if (!prod) return [];
+    const siblingProducts = combinedProducts.filter(p =>
+      (prod.groupId && p.groupId === prod.groupId) ||
+      (prod.groupId && String(p.id) === String(prod.groupId)) ||
+      (p.groupId && String(p.groupId) === String(prod.id)) ||
+      String(p.id) === String(prod.id)
+    );
+
+    const colorsList = [];
+    const seen = new Set();
+
+    siblingProducts.forEach(sibling => {
+      // 1. From sibling.colors
+      if (Array.isArray(sibling?.colors) && sibling.colors.length > 0) {
+        sibling.colors.forEach(col => {
+          const norm = normalizeColor(col);
+          const key = norm.hex?.toLowerCase();
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            const variantWithImage = sibling.variants?.find(
+              v => v.colorHex?.toLowerCase() === key && v.image
+            );
+            colorsList.push({
+              hex: norm.hex,
+              name: norm.name,
+              productId: sibling.id,
+              product: sibling,
+              image: variantWithImage?.image || (typeof col === 'object' ? col.image : null) || sibling.image || origItem?.image,
+              price: sibling.price || prod.price
+            });
+          }
+        });
+      }
+      // 2. From sibling.variants
+      if (Array.isArray(sibling?.variants)) {
+        sibling.variants.forEach(v => {
+          if (v.colorHex) {
+            const norm = normalizeColor({ hex: v.colorHex, name: v.colorName });
+            const key = norm.hex?.toLowerCase();
+            if (key && !seen.has(key)) {
+              seen.add(key);
+              colorsList.push({
+                hex: norm.hex,
+                name: norm.name,
+                productId: sibling.id,
+                product: sibling,
+                image: v.image || sibling.image || origItem?.image,
+                price: sibling.price || prod.price
+              });
+            }
+          }
+        });
+      }
+    });
+
+    if (colorsList.length === 0 && (origItem?.color || prod.colors?.[0])) {
+      const norm = normalizeColor(origItem?.color || prod.colors?.[0]);
+      colorsList.push({
+        hex: norm.hex,
+        name: origItem?.colorName || norm.name,
+        productId: prod.id,
+        product: prod,
+        image: origItem?.image || prod.image,
+        price: prod.price
+      });
+    }
+
+    return colorsList;
+  };
+
   const getInitialReplacementSize = (product, currentSize) => {
     const productSizes = getAvailableSizesForProduct(product);
     const inStockSize = productSizes.find(sz => {
@@ -421,12 +469,25 @@ export default function CustomerOrderDetails() {
     items.forEach((it, idx) => {
       const k = getItemKey(it, idx);
       const prod = resolveCatalogProduct(it);
-      const initSize = getInitialReplacementSize(prod, it.size);
+      const colorOptions = getProductColorVariants(prod, it);
+      const defaultColor = colorOptions[0] || {
+        hex: it.color || '#1E293B',
+        name: it.colorName || 'Default',
+        image: it.image || prod.image,
+        product: prod
+      };
+      const matchedColor = colorOptions.find(c =>
+        (it.color && c.hex?.toLowerCase() === String(it.color).toLowerCase()) ||
+        (it.colorName && c.name?.toLowerCase() === String(it.colorName).toLowerCase())
+      ) || defaultColor;
+
+      const initSize = getInitialReplacementSize(matchedColor.product || prod, it.size);
       initialReplacements[k] = {
-        product: prod,
+        product: matchedColor.product || prod,
         size: initSize,
-        color: it.color || 'Black',
-        colorName: it.colorName || 'Black',
+        color: matchedColor.hex,
+        colorName: matchedColor.name,
+        image: matchedColor.image || it.image || prod.image,
         exchangeMode: 'same_product'
       };
     });
@@ -440,22 +501,7 @@ export default function CustomerOrderDetails() {
     const targetItem = item || items[0] || null;
     setSelectedItemForAction(targetItem);
 
-    if (targetItem) {
-      const targetIdx = items.findIndex(it => (it.id && it.id === targetItem.id) || (it.productId && it.productId === targetItem.productId));
-      const targetKey = getItemKey(targetItem, targetIdx >= 0 ? targetIdx : 0);
-      const targetRep = initialReplacements[targetKey];
-      if (targetRep) {
-        setReplacementVariant({
-          product: targetRep.product,
-          size: targetRep.size,
-          color: targetRep.color
-        });
-      }
-    }
-
-    setExchangeMode('same_product');
     setDiffPaymentMethod('razorpay');
-    setActiveCatalogItemKey(null);
     setActiveModal('exchange');
   };
 
@@ -494,47 +540,30 @@ export default function CustomerOrderDetails() {
     }));
   };
 
-  const handleUpdateItemExchangeMode = (itemKey, mode) => {
+  const handleUpdateItemReplacementColor = (itemKey, colorOption) => {
     setExchangeReplacements(prev => {
       const curr = prev[itemKey] || {};
-      let prod = curr.product;
-      if (mode === 'same_product') {
-        const itemIdx = (order?.items || []).findIndex((it, idx) => getItemKey(it, idx) === itemKey);
-        const originalItem = order?.items?.[itemIdx];
-        if (originalItem) {
-          prod = resolveCatalogProduct(originalItem);
-        }
-      }
-      const newSize = prod ? getInitialReplacementSize(prod, '') : 'M';
+      const newProd = colorOption.product || curr.product;
+      const currentSize = curr.size;
+      const availableSizes = getAvailableSizesForProduct(newProd);
+      const validSize = availableSizes.includes(currentSize) ? currentSize : (availableSizes[0] || 'M');
+
       return {
         ...prev,
         [itemKey]: {
           ...curr,
-          exchangeMode: mode,
-          product: prod,
-          size: newSize
+          product: newProd,
+          color: colorOption.hex,
+          colorName: colorOption.name,
+          image: colorOption.image || curr.image,
+          size: validSize
         }
       };
     });
   };
 
-  const handleSelectItemCatalogProduct = (itemKey, prod) => {
-    const initSize = getAvailableSizesForProduct(prod)[0] || 'M';
-    setExchangeReplacements(prev => ({
-      ...prev,
-      [itemKey]: {
-        ...(prev[itemKey] || {}),
-        product: prod,
-        size: initSize,
-        color: prod.colors?.[0] || 'Default',
-        colorName: prod.colors?.[0] || 'Default'
-      }
-    }));
-    setActiveCatalogItemKey(null);
-  };
-
   // Aggregated exchange summary for all selected items
-  const exchangeSummary = useMemo(() => {
+  const exchangeSummary = (() => {
     if (!order?.items) return { origTotal: 0, repTotal: 0, diff: 0, selectedCount: 0, pairs: [] };
 
     let origTotal = 0;
@@ -548,12 +577,13 @@ export default function CustomerOrderDetails() {
       const rep = exchangeReplacements[key];
       const repProd = rep?.product || resolveCatalogProduct(item);
       const repSize = rep?.size || getInitialReplacementSize(repProd, item.size);
-      const repColor = rep?.color || item.color || 'Default';
-      const repColorName = rep?.colorName || item.colorName || repColor;
+      const repColor = rep?.color || item.color || '#1E293B';
+      const repColorName = rep?.colorName || item.colorName || 'Default';
+      const repImage = rep?.image || repProd.image || (repProd.images && repProd.images[0]) || item.image;
 
       const qty = item.quantity || 1;
       const oUnit = Number(item.unitPrice || 0);
-      const rUnit = Number(repProd?.price || oUnit);
+      const rUnit = oUnit; // Strictly same product equal value exchange
 
       origTotal += oUnit * qty;
       repTotal += rUnit * qty;
@@ -578,22 +608,22 @@ export default function CustomerOrderDetails() {
           color: repColor,
           colorName: formatColorName(repColorName, repColor),
           price: rUnit,
-          image: repProd.image || (repProd.images && repProd.images[0]) || item.image
+          image: repImage
         },
         originalPrice: oUnit * qty,
         replacementPrice: rUnit * qty,
-        priceDifference: (rUnit - oUnit) * qty
+        priceDifference: 0
       });
     });
 
     return {
       origTotal,
       repTotal,
-      diff: repTotal - origTotal,
+      diff: 0,
       selectedCount: pairs.length,
       pairs
     };
-  }, [order?.items, selectedExchangeItemKeys, exchangeReplacements, combinedProducts]);
+  })();
 
   const handleOpenReturnModal = (item = null) => {
     if (!isEligibleForReturnOrExchange) {
@@ -670,6 +700,16 @@ export default function CustomerOrderDetails() {
     const invalidPair = exchangeSummary.pairs.find(p => !p.exchangeItem?.size);
     if (invalidPair) {
       if (addToast) addToast(`Please select a replacement size for ${invalidPair.originalItem.title}.`, 'error');
+      return;
+    }
+
+    const unchangedPair = exchangeSummary.pairs.find(p => {
+      const sameSize = String(p.originalItem?.size || '').trim().toLowerCase() === String(p.exchangeItem?.size || '').trim().toLowerCase();
+      const sameColor = String(p.originalItem?.colorName || p.originalItem?.color || '').trim().toLowerCase() === String(p.exchangeItem?.colorName || p.exchangeItem?.color || '').trim().toLowerCase();
+      return sameSize && sameColor;
+    });
+    if (unchangedPair) {
+      if (addToast) addToast(`Please select a different size or color for ${unchangedPair.originalItem.title}.`, 'error');
       return;
     }
 
@@ -2295,13 +2335,14 @@ export default function CustomerOrderDetails() {
                       const isSelected = selectedExchangeItemKeys.includes(itemKey);
                       const repState = exchangeReplacements[itemKey] || {};
                       const activeProduct = repState.product || resolveCatalogProduct(item);
-                      const currentMode = repState.exchangeMode || 'same_product';
                       const selectedSize = repState.size || getInitialReplacementSize(activeProduct, item.size);
                       const availableSizes = getAvailableSizesForProduct(activeProduct);
-
+                      const colorVariants = getProductColorVariants(activeProduct, item);
                       const origPrice = Number(item.unitPrice || 0);
-                      const repPrice = Number(activeProduct?.price || origPrice);
-                      const itemDiff = repPrice - origPrice;
+
+                      const isSizeChanged = String(selectedSize || '').trim().toLowerCase() !== String(item.size || '').trim().toLowerCase();
+                      const isColorChanged = String(repState.colorName || repState.color || '').trim().toLowerCase() !== String(item.colorName || item.color || '').trim().toLowerCase();
+                      const isVariantChanged = isSizeChanged || isColorChanged;
 
                       return (
                         <div
@@ -2330,8 +2371,12 @@ export default function CustomerOrderDetails() {
                                 </button>
                               )}
 
-                              {item.image ? (
-                                <img src={item.image} alt={item.titleSnapshot} className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0" />
+                              {repState.image || item.image ? (
+                                <img
+                                  src={repState.image || item.image}
+                                  alt={item.titleSnapshot}
+                                  className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0"
+                                />
                               ) : (
                                 <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-xs font-bold text-purple-700 shrink-0">
                                   👕
@@ -2379,151 +2424,140 @@ export default function CustomerOrderDetails() {
                             </div>
                           </div>
 
-                          {/* Item Replacement Configuration */}
+                          {/* Item Replacement Configuration: Strictly Same Product Only */}
                           {isSelected ? (
-                            <div className="p-3.5 sm:p-4 pt-3 border-t border-slate-100 space-y-3">
-                              {/* Mode Selector */}
-                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider">
-                                  Select Replacement:
-                                </span>
-                                <div className="flex bg-slate-100 p-0.5 rounded-lg text-[11px] font-bold">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleUpdateItemExchangeMode(itemKey, 'same_product')}
-                                    className={`px-2.5 py-1 rounded-md transition-colors ${
-                                      currentMode === 'same_product' ? 'bg-white shadow-2xs text-[#5B2E89]' : 'text-slate-500'
-                                    }`}
-                                  >
-                                    Same Item (New Size)
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleUpdateItemExchangeMode(itemKey, 'catalog');
-                                      setActiveCatalogItemKey(itemKey);
-                                    }}
-                                    className={`px-2.5 py-1 rounded-md transition-colors ${
-                                      currentMode === 'catalog' ? 'bg-white shadow-2xs text-[#5B2E89]' : 'text-slate-500'
-                                    }`}
-                                  >
-                                    Browse Catalog
-                                  </button>
+                            <div className="p-3.5 sm:p-4 pt-3 border-t border-slate-100 space-y-4">
+                              {/* 1. Color Selector for Same Product */}
+                              {colorVariants.length > 1 ? (
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                                      🎨 Choose Color:
+                                      <span className="text-[#5B2E89] font-extrabold normal-case">
+                                        {formatColorName(repState.colorName, repState.color)}
+                                      </span>
+                                    </span>
+                                    {isColorChanged ? (
+                                      <span className="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full">
+                                        New Color Selected ✨
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-400 font-medium">
+                                        (Current Color)
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {colorVariants.map((colOpt, cIdx) => {
+                                      const isChosen = (repState.color && colOpt.hex?.toLowerCase() === repState.color.toLowerCase()) ||
+                                                       (repState.colorName && colOpt.name?.toLowerCase() === repState.colorName.toLowerCase());
+                                      const isCurrentColor = (item.color && colOpt.hex?.toLowerCase() === item.color.toLowerCase()) ||
+                                                             (item.colorName && colOpt.name?.toLowerCase() === item.colorName.toLowerCase());
+
+                                      return (
+                                        <button
+                                          key={cIdx}
+                                          type="button"
+                                          onClick={() => handleUpdateItemReplacementColor(itemKey, colOpt)}
+                                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all text-xs font-bold ${
+                                            isChosen
+                                              ? 'bg-purple-50 border-[#5B2E89] ring-2 ring-[#5B2E89]/20 text-[#5B2E89] shadow-2xs scale-102'
+                                              : 'bg-white border-slate-200 text-slate-700 hover:border-purple-200 hover:bg-purple-50/30'
+                                          }`}
+                                        >
+                                          <span
+                                            className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0 shadow-2xs"
+                                            style={{ backgroundColor: colOpt.hex }}
+                                          />
+                                          <span>{colOpt.name}</span>
+                                          {isCurrentColor && (
+                                            <span className="text-[9px] text-slate-400 font-normal">
+                                              (Current)
+                                            </span>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-slate-500 flex items-center gap-1.5">
+                                  <span>🎨 Color:</span>
+                                  <span className="font-bold text-slate-700">{formatColorName(item.colorName, item.color)}</span>
+                                  <span className="text-[10px] text-slate-400">(Single Colorway Available)</span>
+                                </div>
+                              )}
+
+                              {/* 2. Size Selector for Same Product */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[11px] font-black uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                                    📏 Choose Size:
+                                    <span className="text-[#5B2E89] font-extrabold normal-case">{selectedSize}</span>
+                                  </span>
+                                  {isSizeChanged ? (
+                                    <span className="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full">
+                                      New Size Selected ✨
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 font-medium">
+                                      (Current Size)
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {availableSizes.map((sz, sIdx) => {
+                                    const isCurrent = sz === item.size;
+                                    const isChoiceSelected = sz === selectedSize;
+                                    const matchedVariant = activeProduct.variants?.find(
+                                      v => String(v.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase()
+                                    );
+                                    const isOutOfStock = matchedVariant ? Number(matchedVariant.stock) <= 0 : false;
+
+                                    return (
+                                      <button
+                                        key={sIdx}
+                                        type="button"
+                                        disabled={isOutOfStock}
+                                        onClick={() => handleUpdateItemReplacementSize(itemKey, sz)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border transition-all ${
+                                          isChoiceSelected
+                                            ? 'bg-[#5B2E89] text-white border-[#5B2E89] shadow-xs scale-105'
+                                            : isOutOfStock
+                                              ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed line-through'
+                                              : isCurrent
+                                                ? 'bg-slate-100 text-slate-600 border-slate-300'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300'
+                                        }`}
+                                        title={isOutOfStock ? 'Currently out of stock' : isCurrent ? 'Current size' : `Select size ${sz}`}
+                                      >
+                                        {sz} {isCurrent ? '(Current)' : isOutOfStock ? '(Sold out)' : ''}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
 
-                              {/* Mode A: Same product different size */}
-                              {currentMode === 'same_product' && (
-                                <div className="p-3 bg-purple-50/50 rounded-xl border border-purple-100 space-y-2">
-                                  <p className="text-[11px] font-bold text-slate-700">Choose New Size for this product:</p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {availableSizes.map((sz, sIdx) => {
-                                      const isCurrent = sz === item.size;
-                                      const isChoiceSelected = sz === selectedSize;
-                                      const matchedVariant = activeProduct.variants?.find(
-                                        v => String(v.size || '').trim().toLowerCase() === String(sz).trim().toLowerCase()
-                                      );
-                                      const isOutOfStock = matchedVariant ? Number(matchedVariant.stock) <= 0 : false;
-
-                                      return (
-                                        <button
-                                          key={sIdx}
-                                          type="button"
-                                          disabled={isCurrent || isOutOfStock}
-                                          onClick={() => handleUpdateItemReplacementSize(itemKey, sz)}
-                                          className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border transition-all ${
-                                            isChoiceSelected
-                                              ? 'bg-[#5B2E89] text-white border-[#5B2E89] shadow-xs scale-105'
-                                              : isOutOfStock
-                                                ? 'bg-slate-100 text-slate-300 border-slate-200 cursor-not-allowed line-through'
-                                                : isCurrent
-                                                  ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
-                                                  : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300'
-                                          }`}
-                                          title={isOutOfStock ? 'Currently out of stock' : isCurrent ? 'Current size' : `Select size ${sz}`}
-                                        >
-                                          {sz} {isCurrent ? '(Current)' : isOutOfStock ? '(Sold out)' : ''}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Mode B: Catalog Selection */}
-                              {currentMode === 'catalog' && (
-                                <div className="space-y-2.5 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                  <div className="relative">
-                                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <input
-                                      type="text"
-                                      placeholder="Search products in catalog..."
-                                      value={exchangeSearchQuery}
-                                      onChange={(e) => setExchangeSearchQuery(e.target.value)}
-                                      className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold focus:outline-none focus:border-[#5B2E89] bg-white"
-                                    />
-                                  </div>
-
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-36 overflow-y-auto p-0.5">
-                                    {filteredCatalogProducts.map((prod) => {
-                                      const isProdSelected = activeProduct?.id === prod.id;
-                                      return (
-                                        <button
-                                          key={prod.id}
-                                          type="button"
-                                          onClick={() => handleSelectItemCatalogProduct(itemKey, prod)}
-                                          className={`p-1.5 rounded-lg border text-left transition-all ${
-                                            isProdSelected ? 'bg-purple-50 border-[#5B2E89] ring-2 ring-[#5B2E89]/20' : 'bg-white border-slate-200 hover:border-slate-300'
-                                          }`}
-                                        >
-                                          <img src={prod.image} alt={prod.name} className="w-full h-12 object-cover rounded mb-1" />
-                                          <p className="font-bold text-[10px] text-slate-800 truncate">{prod.name}</p>
-                                          <p className="text-[9px] font-black text-slate-500">₹{prod.price}</p>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-
-                                  {/* Size for selected catalog product */}
-                                  <div className="pt-2 border-t border-slate-200">
-                                    <p className="text-[11px] font-bold text-slate-700 mb-1">
-                                      Size for {activeProduct?.name || 'Selected Item'}:
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {availableSizes.map((sz, sIdx) => {
-                                        const isChoiceSelected = sz === selectedSize;
-                                        return (
-                                          <button
-                                            key={sIdx}
-                                            type="button"
-                                            onClick={() => handleUpdateItemReplacementSize(itemKey, sz)}
-                                            className={`px-2.5 py-1 rounded-md text-xs font-bold border transition-colors ${
-                                              isChoiceSelected
-                                                ? 'bg-[#5B2E89] text-white border-[#5B2E89]'
-                                                : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
-                                            }`}
-                                          >
-                                            {sz}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Item-level Preview Tag */}
-                              <div className="flex items-center justify-between text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-200">
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <span className="font-bold text-slate-500">Exchange:</span>
-                                  <span className="font-semibold text-slate-700">{item.size}</span>
-                                  <span className="text-slate-400 font-bold">➔</span>
-                                  <span className="font-bold text-purple-900 bg-purple-100/80 px-2 py-0.5 rounded shadow-2xs">
-                                    {selectedSize} {activeProduct?.name !== item.titleSnapshot ? `(${activeProduct?.name})` : ''}
+                              {/* 3. Live Exchange Tag */}
+                              <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+                                !isVariantChanged
+                                  ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                                  : 'bg-purple-50/60 border-purple-100 text-purple-900'
+                              }`}>
+                                {!isVariantChanged ? (
+                                  <span className="font-bold flex items-center gap-1.5 text-[11px]">
+                                    ⚠️ Please select a different size or different color to exchange.
                                   </span>
-                                </div>
-                                <span className="font-bold text-slate-600 shrink-0">
-                                  {itemDiff === 0 ? '₹0 diff' : itemDiff > 0 ? `+₹${itemDiff}` : `-₹${Math.abs(itemDiff)}`}
+                                ) : (
+                                  <div className="flex items-center gap-1.5 truncate text-[11px]">
+                                    <span className="font-bold text-slate-500">Exchanging to:</span>
+                                    <span className="font-extrabold text-purple-900 bg-white px-2 py-0.5 rounded border border-purple-200 shadow-2xs">
+                                      {formatColorName(repState.colorName, repState.color)} • {selectedSize}
+                                    </span>
+                                  </div>
+                                )}
+                                <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0 text-[11px]">
+                                  Equal Value (₹0)
                                 </span>
                               </div>
                             </div>
@@ -2712,8 +2746,16 @@ export default function CustomerOrderDetails() {
 
                 {(() => {
                   const diff = exchangeSummary.diff;
+                  const hasUnchangedSelectedItems = exchangeSummary.pairs.some(p => {
+                    const sameSize = String(p.originalItem?.size || '').trim().toLowerCase() === String(p.exchangeItem?.size || '').trim().toLowerCase();
+                    const sameColor = String(p.originalItem?.colorName || p.originalItem?.color || '').trim().toLowerCase() === String(p.exchangeItem?.colorName || p.exchangeItem?.color || '').trim().toLowerCase();
+                    return sameSize && sameColor;
+                  });
+
                   let buttonLabel = `Confirm & Request Exchange (${exchangeSummary.selectedCount} ${exchangeSummary.selectedCount === 1 ? 'Item' : 'Items'})`;
-                  if (diff > 0) {
+                  if (hasUnchangedSelectedItems) {
+                    buttonLabel = 'Select Different Size or Color to Exchange';
+                  } else if (diff > 0) {
                     buttonLabel = diffPaymentMethod === 'razorpay'
                       ? `Pay ₹${diff} via Razorpay & Exchange (${exchangeSummary.selectedCount} ${exchangeSummary.selectedCount === 1 ? 'Item' : 'Items'})`
                       : `Confirm Exchange (Pay ₹${diff} on Delivery)`;
@@ -2724,10 +2766,10 @@ export default function CustomerOrderDetails() {
                   return (
                     <button
                       type="submit"
-                      disabled={isSubmittingExchange || exchangeSummary.selectedCount === 0}
+                      disabled={isSubmittingExchange || exchangeSummary.selectedCount === 0 || hasUnchangedSelectedItems}
                       className={`w-full py-4 text-white font-extrabold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 ${
-                        exchangeSummary.selectedCount === 0
-                          ? 'bg-slate-300 cursor-not-allowed'
+                        (exchangeSummary.selectedCount === 0 || hasUnchangedSelectedItems)
+                          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                           : 'bg-[#5B2E89] hover:bg-[#4a256e] active:scale-[0.99]'
                       }`}
                     >

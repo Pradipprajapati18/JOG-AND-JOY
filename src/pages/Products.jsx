@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp, SlidersHorizontal, Search, Sparkles } from 'luc
 import CustomDropdown from '../components/ui/CustomDropdown';
 import AnimatedLogoLoader from '../components/ui/AnimatedLogoLoader';
 import { normalizeColor } from '../utils/helpers';
+import { matchesAge, parseAgeRange } from '../utils/filterHelpers';
 
 const sortOptions = [
   { label: 'Sort: Recommended', value: 'popular' },
@@ -156,18 +157,35 @@ export default function Products({ pageCategory = null }) {
   }, [effectiveFilterPanels]);
 
   const ageGroupOptions = useMemo(() => {
+    const ages = new Set();
     if (effectiveFilterPanels?.ageGroups && effectiveFilterPanels.ageGroups.length > 0) {
-      return effectiveFilterPanels.ageGroups.map(a => typeof a === 'string' ? a : (a.label || a.name || String(a)));
+      effectiveFilterPanels.ageGroups.forEach(a => {
+        const val = typeof a === 'string' ? a : (a.label || a.name || String(a));
+        if (val) ages.add(val.replace('–', '-'));
+      });
+    } else {
+      ['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years'].forEach(a => ages.add(a));
     }
-    const ages = new Set(['0-2 Years', '3-5 Years', '6-8 Years', '9-12 Years']);
+    (filters.ageGroups || []).forEach(a => {
+      if (a) ages.add(String(a).replace('–', '-'));
+    });
     combinedProducts.forEach(p => {
       if (p.ageGroup) {
         const agStr = typeof p.ageGroup === 'string' ? p.ageGroup.replace('–', '-') : (p.ageGroup.label || String(p.ageGroup));
-        ages.add(agStr);
+        if (agStr) ages.add(agStr);
       }
     });
-    return Array.from(ages).sort();
-  }, [effectiveFilterPanels, combinedProducts]);
+
+    return Array.from(ages).sort((a, b) => {
+      const rA = parseAgeRange(a);
+      const rB = parseAgeRange(b);
+      if (rA && rB) {
+        if (rA[0] !== rB[0]) return rA[0] - rB[0];
+        return rA[1] - rB[1];
+      }
+      return a.localeCompare(b);
+    });
+  }, [effectiveFilterPanels, combinedProducts, filters.ageGroups]);
 
   const colorOptions = useMemo(() => {
     if (effectiveFilterPanels?.colors && effectiveFilterPanels.colors.length > 0) {
@@ -251,43 +269,7 @@ export default function Products({ pageCategory = null }) {
       }
 
       // Age Group Filter
-      let matchAge = filters.ageGroups.length === 0;
-      if (!matchAge) {
-        matchAge = filters.ageGroups.some(selectedAge => {
-          const normAge = selectedAge.toLowerCase().replace('–', '-');
-          
-          if (p.ageGroup && p.ageGroup.toLowerCase().replace('–', '-') === normAge) {
-            return true;
-          }
-
-          const allSizes = [
-            ...(p.sizes || []),
-            ...(p.variants || []).map(v => v.size)
-          ].filter(Boolean).map(s => s.toLowerCase().replace('–', '-'));
-
-          if (normAge.includes('0-2')) {
-            return allSizes.some(s => s.includes('0-3') || s.includes('3-6') || s.includes('6-12') || s.includes('1-2') || s.includes('2-3') || s.includes('months') || s.includes('0-2'));
-          }
-          if (normAge.includes('3-5')) {
-            return allSizes.some(s => s.includes('3-4') || s.includes('4-5') || s.includes('5-6') || s.includes('3-5'));
-          }
-          if (normAge.includes('6-8')) {
-            return allSizes.some(s => s.includes('6-7') || s.includes('7-8') || s.includes('8-9') || s.includes('6-8'));
-          }
-          if (normAge.includes('9-12')) {
-            return allSizes.some(s => s.includes('9-10') || s.includes('10-11') || s.includes('11-12') || s.includes('9-12'));
-          }
-
-          if (p.ageGroup && p.ageGroup.toLowerCase().includes(normAge)) {
-            return true;
-          }
-          if (allSizes.some(s => s.includes(normAge))) {
-            return true;
-          }
-
-          return false;
-        });
-      }
+      const matchAge = matchesAge(p, filters.ageGroups);
 
       return matchType && matchPrice && matchColor && matchAge;
     });
