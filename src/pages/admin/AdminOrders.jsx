@@ -864,6 +864,11 @@ export default function AdminOrders() {
                   </button>
                 );
               })()
+            ) : o.status === 'REFUNDED' ? (
+              <div className="flex-1 sm:flex-none px-3.5 py-2 text-xs sm:text-sm font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl shadow-2xs text-center flex items-center justify-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                ✓ Refunded
+              </div>
             ) : (
               <button
                 onClick={() => setShowRefundModal(true)}
@@ -913,7 +918,7 @@ export default function AdminOrders() {
                           if (o.status === 'RETURN_REQUESTED') return ['RETURN_APPROVED', 'RETURN_REJECTED', 'CANCELLED'].includes(st);
                           if (o.status === 'EXCHANGE_APPROVED') return ['SHIPPED', 'DELIVERED'].includes(st);
                           if (o.status === 'RETURN_APPROVED') return ['REFUNDED'].includes(st);
-                          if (o.status === 'DELIVERED') return ['SHIPPED', 'EXCHANGE_APPROVED', 'RETURN_APPROVED'].includes(st);
+                          if (o.status === 'DELIVERED') return ['EXCHANGE_APPROVED', 'RETURN_APPROVED'].includes(st);
                           return true;
                         }).map(st => (
                           <button
@@ -1408,8 +1413,13 @@ export default function AdminOrders() {
                         const carrierObj = COURIER_PARTNERS.find(p => p.id === trackingForm.carrier) || { name: trackingForm.carrier };
                         const generatedUrl = generateTrackingUrl(trackingForm.carrier, cleanAwb, trackingForm.customUrl);
                         const isExchange = o.returnRequest?.type === 'EXCHANGE';
-                        const newStatus = (o.status === 'CANCELLED' || o.status === 'REFUNDED') ? o.status : 'SHIPPED';
-                        const shipNote = isExchange ? `Replacement outfit shipped via ${carrierObj.name} (AWB: ${cleanAwb})` : `Shipped via ${carrierObj.name} (AWB: ${cleanAwb})`;
+                        const isTerminalOrReturn = ['DELIVERED', 'REFUNDED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_REJECTED', 'EXCHANGE_REJECTED'].includes(o.status);
+                        const newStatus = isTerminalOrReturn ? o.status : 'SHIPPED';
+                        const shipNote = o.status === 'DELIVERED'
+                          ? `Tracking updated via ${carrierObj.name} (AWB: ${cleanAwb})`
+                          : isExchange
+                            ? `Replacement outfit shipped via ${carrierObj.name} (AWB: ${cleanAwb})`
+                            : `Shipped via ${carrierObj.name} (AWB: ${cleanAwb})`;
 
                         const trackingPatch = {
                           shippingAddress: {
@@ -1431,7 +1441,7 @@ export default function AdminOrders() {
                       }}
                       className="px-3.5 py-2 bg-primary-dark text-white text-xs font-bold rounded-lg hover:bg-primary-hover whitespace-nowrap shrink-0 shadow-sm"
                     >
-                      Save & Ship
+                      {o.status === 'DELIVERED' || ['CANCELLED', 'REFUNDED', 'RETURN_REQUESTED', 'RETURN_APPROVED'].includes(o.status) ? 'Update Tracking' : 'Save & Ship'}
                     </button>
                   </div>
                 </div>
@@ -1454,8 +1464,8 @@ export default function AdminOrders() {
                 )}
               </div>
 
-              {/* Mark as Delivered Button */}
-              {(o.shippingAddress?.trackingNumber || o.trackingId) && o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && o.status !== 'REFUNDED' && (
+              {/* Mark as Delivered Button - strictly for in-transit SHIPPED orders */}
+              {(o.shippingAddress?.trackingNumber || o.trackingId) && o.status === 'SHIPPED' && (
                 <button
                   onClick={() => handleUpdateOrderStatus(o, 'DELIVERED', oHasCompletedExchange || o.returnRequest?.type === 'EXCHANGE' ? 'Exchange replacement delivered via Admin' : 'Marked delivered via Admin')}
                   className={`w-full mt-3 px-3 py-2 text-sm font-bold rounded-lg transition-colors flex items-center justify-center gap-2 ${
@@ -1467,6 +1477,22 @@ export default function AdminOrders() {
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   {o.returnRequest?.type === 'EXCHANGE' ? 'Mark Replacement Delivered 🎁' : 'Mark as Delivered'}
                 </button>
+              )}
+
+              {/* Delivered Confirmation Banner */}
+              {o.status === 'DELIVERED' && (
+                <div className="w-full mt-3 px-3 py-2 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                  <span>{oHasCompletedExchange || o.returnRequest?.type === 'EXCHANGE' ? 'Exchange Replacement Delivered ✓' : 'Order Delivered to Customer ✓'}</span>
+                </div>
+              )}
+
+              {/* Refunded Confirmation Banner */}
+              {o.status === 'REFUNDED' && (
+                <div className="w-full mt-3 px-3 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center gap-2">
+                  <RotateCcw className="w-3.5 h-3.5 shrink-0 text-slate-500" />
+                  <span>Order Returned & Refunded</span>
+                </div>
               )}
             </div>
 

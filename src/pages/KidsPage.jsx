@@ -69,7 +69,7 @@ export default function KidsPage() {
         try {
           const stored = localStorage.getItem('jj_filter_panels');
           if (stored) setLocalFilterPanels(JSON.parse(stored));
-        } catch {}
+        } catch { }
       }
     };
     window.addEventListener('jj_filter_panels_updated', handleUpdate);
@@ -135,9 +135,9 @@ export default function KidsPage() {
       return effectiveFilterPanels.categories.map(c => {
         const label = typeof c === 'string' ? c : c.label;
         const id = typeof c === 'string' ? c : (c.id || c.label);
-        const count = kidsProducts.filter(p => 
-          p.categoryId === id || 
-          p.category === label || 
+        const count = kidsProducts.filter(p =>
+          p.categoryId === id ||
+          p.category === label ||
           p.categoryLabel === label ||
           (p.category || '').toLowerCase() === label.toLowerCase()
         ).length;
@@ -165,6 +165,7 @@ export default function KidsPage() {
       count
     }));
   }, [effectiveFilterPanels, dbCategories, kidsProducts]);
+
 
   const priceOptions = useMemo(() => {
     if (effectiveFilterPanels?.priceRanges && effectiveFilterPanels.priceRanges.length > 0) {
@@ -432,7 +433,7 @@ export default function KidsPage() {
               Showing {filteredProducts.length} Products
             </div>
             {/* Mobile Filter Toggle */}
-            <button 
+            <button
               type="button"
               onClick={() => setShowMobileFilters(!showMobileFilters)}
               className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg shadow-sm text-xs font-bold text-slate-700 cursor-pointer"
@@ -588,9 +589,9 @@ export default function KidsPage() {
                             className="w-4 h-4 rounded border-slate-300 text-[#A7DEB9] focus:ring-[#A7DEB9] cursor-pointer"
                           />
                           {cHex && (
-                            <span 
-                              className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0 shadow-2xs" 
-                              style={{ backgroundColor: cHex }} 
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-black/10 shrink-0 shadow-2xs"
+                              style={{ backgroundColor: cHex }}
                             />
                           )}
                           <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900 transition-colors">{cName}</span>
@@ -671,7 +672,7 @@ export default function KidsPage() {
 
         </div>
       </div>
-      
+
       {/* Quick View Modal */}
       {quickViewProduct && (
         <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />

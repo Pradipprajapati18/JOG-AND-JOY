@@ -96,6 +96,10 @@ export default function AdminPromotions() {
       payload.code = `AUTO-${Date.now()}`;
     }
 
+    if (payload.discountType === 'free_shipping') {
+      payload.value = 0;
+    }
+
     if (editingPromo) {
       updateMut.mutate({ id: editingPromo.id, patch: payload }, { onSuccess: () => setView('list') });
     } else {
@@ -163,38 +167,86 @@ export default function AdminPromotions() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Discount Type</label>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="discountType" value="percentage" checked={formData.discountType === 'percentage'} onChange={e => setFormData({...formData, discountType: e.target.value})} className="text-blue-600 focus:ring-blue-600" />
+                    <input 
+                      type="radio" 
+                      name="discountType" 
+                      value="percentage" 
+                      checked={formData.discountType === 'percentage'} 
+                      onChange={e => setFormData({
+                        ...formData, 
+                        discountType: e.target.value, 
+                        value: formData.discountType === 'free_shipping' ? 10 : (formData.value || 10)
+                      })} 
+                      className="text-blue-600 focus:ring-blue-600" 
+                    />
                     <span className="text-sm font-semibold">Percentage</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" name="discountType" value="fixed" checked={formData.discountType === 'fixed'} onChange={e => setFormData({...formData, discountType: e.target.value})} className="text-blue-600 focus:ring-blue-600" />
+                    <input 
+                      type="radio" 
+                      name="discountType" 
+                      value="fixed" 
+                      checked={formData.discountType === 'fixed'} 
+                      onChange={e => setFormData({
+                        ...formData, 
+                        discountType: e.target.value, 
+                        value: formData.discountType === 'free_shipping' ? 50 : (formData.value || 50)
+                      })} 
+                      className="text-blue-600 focus:ring-blue-600" 
+                    />
                     <span className="text-sm font-semibold">Fixed Amount</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="radio" 
+                      name="discountType" 
+                      value="free_shipping" 
+                      checked={formData.discountType === 'free_shipping'} 
+                      onChange={e => setFormData({
+                        ...formData, 
+                        discountType: e.target.value, 
+                        value: 0
+                      })} 
+                      className="text-blue-600 focus:ring-blue-600" 
+                    />
+                    <span className="text-sm font-semibold">Free Shipping</span>
                   </label>
                 </div>
               </div>
               
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-2">Discount Value</label>
-                <div className="relative w-full">
-                  <input 
-                    required 
-                    type="number" 
-                    min="1"
-                    max={formData.discountType === 'percentage' ? "100" : undefined}
-                    value={formData.value} 
-                    onChange={e => {
-                      let val = Number(e.target.value);
-                      if (formData.discountType === 'percentage' && val > 100) val = 100;
-                      setFormData({...formData, value: val});
-                    }} 
-                    className={`w-full ${formData.discountType === 'percentage' ? 'pl-8' : 'pl-10'} pr-4 py-2.5 border border-slate-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-blue-600 outline-none font-bold text-sm`} 
-                  />
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">
-                    {formData.discountType === 'percentage' ? '%' : '₹'}
-                  </span>
-                </div>
+                {formData.discountType === 'free_shipping' ? (
+                  <div className="w-full px-4 py-2.5 border border-slate-200 rounded-xl bg-zinc-50 text-slate-700 font-semibold text-sm flex items-center justify-between">
+                    <span className="text-xs sm:text-sm font-bold text-emerald-700 flex items-center gap-1.5">
+                      ✓ Free Shipping (100% off delivery fee)
+                    </span>
+                    <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold px-2 py-0.5 rounded">
+                      ₹0 Shipping
+                    </span>
+                  </div>
+                ) : (
+                  <div className="relative w-full">
+                    <input 
+                      required 
+                      type="number" 
+                      min="1"
+                      max={formData.discountType === 'percentage' ? "100" : undefined}
+                      value={formData.value} 
+                      onChange={e => {
+                        let val = Number(e.target.value);
+                        if (formData.discountType === 'percentage' && val > 100) val = 100;
+                        setFormData({...formData, value: val});
+                      }} 
+                      className={`w-full ${formData.discountType === 'percentage' ? 'pl-8' : 'pl-10'} pr-4 py-2.5 border border-slate-200 rounded-xl bg-zinc-50 focus:bg-white focus:border-blue-600 outline-none font-bold text-sm`} 
+                    />
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">
+                      {formData.discountType === 'percentage' ? '%' : '₹'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -364,7 +416,7 @@ export default function AdminPromotions() {
                     <div>
                       <span className="text-[10px] text-text-muted font-bold block uppercase">Value</span>
                       <span className="font-extrabold text-text-dark text-sm">
-                        {promo.discountType === 'percentage' ? `${promo.value}%` : formatCurrency(promo.value)}
+                        {promo.discountType === 'percentage' ? `${promo.value}%` : promo.discountType === 'free_shipping' ? 'Free Shipping' : formatCurrency(promo.value)}
                       </span>
                     </div>
                     <div>
@@ -383,7 +435,7 @@ export default function AdminPromotions() {
 
                   <div className="flex items-center justify-between pt-1 border-t border-slate-100/60" onClick={e => e.stopPropagation()}>
                     <span className="text-xs text-text-muted capitalize font-medium">
-                      Type: <strong className="text-text-dark">{promo.discountType?.replace('_', ' ')}</strong>
+                      Type: <strong className="text-text-dark">{promo.discountType === 'free_shipping' ? 'Free Shipping' : promo.discountType?.replace('_', ' ')}</strong>
                     </span>
                     <div className="flex items-center gap-1">
                       <button 
@@ -448,10 +500,10 @@ export default function AdminPromotions() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-text-muted capitalize font-semibold">{promo.discountType?.replace('_', ' ')}</td>
+                      <td className="px-5 py-4 text-text-muted capitalize font-semibold">{promo.discountType === 'free_shipping' ? 'Free Shipping' : promo.discountType?.replace('_', ' ')}</td>
                       
                       <td className="px-5 py-4 font-bold text-text-dark">
-                        {promo.discountType === 'percentage' ? `${promo.value}%` : formatCurrency(promo.value)}
+                        {promo.discountType === 'percentage' ? `${promo.value}%` : promo.discountType === 'free_shipping' ? 'Free Shipping' : formatCurrency(promo.value)}
                       </td>
                       
                       <td className="px-5 py-4 text-xs font-semibold text-text-muted">
